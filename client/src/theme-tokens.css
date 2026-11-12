@@ -1,0 +1,44 @@
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: #fdf9f4;
+  --color-foreground: #2b120f;
+  --color-card: #ffffff;
+  --color-card-foreground: #2b120f;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #2b120f;
+  --color-primary: #870210;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f9efe6;
+  --color-secondary-foreground: #2b120f;
+  --color-muted: #f6ede4;
+  --color-muted-foreground: #7a564c;
+  --color-accent: #faeee4;
+  --color-accent-foreground: #870210;
+  --color-destructive: #c0292b;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #ece0d5;
+  --color-input: #ece0d5;
+  --color-ring: #e86c12;
+  --color-sidebar: #ffffff;
+  --color-sidebar-foreground: #2b120f;
+  --color-sidebar-primary: #870210;
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: #faeee4;
+  --color-sidebar-accent-foreground: #870210;
+  --color-sidebar-border: #ece0d5;
+  --color-sidebar-ring: #e86c12;
+  --color-chart-1: #870210;
+  --color-chart-2: #e86c12;
+  --color-chart-3: #b8332a;
+  --color-chart-4: #f39c3d;
+  --color-chart-5: #5c1812;
+}
+
+:root { --radius: 0.8rem; }
+@layer base {
+  * { border-color: #ece0d5; }
+  body { background: #fdf9f4; color: #2b120f; }
+}
