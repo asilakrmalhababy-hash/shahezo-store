@@ -229,7 +229,7 @@ async function createLocalMariaPool(): Promise<mysql.Pool> {
     if (!isRestoring && !isSaving) {
       void saveToCloudNow(pool);
     }
-  }, 5000);
+  }, 3600000);
 
   return pool;
 }
