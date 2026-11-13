@@ -283,6 +283,7 @@ async function initializeSchemaAndRestore(pool: mysql.Pool) {
     "INSERT IGNORE INTO users (openId, name, email, role, loginMethod, suspended) VALUES (?, 'مدير المتجر', ?, 'admin', 'password', false)",
     [ownerOpenId, ownerEmail]
   ).catch(() => {});
+    await pool.query("UPDATE store_settings SET `value` = 'شهيزو – SHAHEZO' WHERE `key` = 'storeName' AND (`value` LIKE '%أور%' OR `value` LIKE '%ORIGINAL%')").catch(() => {});
   isRestoring = false;
 }
 

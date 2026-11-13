@@ -876,7 +876,7 @@ function SmartBulkProductsStudio({
                   rows={4}
                   value={bulkText}
                   onChange={e => setBulkText(e.target.value)}
-                  placeholder={"مثال:\nحليب المراعي كامل الدسم 1 لتر - 900\nجبن المراعي كاسات كبير - 1800\nكمون بلدي مطحون - 4000\nتونة الغويزي 185 جرام - 850"}
+                  placeholder={"مثال:\nشاورما عربي دبل - 2500\nساندوتش فلافل شامي محشي - 600\nصاروخ شاورما صاج - 1500\nعصير مانجو طبيعي كبير - 1000"}
                   style={{ background: "#ffffff", borderRadius: "12px", padding: "10px" }}
                 />
               </label>
@@ -1337,7 +1337,7 @@ function ProductsPanel({ isOwner = true, permissions = [], allowedCategoryIds = 
   return (
     <div className="admin-content">
       <div className="admin-page-heading">
-        <div><span className="eyebrow">كتالوج متجرك السريع</span><h1>إدارة المنتجات</h1><p>واجهة مبسطة وسريعة جداً لرفع المنتجات بالقطعة أو بالوزن والمبلغ (بهارات، حلاوة، خضروات).</p></div>
+        <div><span className="eyebrow">كتالوج متجرك السريع</span><h1>إدارة المنتجات</h1><p>واجهة مبسطة وسريعة جداً لرفع أصناف البوفية بالساندوتش أو الوجبة أو بالوزن والمبلغ (فلافل، مقبلات، صحون).</p></div>
         <span className="admin-heading-mark"><Package size={25} /></span>
       </div>
       <div style={{ marginBottom: "14px", padding: "14px 16px", borderRadius: "18px", background: "linear-gradient(135deg, #870210 0%, #5e010b 100%)", color: "#ffffff", display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center", justifyContent: "space-between", boxShadow: "0 10px 24px rgba(94, 1, 11, 0.18)" }}>
@@ -1374,7 +1374,7 @@ function ProductsPanel({ isOwner = true, permissions = [], allowedCategoryIds = 
         <form onSubmit={submit} className="admin-form">
           <div className="product-form-layout">
             <div className="form-fields-grid">
-              <label className="field-wide">اسم المنتج *<input required maxLength={180} value={form.name} onChange={e => setField("name", e.target.value)} placeholder="مثلاً: كمون بلدي، حلاوة طحينية، زبادي..." /></label>
+              <label className="field-wide">اسم المنتج *<input required maxLength={180} value={form.name} onChange={e => setField("name", e.target.value)} placeholder="مثلاً: شاورما عربي، ساندوتش فلافل، عصير مانجو، صحن مقبلات..." /></label>
               <label>{form.weightEnabled ? "سعر الكيلو الواحد (1000 جرام) بالريال *" : "السعر بالريال اليمني *"}<input ref={singlePriceInputRef} required type="number" min="0" value={form.price} onChange={e => setField("price", e.target.value)} placeholder={form.weightEnabled ? "مثلاً: 4000 (سعر الكيلو)" : "0"} /></label>
               <label>القسم<select value={form.categoryId ?? ""} onChange={e => setField("categoryId", e.target.value ? Number(e.target.value) : null)}><option value="">اختر القسم...</option>{cats.data?.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
               <label className="field-wide">الوصف (اختياري)<textarea rows={2} value={form.description} onChange={e => setField("description", e.target.value)} placeholder="وصف مختصر للمنتج..." /></label>
@@ -1386,7 +1386,7 @@ function ProductsPanel({ isOwner = true, permissions = [], allowedCategoryIds = 
                   onClick={() => setShowWeightModal(true)}
                   style={{ padding: "8px 13px", borderRadius: "12px", fontWeight: 800, border: form.weightEnabled ? "1.5px solid #870210" : "1px solid #cbd8cf" }}
                 >
-                  ⚖️ {form.weightEnabled ? "البيع بالوزن والمبلغ: مفعّل ✅" : "تفعيل البيع بالوزن والمبلغ (بهارات / حلاوة / خضروات)"}
+                  ⚖️ {form.weightEnabled ? "البيع بالوزن والمبلغ: مفعّل ✅" : "تفعيل البيع بالوزن والمبلغ (فلافل / حمص / مقبلات)"}
                 </button>
 
                 <button
@@ -2882,7 +2882,7 @@ function BannersPanel() {
             <div className="form-fields-grid">
               <label>
                 اسم الإعلان (مرجع لك في الإدارة)
-                <input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="مثال: إعلان الخضار الطازجة" />
+                <input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="مثال: عرض الشاورما العربي والفلافل الساخنة" />
               </label>
               <label>
                 مكان ظهور الإعلان في الموقع
@@ -2906,7 +2906,7 @@ function BannersPanel() {
                 طريقة تفاعل الزبون عند لمس الإعلان
                 <select value={cfg.clickMode} onChange={e => setCfg({ ...cfg, clickMode: e.target.value as AdminBannerCfg["clickMode"] })}>
                   <option value="full">الضغط على أي مكان في صورة الإعلان بالكامل</option>
-                  <option value="hotspot">تحديد مكان الزر المرسوم داخل الصورة فقط (مثل: تسوق الخضار)</option>
+                  <option value="hotspot">تحديد مكان الزر المرسوم داخل الصورة فقط (مثل: اطلب الآن)</option>
                   <option value="none">بدون ضغط (عرض الصورة فقط)</option>
                 </select>
               </label>
@@ -3003,7 +3003,7 @@ function BannersPanel() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
                 <div>
                   <strong style={{ fontSize: "12px", color: "#f1d897", display: "block" }}>تحديد مكان الزر المرسوم داخل الصورة (منطقة ضغط الزبون):</strong>
-                  <small style={{ fontSize: "10px", color: "#cfe0d5" }}>اسحب المستطيل الذهبي وضعه فوق الزر المرسوم في صورتك (مثل: تسوق الخضار أو اطلب الآن)، واسحب الدائرة الصفراء لتغيير حجمه.</small>
+                  <small style={{ fontSize: "10px", color: "#cfe0d5" }}>اسحب المستطيل الذهبي وضعه فوق الزر المرسوم في صورتك (مثل: اطلب الشاورما الآن أو تصفح القائمة)، واسحب الدائرة الصفراء لتغيير حجمه.</small>
                 </div>
               </div>
               <div
@@ -3933,7 +3933,7 @@ function SettingsPanel() {
 
         <div className="field-wide" style={{ display: "grid", gap: "8px" }}>
           <label>🎁 اسم الهدية التي تظهر للزبون في الشريط وفي الطلب
-            <input maxLength={140} value={rcfg.giftName} onChange={e => updateRcfg("giftName", e.target.value)} placeholder="مثلاً: علبة زبادي الهناء مجاناً 🥣 أو عصير طبيعي هدية 🧃" />
+            <input maxLength={140} value={rcfg.giftName} onChange={e => updateRcfg("giftName", e.target.value)} placeholder="مثلاً: ساندوتش فلافل مجاناً 🥙 أو عصير طبيعي بارد هدية 🧃" />
           </label>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
             {["ساندوتش فلافل مجاناً 🥙", "عصير طبيعي بارد هدية 🧃", "صحن بطاط مقرمش هدية 🍟", "هدية مفاجأة من شهيزو 🎁", "توصيل مجاني + هدية فورية 🚀"].map(preset => (
@@ -4007,7 +4007,7 @@ function SettingsPanel() {
         </div>
         <div className="form-stack">
           <label className="field-wide">توجيهاتك الخاصة للمساعد الذكي
-            <textarea rows={4} maxLength={2500} value={values.aiInstructions} onChange={e => setValues({ ...values, aiInstructions: e.target.value })} placeholder="مثلاً: كن ودوداً جداً، إذا سأل الزبون عن السلة الأسبوعية اسأله كم عدد أفراد البيت، ركز على الخضروات الطازجة، ولا تقترح السجائر نهائياً..." />
+            <textarea rows={4} maxLength={2500} value={values.aiInstructions} onChange={e => setValues({ ...values, aiInstructions: e.target.value })} placeholder="مثلاً: رحب بالزبون بحرارة، واقترح عليه العصائر الطبيعية مع وجبات الشاورما والفلافل، وركز على البوكسات العائلية..." />
           </label>
         </div>
       </section>
@@ -4420,7 +4420,7 @@ function StaffManagementPanel({ actorIsOwner, actorPermissions, actorStaffId }: 
               <div>
                 <strong style={{ fontSize: "12.5px", color: "#870210", display: "block" }}>📂 تخصيص الأقسام المسموح لهذا المشرف بالتحكم بها:</strong>
                 <small style={{ color: "#5b7063", fontSize: "11px" }}>
-                  {allowedCategoryIds.length === 0 ? "✅ مسموح له بإدارة جميع أقسام المتجر (اضغط على أي قسم بالأسفل إذا أردت حصره في أقسام معينة فقط مثل الخضروات والفواكه)." : ("🔒 مقيّد بإدارة (" + allowedCategoryIds.length + ") قسم محدد فقط — لن يتمكن من إضافة أو تعديل منتجات خارجها.")}
+                  {allowedCategoryIds.length === 0 ? "✅ مسموح له بإدارة جميع أقسام المتجر (اضغط على أي قسم بالأسفل إذا أردت حصره في أقسام معينة فقط مثل الشاورما أو العصائر)." : ("🔒 مقيّد بإدارة (" + allowedCategoryIds.length + ") قسم محدد فقط — لن يتمكن من إضافة أو تعديل منتجات خارجها.")}
                 </small>
               </div>
               {allowedCategoryIds.length > 0 && (

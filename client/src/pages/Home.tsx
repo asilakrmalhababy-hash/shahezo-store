@@ -45,8 +45,9 @@ function Header({ data, onSearch }: { data?: HomeData; onSearch: (text: string) 
   const { name } = useCustomer();
   const [text, setText] = useState("");
   const cartCount = cart.reduce((sum, row) => sum + row.quantity, 0);
-  const storeName = data?.settings.storeName || "شهيزو – SHAHEZO";
-  const brandSubtitle = storeName === "شهيزو – SHAHEZO" ? "شاورما • فلافل • عصائر" : storeName;
+  const rawName = data?.settings.storeName || "شهيزو – SHAHEZO";
+  const storeName = /أورجنال|أوريجنال|ORIGINAL/i.test(rawName) ? "شهيزو – SHAHEZO" : rawName;
+  const brandSubtitle = "شهي ولذيذ · شاورما • فلافل • عصائر";
   const submitSearch = (event: FormEvent) => { event.preventDefault(); onSearch(text.trim()); };
   return <header className="store-header">
     <div className="header-main">
@@ -539,8 +540,8 @@ function AiRecipeModal({ product, onClose }: { product: PublicProduct; onClose: 
                     </ol>
                   )}
                   {data.ingredients?.length > 0 && (
-                    <button type="button" onClick={() => { data.ingredients.forEach((ing: any) => add({ id: ing.productId, name: ing.name, price: ing.price, unit: ing.unit, stock: ing.stock, minQuantity: ing.minQuantity, quantityStep: ing.quantityStep }, ing.quantity)); toast.success("أُضيفت مقادير الوصفة للسلة 🛒"); }} style={{ ...tinyChipStyle, background: "#870210", color: "#fff", marginTop: "4px", padding: "4px 10px" }}>
-                      إضافة مقادير الوصفة للسلة
+                    <button type="button" onClick={() => { data.ingredients.forEach((ing: any) => add({ id: ing.productId, name: ing.name, price: ing.price, unit: ing.unit, stock: ing.stock, minQuantity: ing.minQuantity, quantityStep: ing.quantityStep }, ing.quantity)); toast.success("أُضيفت أصناف الوجبة للسلة 🛒"); }} style={{ ...tinyChipStyle, background: "#870210", color: "#fff", marginTop: "4px", padding: "4px 10px" }}>
+                      إضافة أصناف الوجبة للسلة
                     </button>
                   )}
                 </div>
@@ -3786,6 +3787,6 @@ export default function Home() {
     if (location === "/assistant") return <AssistantPage />;
     return <HomePage data={data} onOpen={openProduct} onAiRecipe={setActiveAiProduct} />;
   }, [location, productId, productPath, data]);
-  return <div className="store-app" dir="rtl"><Header data={data} onSearch={text => navigate(`/products${text ? `?search=${encodeURIComponent(text)}` : ""}`)} /><GamifiedRewardBar settings={data.settings} location={location} />{home.isError && <div className="connection-strip"><span>الاتصال بالخدمة غير متاح مؤقتًا</span><button onClick={() => void home.refetch()}>إعادة المحاولة</button></div>}{home.isError && !home.data ? <main className="page-shell inner-page"><LoadError onRetry={() => void home.refetch()} /></main> : content}<footer className="store-footer"><div className="footer-brand"><span className={`brand-mark ${data.settings.storeIconUrl ? "has-brand-image" : ""}`}>{data.settings.storeIconUrl ? <img src={data.settings.storeIconUrl} alt="" /> : <Leaf size={18} />}</span><span><b>شهيزو – SHAHEZO</b><small>{data.settings.storeName === "شهيزو – SHAHEZO" || !data.settings.storeName ? "شهي ولذيذ · شاورما • فلافل • عصائر" : data.settings.storeName}</small></span></div>{shouldShowFooterDescription(data.settings.storeDescription) && <span>{data.settings.storeDescription}</span>}<small>© {new Date().getFullYear()} {data.settings.storeName || "شهيزو – SHAHEZO"}</small></footer>{activeAiProduct && <AiRecipeModal product={activeAiProduct} onClose={() => setActiveAiProduct(null)} />}
+  return <div className="store-app" dir="rtl"><Header data={data} onSearch={text => navigate(`/products${text ? `?search=${encodeURIComponent(text)}` : ""}`)} /><GamifiedRewardBar settings={data.settings} location={location} />{home.isError && <div className="connection-strip"><span>الاتصال بالخدمة غير متاح مؤقتًا</span><button onClick={() => void home.refetch()}>إعادة المحاولة</button></div>}{home.isError && !home.data ? <main className="page-shell inner-page"><LoadError onRetry={() => void home.refetch()} /></main> : content}<footer className="store-footer"><div className="footer-brand"><span className={`brand-mark ${data.settings.storeIconUrl ? "has-brand-image" : ""}`}>{data.settings.storeIconUrl ? <img src={data.settings.storeIconUrl} alt="" /> : <img src="/app-icon-192-v4.png" alt="شهيزو" />}</span><span><b>شهيزو – SHAHEZO</b><small>{data.settings.storeName === "شهيزو – SHAHEZO" || !data.settings.storeName ? "شهي ولذيذ · شاورما • فلافل • عصائر" : data.settings.storeName}</small></span></div>{shouldShowFooterDescription(data.settings.storeDescription) && <span>{data.settings.storeDescription}</span>}<small>© {new Date().getFullYear()} {data.settings.storeName || "شهيزو – SHAHEZO"}</small></footer>{activeAiProduct && <AiRecipeModal product={activeAiProduct} onClose={() => setActiveAiProduct(null)} />}
     <BottomNav active={currentNav} /></div>;
 }

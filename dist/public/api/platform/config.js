@@ -1,1 +1,0 @@
-window.__MANUS_CONFIG__={"projectId":"","oauthPortalUrl":"","apiUrl":"","apiBrowserKey":""};
