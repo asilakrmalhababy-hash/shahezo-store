@@ -279,10 +279,10 @@ async function notifyOwnerNewOrder(orderId: number, orderNumber: string, total: 
   const targets = await getAllAdminPushTargets(db);
   if (!targets.length) return;
   const shortNo = orderNumber.split("-").pop() || orderNumber;
-  const who = recipientName ? ("العميل: " + recipientName + (area ? " (" + area + ")" : "") + " · ") : "";
+  const customerLine = recipientName ? ("👤 الزبون: " + recipientName + (area ? " · 📍 " + area : "")) : "👤 طلب جديد من المتجر";
   await deliverPushRows(targets, {
-    title: "🛍️ طلب جديد #" + shortNo + " · " + total.toLocaleString("en-US") + " ر.ي",
-    body: who + "اضغط لفتح الطلب وتجهيزه الآن",
+    title: "🥙 بوفية شهيزو | طلب جديد #" + shortNo + " (" + total.toLocaleString("en-US") + " ر.ي)",
+    body: customerLine + "\n🔔 الغرض: تجهيز طلب جديد في لوحة الإدارة — اضغط للفتح فوراً",
     url: "/admin/orders?order=" + encodeURIComponent(orderNumber),
     tag: "shahezo-admin-order-" + orderId,
   }, async (id, endpointHash) => {
@@ -317,7 +317,15 @@ async function notifyCustomerOrderStatus(orderId: number, orderNumber: string, s
     delivered: "تم تسليم طلبك بنجاح، بالهناء والشفاء من بوفية شهيزو 🥙❤️",
     cancelled: "عذراً، تم إلغاء الطلب #" + shortNo,
   };
-  const title = "🥙 بوفية شهيزو · طلب #" + shortNo;
+  const statusTitles: Record<string, string> = {
+    new: "🥙 بوفية شهيزو | تأكيد استلام الطلب #" + shortNo,
+    preparing: "👨‍🍳 بوفية شهيزو | جاري تجهيز طلبك #" + shortNo,
+    ready: "📦 بوفية شهيزو | طلبك #" + shortNo + " جاهز للتوصيل",
+    out_for_delivery: "🛵 بوفية شهيزو | طلبك #" + shortNo + " في الطريق إليك",
+    delivered: "❤️ بوفية شهيزو | تم تسليم طلبك #" + shortNo,
+    cancelled: "⚠️ بوفية شهيزو | إشعار بخصوص الطلب #" + shortNo,
+  };
+  const title = statusTitles[status] || ("🥙 بوفية شهيزو · طلب #" + shortNo);
   const body = cleanNote ? cleanNote.slice(0, 240) : (defaultBodies[status] || "تم تحديث حالة طلبك");
   await deliverPushRows(uniqueByEndpoint, {
     title,

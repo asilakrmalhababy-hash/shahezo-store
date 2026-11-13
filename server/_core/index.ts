@@ -120,6 +120,66 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   app.get("/api/health", (_req, res) => res.json({ status: "ok", ts: Date.now() }));
+  // --- GZIP_AND_DB_MONITOR_START ---
+  app.get("/api/db-status", async (req, res) => {
+    try {
+      const db = await getDb();
+      if (!db) return res.status(503).json({ error: "Database unavailable" });
+      const { sql } = await import("drizzle-orm");
+      const sizeRes: any = await db.execute(sql`
+        SELECT TABLE_NAME as tableName,
+               TABLE_ROWS as tableRows,
+               ROUND((DATA_LENGTH + INDEX_LENGTH) / 1024 / 1024, 3) as sizeMb
+        FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE()
+      `);
+      const rows = Array.isArray(sizeRes[0]) ? sizeRes[0] : Array.isArray(sizeRes) ? sizeRes : [];
+      const labels: Record<string, string> = {
+        products: "🍔 المنتجات والأصناف",
+        categories: "📂 الأقسام",
+        orders: "🧾 الطلبات",
+        order_items: "📋 بنود الطلبات",
+        banners: "🖼️ الإعلانات والبنرات",
+        customers: "👥 العملاء",
+        owner_push_subscriptions: "🔔 إشعارات الإدارة",
+        customer_push_subscriptions: "📲 إشعارات الزبائن",
+      };
+      const countMap: Record<string, { rows: number; sizeMb: number }> = {};
+      let totalMb = 0;
+      for (const r of rows) {
+        const tname = String(r.tableName || r.TABLE_NAME || "");
+        const sz = Number(r.sizeMb ?? r.SIZEMB ?? 0);
+        const rcount = Number(r.tableRows ?? r.TABLE_ROWS ?? 0);
+        totalMb += sz;
+        countMap[tname] = { rows: rcount, sizeMb: sz };
+      }
+      for (const tbl of ["products", "categories", "orders", "banners", "customers", "owner_push_subscriptions"]) {
+        try {
+          const cRes: any = await db.execute(sql.raw(`SELECT COUNT(*) as c FROM ${tbl}`));
+          const cRow = Array.isArray(cRes[0]) ? cRes[0][0] : cRes[0];
+          const exactCount = Number(cRow?.c ?? 0);
+          if (!countMap[tbl]) countMap[tbl] = { rows: exactCount, sizeMb: 0.02 };
+          else countMap[tbl].rows = exactCount;
+        } catch {}
+      }
+      totalMb = Math.max(0.15, totalMb);
+      const tables = Object.keys(labels).map(k => ({
+        name: k,
+        label: labels[k],
+        rows: countMap[k]?.rows ?? 0,
+        sizeMb: countMap[k]?.sizeMb ?? 0.01,
+      }));
+      if (req.query.format === "json" || req.headers.accept?.includes("application/json")) {
+        return res.json({ totalMb, maxMb: 5120, tables, status: "healthy", ts: Date.now() });
+      }
+      const pct = Math.min(100, (totalMb / 5120) * 100).toFixed(2);
+      const cardsHtml = tables.map(t => `<div style="background:#fff;padding:14px;border-radius:14px;border:1px solid #ead8c3;"><div style="color:#6e5a53;font-size:12px;font-weight:700;">${t.label}</div><div style="color:#870210;font-size:20px;font-weight:800;margin:4px 0;">${t.rows} سجل</div><div style="color:#8c766e;font-size:11px;">${t.sizeMb.toFixed(2)} MB</div></div>`).join("");
+      res.set("Content-Type", "text/html; charset=utf-8").send(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>مراقبة قاعدة بيانات شهيزو</title></head><body style="font-family:system-ui,sans-serif;background:#fdf9f4;color:#2b120f;padding:20px;max-width:780px;margin:0 auto;"><div style="background:linear-gradient(135deg,#870210,#5e010b);color:#fff;padding:20px;border-radius:18px;margin-bottom:16px;"><h1 style="margin:0 0 6px;font-size:20px;">🥙 مراقبة قاعدة بيانات بوفية شهيزو (TiDB Cloud)</h1><p style="margin:0;font-size:13px;opacity:0.9;">المستخدم: ${totalMb.toFixed(2)} MB من أصل 5,120 MB (متبقي ${(100 - Number(pct)).toFixed(2)}%)</p></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">${cardsHtml}</div><div style="margin-top:16px;"><a href="/admin" style="display:inline-block;background:#870210;color:#fff;text-decoration:none;padding:10px 18px;border-radius:12px;font-weight:700;">العودة للوحة الإدارة</a></div></body></html>`);
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "DB check error" });
+    }
+  });
+  // --- GZIP_AND_DB_MONITOR_END ---
   if (!(globalThis as any).__keepAliveTimer) {
     (globalThis as any).__keepAliveTimer = setInterval(() => {
       const extUrl = process.env.RENDER_EXTERNAL_URL || (HTTPS_PREFIX + "original-store-xmyf.onrender.com");

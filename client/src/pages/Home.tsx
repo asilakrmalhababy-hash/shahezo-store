@@ -52,7 +52,7 @@ function Header({ data, onSearch }: { data?: HomeData; onSearch: (text: string) 
   return <header className="store-header">
     <div className="header-main">
       <Link href="/" className="brand-lockup" aria-label={`${storeName} الرئيسية`}>
-        <span className="brand-mark has-brand-image"><img src="/chef-hat.svg" alt="شهيزو" style={{ padding: 0, objectFit: "cover" }} /></span>
+        <span className="brand-mark has-brand-image"><img src="/chef-hat.png" alt="شهيزو" /></span>
         <span className="brand-type"><strong style={{ letterSpacing: "0.02em", fontFamily: "inherit", fontSize: "15px" }}>شهيزو · SHAHEZO</strong><small>{brandSubtitle}</small></span>
       </Link>
       <form className="header-search" onSubmit={submitSearch}>
@@ -60,6 +60,7 @@ function Header({ data, onSearch }: { data?: HomeData; onSearch: (text: string) 
         {text && <button type="button" className="search-clear" onClick={() => { setText(""); onSearch(""); }} aria-label="مسح البحث"><X size={14} /></button>}
       </form>
       <div className="header-actions">
+        <button type="button" className="header-action mobile-header-shortcut header-wa-shortcut" onClick={() => window.dispatchEvent(new CustomEvent("toggle-shahezo-wa"))} aria-label="تواصل واتساب" title="تواصل واتساب"><MessageCircle size={18} /><span>واتساب</span></button>
         <Link href="/favorites" className="header-action mobile-header-shortcut" aria-label="المفضلة" title="المفضلة"><Heart size={19} /><span>المفضلة</span></Link>
         <Link href="/orders" className="header-action mobile-header-shortcut" aria-label="طلباتي" title="طلباتي"><Package size={19} /><span>طلباتي</span></Link>
         <Link href="/cart" className="header-cart"><ShoppingCart size={19} /><span>السلة</span>{cartCount > 0 && <b>{cartCount}</b>}</Link>
@@ -73,6 +74,63 @@ function Header({ data, onSearch }: { data?: HomeData; onSearch: (text: string) 
     {data?.settings.orderPaused === "true" && <div className="service-notice"><Clock3 size={15} />{data.settings.pausedMessage || "استقبال الطلبات متوقف مؤقتًا"}</div>}
   </header>;
 }
+
+// === SHAHEZO_WA_BAR_START ===
+function ShahezoWhatsAppBar() {
+  const [open, setOpen] = useState(true);
+  useEffect(() => {
+    const autoCollapse = window.setTimeout(() => setOpen(false), 6500);
+    const onScroll = () => setOpen(false);
+    const onToggle = () => setOpen(prev => !prev);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("toggle-shahezo-wa", onToggle);
+    return () => {
+      window.clearTimeout(autoCollapse);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("toggle-shahezo-wa", onToggle);
+    };
+  }, []);
+  return (
+    <div className="shahezo-wa-widget" aria-label="تواصل مباشر مع بوفية شهيزو">
+      <button
+        type="button"
+        className={`shahezo-wa-fab ${open ? "is-open" : ""}`}
+        onClick={() => setOpen(prev => !prev)}
+        aria-label="تواصل واتساب مع بوفية شهيزو"
+        title="تواصل معنا عبر واتساب"
+      >
+        <MessageCircle size={24} />
+      </button>
+      <div className={`shahezo-wa-strip ${open ? "is-open" : "is-closed"}`}>
+        <div className="shahezo-wa-strip-head">
+          <strong>🥙 تواصل مباشر · بوفية شهيزو</strong>
+          <button type="button" className="shahezo-wa-close" onClick={() => setOpen(false)} aria-label="إغلاق">×</button>
+        </div>
+        <div className="shahezo-wa-row">
+          <div className="shahezo-wa-label">
+            <span>للطلب والاستفسار</span>
+            <b dir="ltr">779 542 219</b>
+          </div>
+          <div className="shahezo-wa-actions">
+            <a className="shahezo-wa-btn" href="https://wa.me/967779542219?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A8%D9%88%D9%81%D9%8A%D8%A9%20%D8%B4%D9%87%D9%8A%D8%B2%D9%88%20%F0%9F%A5%99%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D8%B7%D9%84%D8%A8%20%D8%A3%D9%88%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1" target="_blank" rel="noreferrer">واتساب</a>
+            <a className="shahezo-call-btn" href="tel:779542219">اتصال</a>
+          </div>
+        </div>
+        <div className="shahezo-wa-row">
+          <div className="shahezo-wa-label">
+            <span>خدمة العملاء</span>
+            <b dir="ltr">772 206 455</b>
+          </div>
+          <div className="shahezo-wa-actions">
+            <a className="shahezo-wa-btn" href="https://wa.me/967772206455?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%AE%D8%AF%D9%85%D8%A9%20%D8%B9%D9%85%D9%84%D8%A7%D8%A1%20%D8%A8%D9%88%D9%81%D9%8A%D8%A9%20%D8%B4%D9%87%D9%8A%D8%B2%D9%88%20%F0%9F%A5%99" target="_blank" rel="noreferrer">واتساب</a>
+            <a className="shahezo-call-btn" href="tel:772206455">اتصال</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+// === SHAHEZO_WA_BAR_END ===
 
 function BottomNav({ active }: { active: string }) {
   const links = [
@@ -2256,7 +2314,7 @@ function OrdersPage() {
   const focusedOrderNumber = searchParams.get("order");
   const justOrdered = searchParams.get("justOrdered") === "1";
   const refs = useMemo(() => customer.orders.slice(0, 50).map(({ orderNumber, idempotencyKey }) => ({ orderNumber, idempotencyKey })), [customer.orders]);
-  const query = trpc.commerce.orders.trackMany.useQuery({ refs }, { enabled: refs.length > 0, retry: 1, staleTime: 5_000, refetchInterval: refs.length ? 8_000 : false });
+  const query = trpc.commerce.orders.trackMany.useQuery({ refs }, { enabled: refs.length > 0, retry: 1, staleTime: 25_000, refetchInterval: refs.length ? 45_000 : false, refetchIntervalInBackground: false });
   const publicKey = trpc.commerce.notifications.publicKey.useQuery(undefined, { enabled: false, retry: 1 });
   const subscribe = trpc.commerce.orders.subscribeToStatus.useMutation();
   const [permission, setPermission] = useState(getPushPermissionState);
@@ -3771,7 +3829,7 @@ export default function Home() {
   const [instantStoreData, setInstantStoreData] = useState<HomeData>(getInstantLocalCatalog);
   const home = trpc.commerce.catalog.home.useQuery(undefined, {
     retry: 1,
-    staleTime: 15000, refetchInterval: 20000,
+    staleTime: 60000, refetchInterval: 120000, refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
   useEffect(() => {
@@ -3797,5 +3855,5 @@ export default function Home() {
     return <HomePage data={data} onOpen={openProduct} onAiRecipe={setActiveAiProduct} />;
   }, [location, productId, productPath, data]);
   return <div className="store-app" dir="rtl"><Header data={data} onSearch={text => navigate(`/products${text ? `?search=${encodeURIComponent(text)}` : ""}`)} /><GamifiedRewardBar settings={data.settings} location={location} />{home.isError && <div className="connection-strip"><span>الاتصال بالخدمة غير متاح مؤقتًا</span><button onClick={() => void home.refetch()}>إعادة المحاولة</button></div>}{home.isError && !home.data ? <main className="page-shell inner-page"><LoadError onRetry={() => void home.refetch()} /></main> : content}<footer className="store-footer"><div className="footer-brand"><span className={`brand-mark ${data.settings.storeIconUrl ? "has-brand-image" : ""}`}>{data.settings.storeIconUrl ? <img src={data.settings.storeIconUrl} alt="" /> : <img src="/chef-hat.svg" alt="شهيزو" style={{ padding: 0, objectFit: "cover" }} />}</span><span><b>شهيزو – SHAHEZO</b><small>{data.settings.storeName === "شهيزو – SHAHEZO" || !data.settings.storeName ? "شهي ولذيذ · شاورما • فلافل • عصائر" : data.settings.storeName}</small></span></div>{shouldShowFooterDescription(data.settings.storeDescription) && <span>{data.settings.storeDescription}</span>}<small>© {new Date().getFullYear()} {data.settings.storeName || "شهيزو – SHAHEZO"}</small></footer>{activeAiProduct && <AiRecipeModal product={activeAiProduct} onClose={() => setActiveAiProduct(null)} />}
-    <BottomNav active={currentNav} /></div>;
+    <ShahezoWhatsAppBar /><BottomNav active={currentNav} /></div>;
 }

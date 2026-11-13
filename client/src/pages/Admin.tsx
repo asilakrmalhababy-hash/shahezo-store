@@ -388,6 +388,75 @@ function buildWhatsAppUrl(rawPhone: string, text: string): string {
   return ["ht", "tps://wa.me/"].join("") + intl + "?text=" + encodeURIComponent(text);
 }
 
+// === SHAHEZO_DB_MONITOR_START ===
+function DatabaseMonitorCard() {
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+  const loadStats = async () => {
+    setLoading(true);
+    setErr("");
+    try {
+      const res = await fetch("/api/db-status?format=json", { credentials: "include" });
+      if (!res.ok) throw new Error("تعذر جلب حالة قاعدة البيانات");
+      const json = await res.json();
+      setStats(json);
+    } catch (e: any) {
+      setErr(e?.message || "خطأ في الاتصال");
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => { void loadStats(); }, []);
+  const usedMb = Number(stats?.totalMb || 0);
+  const maxMb = Number(stats?.maxMb || 5120);
+  const pct = Math.min(100, Math.max(0.2, (usedMb / maxMb) * 100));
+  return (
+    <section className="admin-form-card" style={{ marginTop: "16px", marginBottom: "16px", border: "1.5px solid #d7c3a3", background: "linear-gradient(135deg, #fffdf9 0%, #fcf4eb 100%)" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+        <div>
+          <span className="eyebrow" style={{ color: "#e86c12", fontWeight: 800 }}>⚡ مراقبة السعة وحماية التوكنز (TiDB Cloud)</span>
+          <h2 style={{ fontSize: "16px", margin: "2px 0", color: "#870210" }}>📊 استهلاك قاعدة البيانات والإشعارات الفورية</h2>
+          <small style={{ color: "#68534d" }}>الإشعارات تعمل عبر Web Push الفوري (حتى والهاتف مغلق) دون استنزاف قراءات قاعدة البيانات في الخلفية.</small>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+          <button type="button" className="small-button selected" onClick={() => void loadStats()} disabled={loading}>
+            {loading ? "جاري الفحص..." : "🔄 تحديث الفحص الآن"}
+          </button>
+          <a href="/api/db-status" target="_blank" rel="noreferrer" className="small-button" style={{ textDecoration: "none" }}>
+            🌐 شاشة المراقبة الكاملة
+          </a>
+        </div>
+      </div>
+      {err ? (
+        <p style={{ margin: 0, fontSize: "12px", color: "#9b2c2c" }}>{err}</p>
+      ) : stats ? (
+        <div style={{ display: "grid", gap: "10px" }}>
+          <div style={{ background: "#ffffff", padding: "10px 12px", borderRadius: "12px", border: "1px solid #ead8c3" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", fontWeight: 700, marginBottom: "6px", color: "#2b120f" }}>
+              <span>المساحة المستخدمة: {usedMb.toFixed(2)} MB من {maxMb} MB (5 GB مجاني)</span>
+              <span style={{ color: "#1f7a4c" }}>متبقي {(100 - (usedMb / maxMb) * 100).toFixed(2)}%</span>
+            </div>
+            <div style={{ height: "9px", borderRadius: "999px", background: "#f2e6d8", overflow: "hidden" }}>
+              <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg, #870210 0%, #e86c12 100%)", borderRadius: "999px" }} />
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(125px, 1fr))", gap: "8px" }}>
+            {(stats.tables || []).map((t: any) => (
+              <div key={t.name} style={{ background: "#ffffff", padding: "8px 10px", borderRadius: "10px", border: "1px solid #eee1d3", display: "flex", flexDirection: "column", gap: "2px" }}>
+                <small style={{ fontSize: "10px", color: "#725b53", fontWeight: 700 }}>{t.label}</small>
+                <strong style={{ fontSize: "14px", color: "#870210" }}>{Number(t.rows || 0).toLocaleString("en-US")} سجل</strong>
+                <span style={{ fontSize: "9.5px", color: "#8c766e" }}>{Number(t.sizeMb || 0).toFixed(2)} MB</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+// === SHAHEZO_DB_MONITOR_END ===
+
 function Overview() {
   const utils = trpc.useUtils();
   const [, navigate] = useLocation();
@@ -407,7 +476,7 @@ function Overview() {
     <div className="admin-content">
       <div className="admin-page-heading">
         <div><span className="eyebrow">لوحة القيادة والتقارير الذكية</span><h1>أهلاً بك في بوفية شهيزو – SHAHEZO</h1><p>ملخص شامل للمبيعات، الأرباح، الأصناف الأكثر طلباً، النواقص، وسجل الإلغاءات.</p></div>
-        <span className="admin-heading-mark"><Leaf size={27} /></span>
+        <span className="admin-heading-mark"><img src="/chef-hat.png" alt="شهيزو" /></span>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "12px", marginBottom: "16px" }}>
@@ -428,6 +497,7 @@ function Overview() {
         </div>
       </div>
 
+      <DatabaseMonitorCard />
       <div className="admin-stat-grid">{[
         { label: "المنتجات", value: data.products, icon: Package },
         { label: "الأقسام", value: data.categories, icon: Box },
@@ -3145,7 +3215,7 @@ function printOrderInvoiceWindow(order: any) {
 function OrdersPanel() {
   const [openAdminOrderId, setOpenAdminOrderId] = useState<number | null>(null);
   const utils = trpc.useUtils();
-  const query = trpc.commerce.admin.orders.list.useQuery(undefined, { retry: 1, refetchInterval: 10_000 });
+  const query = trpc.commerce.admin.orders.list.useQuery(undefined, { retry: 1, refetchInterval: 45_000, refetchIntervalInBackground: false });
   const nextStates: Record<string, string[]> = { new: ["preparing", "cancelled"], preparing: ["ready", "cancelled"], ready: ["out_for_delivery", "cancelled"], out_for_delivery: ["delivered"], delivered: [], cancelled: [] };
   const [deliveryNotes, setDeliveryNotes] = useState<Record<number, string>>({});
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -3633,7 +3703,7 @@ function OwnerNotificationControl() {
     onSuccess: () => toast.success("أُرسل إشعار تجريبي لشريط جوالك الآن!"),
     onError: err => toast.error(err.message),
   });
-  const newOrders = trpc.commerce.admin.orders.createdAfter.useQuery({ afterId: cursor }, { retry: 1, staleTime: 0, refetchInterval: 10_000, refetchOnWindowFocus: true });
+  const newOrders = trpc.commerce.admin.orders.createdAfter.useQuery({ afterId: cursor }, { retry: 1, staleTime: 0, refetchInterval: 45_000, refetchIntervalInBackground: false, refetchOnWindowFocus: true });
 
   useEffect(() => {
     if (getPushPermissionState() !== "granted") return;
@@ -4033,7 +4103,7 @@ function AdminError({ message, retry }: { message: string; retry: () => void }) 
 
 function ChatsPanel() {
   const utils = trpc.useUtils();
-  const query = trpc.commerce.admin.chats.list.useQuery(undefined, { refetchInterval: 3000 });
+  const query = trpc.commerce.admin.chats.list.useQuery(undefined, { refetchInterval: 25000, refetchIntervalInBackground: false });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const replyMutation = trpc.commerce.admin.chats.reply.useMutation({
@@ -4193,7 +4263,7 @@ function ChatsPanel() {
 function StaffManagementPanel({ actorIsOwner, actorPermissions, actorStaffId }: { actorIsOwner: boolean; actorPermissions: PermissionKey[]; actorStaffId: number | null }) {
   const utils = trpc.useUtils();
   const staffQuery = trpc.commerce.admin.staff.list.useQuery(undefined, { retry: 1 });
-  const logsQuery = trpc.commerce.admin.staff.auditLogs.useQuery(undefined, { retry: 1, refetchInterval: 5000 });
+  const logsQuery = trpc.commerce.admin.staff.auditLogs.useQuery(undefined, { retry: 1, refetchInterval: 60000, refetchIntervalInBackground: false });
   const catsQuery = trpc.commerce.admin.categories.list.useQuery(undefined, { retry: 1 });
   const [logActorFilter, setLogActorFilter] = useState<string>("all");
 
@@ -4830,7 +4900,7 @@ export default function Admin() {
   return (
     <div className="admin-app" dir="rtl">
       <aside className="admin-sidebar">
-        <Link href="/" className="admin-brand"><span className="brand-mark has-brand-image"><img src="/chef-hat.svg" alt="شهيزو" /></span><span><strong style={{ fontFamily: "inherit", letterSpacing: "0.02em" }}>شهيزو · SHAHEZO</strong><small>لوحة إدارة البوفية</small></span></Link>
+        <Link href="/" className="admin-brand"><span className="brand-mark has-brand-image"><img src="/chef-hat.png" alt="شهيزو" /></span><span><strong style={{ fontFamily: "inherit", letterSpacing: "0.02em" }}>شهيزو · SHAHEZO</strong><small>لوحة إدارة البوفية</small></span></Link>
         <div className="admin-profile">
           <span className="profile-initial">{(auth.user.name || "O").slice(0, 1)}</span>
           <span><strong>{auth.user.name || "مالك المتجر"}</strong><small>{roleLabel}</small></span>
