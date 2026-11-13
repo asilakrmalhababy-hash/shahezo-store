@@ -52,7 +52,7 @@ function Header({ data, onSearch }: { data?: HomeData; onSearch: (text: string) 
   return <header className="store-header">
     <div className="header-main">
       <Link href="/" className="brand-lockup" aria-label={`${storeName} الرئيسية`}>
-        <span className="brand-mark has-brand-image"><img src={data?.settings.storeIconUrl || "/app-icon-192-v4.png"} alt="شهيزو" /></span>
+        <span className="brand-mark has-brand-image"><img src="/chef-hat.svg" alt="شهيزو" style={{ padding: 0, objectFit: "cover" }} /></span>
         <span className="brand-type"><strong style={{ letterSpacing: "0.02em", fontFamily: "inherit", fontSize: "15px" }}>شهيزو · SHAHEZO</strong><small>{brandSubtitle}</small></span>
       </Link>
       <form className="header-search" onSubmit={submitSearch}>
@@ -1376,10 +1376,10 @@ function CartPage({ minOrder = 0 }: { minOrder?: number }) {
           <div className="cart-list">
             {cart.map(line => (
               <CartRow
-                key={line.id}
+                key={line.variant ? line.id + "::" + line.variant : String(line.id)}
                 line={line}
-                onQuantity={quantity => setQuantity(line.id, quantity)}
-                onRemove={() => remove(line.id)}
+                onQuantity={quantity => setQuantity(line.id, quantity, line.variant)}
+                onRemove={() => remove(line.id, line.variant)}
               />
             ))}
             <button className="text-link clear-cart" onClick={clear}>
@@ -2248,6 +2248,7 @@ function FavoritesPage() {
 }
 
 function OrdersPage() {
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const customer = useCustomer();
   const { add } = useStore();
   const searchStr = useSearch();
@@ -2399,6 +2400,7 @@ function OrdersPage() {
             const regularNotes = (order.events || []).filter(ev => ev.note && ev.note.trim() && ev.note !== "تم استلام الطلب" && !String(ev.note).startsWith("❌"));
             const latestStoreNote = regularNotes.at(-1);
             const ordAny = order as any;
+            const isExpanded = expandedOrder !== null ? expandedOrder === order.orderNumber : isFocused;
 
             return (
               <article
@@ -2428,9 +2430,15 @@ function OrdersPage() {
                       {ordAny.city ? (" · 📍 " + ordAny.city + (ordAny.district ? (" - " + ordAny.district) : "")) : ""}
                     </small>
                   </div>
-                  <span className={"status-pill status-" + order.status}>{stateLabels[order.status] || order.status}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span className={"status-pill status-" + order.status}>{stateLabels[order.status] || order.status}</span>
+                    <button type="button" className="small-button" style={{ minHeight: "28px", padding: "0 10px", fontSize: "11px" }} onClick={() => setExpandedOrder(isExpanded ? "" : order.orderNumber)}>
+                      {isExpanded ? "إخفاء التفاصيل ▴" : ("التفاصيل (" + formatPrice(order.total) + ") ▾")}
+                    </button>
+                  </div>
                 </div>
 
+                {isExpanded && (<>
                 {order.status !== "cancelled" && (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "5px", padding: "10px", borderRadius: "12px", background: "#fdf6f0", border: "1px solid #e1ece5" }}>
                     {stepOrder.map((st, sIdx) => {
@@ -2500,6 +2508,7 @@ function OrdersPage() {
                     <ol>{order.events.map(event => <li key={event.id}><span className={"status-pill status-" + event.status}>{stateLabels[event.status] || event.status}</span><time>{new Date(event.createdAt).toLocaleString("ar-YE")}</time>{event.note && <small>{event.note}</small>}</li>)}</ol>
                   </details>
                 )}
+                </>)}
               </article>
             );
           })}
@@ -3787,6 +3796,6 @@ export default function Home() {
     if (location === "/assistant") return <AssistantPage />;
     return <HomePage data={data} onOpen={openProduct} onAiRecipe={setActiveAiProduct} />;
   }, [location, productId, productPath, data]);
-  return <div className="store-app" dir="rtl"><Header data={data} onSearch={text => navigate(`/products${text ? `?search=${encodeURIComponent(text)}` : ""}`)} /><GamifiedRewardBar settings={data.settings} location={location} />{home.isError && <div className="connection-strip"><span>الاتصال بالخدمة غير متاح مؤقتًا</span><button onClick={() => void home.refetch()}>إعادة المحاولة</button></div>}{home.isError && !home.data ? <main className="page-shell inner-page"><LoadError onRetry={() => void home.refetch()} /></main> : content}<footer className="store-footer"><div className="footer-brand"><span className={`brand-mark ${data.settings.storeIconUrl ? "has-brand-image" : ""}`}>{data.settings.storeIconUrl ? <img src={data.settings.storeIconUrl} alt="" /> : <img src="/app-icon-192-v4.png" alt="شهيزو" />}</span><span><b>شهيزو – SHAHEZO</b><small>{data.settings.storeName === "شهيزو – SHAHEZO" || !data.settings.storeName ? "شهي ولذيذ · شاورما • فلافل • عصائر" : data.settings.storeName}</small></span></div>{shouldShowFooterDescription(data.settings.storeDescription) && <span>{data.settings.storeDescription}</span>}<small>© {new Date().getFullYear()} {data.settings.storeName || "شهيزو – SHAHEZO"}</small></footer>{activeAiProduct && <AiRecipeModal product={activeAiProduct} onClose={() => setActiveAiProduct(null)} />}
+  return <div className="store-app" dir="rtl"><Header data={data} onSearch={text => navigate(`/products${text ? `?search=${encodeURIComponent(text)}` : ""}`)} /><GamifiedRewardBar settings={data.settings} location={location} />{home.isError && <div className="connection-strip"><span>الاتصال بالخدمة غير متاح مؤقتًا</span><button onClick={() => void home.refetch()}>إعادة المحاولة</button></div>}{home.isError && !home.data ? <main className="page-shell inner-page"><LoadError onRetry={() => void home.refetch()} /></main> : content}<footer className="store-footer"><div className="footer-brand"><span className={`brand-mark ${data.settings.storeIconUrl ? "has-brand-image" : ""}`}>{data.settings.storeIconUrl ? <img src={data.settings.storeIconUrl} alt="" /> : <img src="/chef-hat.svg" alt="شهيزو" style={{ padding: 0, objectFit: "cover" }} />}</span><span><b>شهيزو – SHAHEZO</b><small>{data.settings.storeName === "شهيزو – SHAHEZO" || !data.settings.storeName ? "شهي ولذيذ · شاورما • فلافل • عصائر" : data.settings.storeName}</small></span></div>{shouldShowFooterDescription(data.settings.storeDescription) && <span>{data.settings.storeDescription}</span>}<small>© {new Date().getFullYear()} {data.settings.storeName || "شهيزو – SHAHEZO"}</small></footer>{activeAiProduct && <AiRecipeModal product={activeAiProduct} onClose={() => setActiveAiProduct(null)} />}
     <BottomNav active={currentNav} /></div>;
 }

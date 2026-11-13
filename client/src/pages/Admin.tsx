@@ -3143,6 +3143,7 @@ function printOrderInvoiceWindow(order: any) {
 }
 
 function OrdersPanel() {
+  const [openAdminOrderId, setOpenAdminOrderId] = useState<number | null>(null);
   const utils = trpc.useUtils();
   const query = trpc.commerce.admin.orders.list.useQuery(undefined, { retry: 1, refetchInterval: 10_000 });
   const nextStates: Record<string, string[]> = { new: ["preparing", "cancelled"], preparing: ["ready", "cancelled"], ready: ["out_for_delivery", "cancelled"], out_for_delivery: ["delivered"], delivered: [], cancelled: [] };
@@ -3317,7 +3318,7 @@ function OrdersPanel() {
 
       {query.isLoading ? <AdminLoading /> : query.error ? <AdminError message={query.error.message} retry={() => void query.refetch()} /> : !filteredOrders.length ? <AdminEmpty title="لا توجد طلبات مطابقة" text="جرب تغيير فلتر الحالة أو البحث." /> : (
         <div className="admin-orders">
-          {filteredOrders.map(order => {
+          {filteredOrders.map((order, ordIdx) => {
             const allowedStatuses = [order.status, ...(nextStates[order.status] ?? [])];
             const noteVal = deliveryNotes[order.id] ?? "";
             const isFocused = focusedOrderNo === order.orderNumber;
@@ -3352,16 +3353,24 @@ function OrdersPanel() {
               "حالة الطلب الحالية: " + labels[order.status],
             ].filter(Boolean).join("\n");
 
+            const isAdminOrdOpen = openAdminOrderId !== null ? openAdminOrderId === order.id : (isFocused || ordIdx === 0);
             return (
               <article className="admin-order-card" key={order.id} style={isFocused ? { border: "2px solid #870210", boxShadow: "0 12px 28px rgba(135, 2, 16, 0.14)" } : undefined}>
-                <div className="admin-order-top">
-                  <div><strong className="order-number">{order.orderNumber}</strong><small>{new Date(order.createdAt).toLocaleString("ar-YE")}</small></div>
-                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
+                <div className="admin-order-top" onClick={() => setOpenAdminOrderId(isAdminOrdOpen ? -1 : order.id)} style={{ cursor: "pointer" }}>
+                  <div>
+                    <strong className="order-number">{order.orderNumber} · 👤 {order.recipientName}</strong>
+                    <small>{new Date(order.createdAt).toLocaleString("ar-YE")} · 💰 <b style={{ color: "#870210" }}>{money(order.total)}</b> ({order.items.length} أصناف)</small>
+                  </div>
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }} onClick={e => e.stopPropagation()}>
                     <span className={"status-pill status-" + order.status}>{labels[order.status]}</span>
-                    <button type="button" className="small-button" onClick={() => printOrderInvoiceWindow(order)}>🖨️ طباعة فاتورة</button>
-                    <button type="button" className="small-button danger-soft" onClick={() => { if (window.confirm("هل أنت متأكد من حذف الطلب «" + order.orderNumber + "» نهائياً؟")) deleteOrder.mutate({ id: order.id }); }}><Trash2 size={14} /> حذف</button>
+                    <button type="button" className="small-button selected" onClick={() => setOpenAdminOrderId(isAdminOrdOpen ? -1 : order.id)}>
+                      {isAdminOrdOpen ? "إخفاء التفاصيل ▴" : "عرض التفاصيل ▾"}
+                    </button>
+                    <button type="button" className="small-button" onClick={() => printOrderInvoiceWindow(order)}>🖨️ طباعة</button>
+                    <button type="button" className="small-button danger-soft" onClick={() => { if (window.confirm("هل أنت متأكد من حذف الطلب «" + order.orderNumber + "» نهائياً؟")) deleteOrder.mutate({ id: order.id }); }}><Trash2 size={14} /></button>
                   </div>
                 </div>
+                {isAdminOrdOpen && (<>
 
                 <div className="admin-order-customer">
                   <strong>👤 {order.recipientName}</strong>
@@ -3573,6 +3582,7 @@ function OrdersPanel() {
                     <ol>{order.events.map(event => <li key={event.id}><span className={"status-pill status-" + event.status}>{labels[event.status]}</span><time>{new Date(event.createdAt).toLocaleString("ar-YE")}</time>{event.note && <small>{event.note}</small>}</li>)}</ol>
                   </details>
                 ) : null}
+                </>)}
               </article>
             );
           })}
@@ -4820,7 +4830,7 @@ export default function Admin() {
   return (
     <div className="admin-app" dir="rtl">
       <aside className="admin-sidebar">
-        <Link href="/" className="admin-brand"><span className="brand-mark has-brand-image"><img src="/app-icon-192-v4.png" alt="شهيزو" /></span><span><strong style={{ fontFamily: "inherit", letterSpacing: "0.02em" }}>شهيزو · SHAHEZO</strong><small>لوحة إدارة البوفية</small></span></Link>
+        <Link href="/" className="admin-brand"><span className="brand-mark has-brand-image"><img src="/chef-hat.svg" alt="شهيزو" /></span><span><strong style={{ fontFamily: "inherit", letterSpacing: "0.02em" }}>شهيزو · SHAHEZO</strong><small>لوحة إدارة البوفية</small></span></Link>
         <div className="admin-profile">
           <span className="profile-initial">{(auth.user.name || "O").slice(0, 1)}</span>
           <span><strong>{auth.user.name || "مالك المتجر"}</strong><small>{roleLabel}</small></span>

@@ -1,3 +1,4 @@
+import zlib from "node:zlib";
 import mysqlMonitor from "mysql2/promise";
 import "dotenv/config";
 import express from "express";
@@ -87,6 +88,35 @@ async function startServer() {
     }
   });
 // === SHAHEZO_DB_STATUS_END ===
+  
+  if (!(globalThis as any).__memCleanTimer) {
+    (globalThis as any).__memCleanTimer = setInterval(() => {
+      const cmap: Map<string, any> | undefined = (globalThis as any).__fastImgCache;
+      if (cmap && cmap.size > 60) {
+        const keys = [...cmap.keys()].slice(0, cmap.size - 40);
+        for (const k of keys) cmap.delete(k);
+      }
+      if (typeof (globalThis as any).gc === "function") (globalThis as any).gc();
+    }, 10 * 60 * 1000);
+  }
+  app.use((req, res, next) => {
+    const ae = String(req.headers["accept-encoding"] || "");
+    if (!ae.includes("gzip") || req.path.startsWith("/api/fast-img")) return next();
+    const origJson = res.json.bind(res);
+    res.json = (body: any) => {
+      try {
+        const str = JSON.stringify(body);
+        if (str.length > 1024) {
+          res.setHeader("Content-Encoding", "gzip");
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          return res.send(zlib.gzipSync(Buffer.from(str)));
+        }
+      } catch {}
+      return origJson(body);
+    };
+    next();
+  });
+
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   app.get("/api/health", (_req, res) => res.json({ status: "ok", ts: Date.now() }));
