@@ -1162,3 +1162,88 @@ button, a, input, select, textarea, summary, [role="button"] { touch-action: man
   }
 }
 /* === SHAHEZO_WHATSAPP_REFINED_END === */
+
+/* === SHAHEZO_OFFERS_AND_BUNDLES_START === */
+.offer-corner-badge {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  z-index: 3;
+  background: linear-gradient(135deg, #d90429 0%, #870210 100%);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 3px 8px;
+  border-radius: 999px;
+  box-shadow: 0 4px 10px rgba(135, 2, 16, 0.28);
+  border: 1px solid rgba(255, 230, 167, 0.7);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.price-with-offer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+  gap: 2px;
+}
+.old-price-x {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #9b857e;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 2px;
+}
+.old-price-x s {
+  text-decoration: none;
+  position: relative;
+  display: inline-block;
+}
+.old-price-x s::after {
+  content: "";
+  position: absolute;
+  left: -3px;
+  right: -3px;
+  top: 50%;
+  height: 1.3px;
+  background: rgba(200, 30, 30, 0.55);
+  transform: rotate(-8deg);
+}
+.old-price-x i {
+  font-style: normal;
+  font-size: 9.5px;
+  color: rgba(200, 30, 30, 0.68);
+  font-weight: 700;
+  line-height: 1;
+}
+.new-offer-price {
+  color: #870210 !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+}
+.bundle-items-chip {
+  margin: 0 5px 2px;
+  padding: 3px 7px;
+  border-radius: 8px;
+  background: #fff8eb;
+  border: 1px solid #f0d8a8;
+  color: #7c4a03;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.offers-showcase-section {
+  padding: 14px 12px;
+  border-radius: 22px;
+  background: linear-gradient(145deg, #fffdf9 0%, #fff4e8 100%);
+  border: 1.5px solid #f0cfa0;
+  box-shadow: 0 10px 26px rgba(135, 2, 16, 0.06);
+}
+/* === SHAHEZO_OFFERS_AND_BUNDLES_END === */

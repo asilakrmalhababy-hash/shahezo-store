@@ -654,11 +654,14 @@ function AiRecipeModal({ product, onClose }: { product: PublicProduct; onClose: 
   );
 }
 
-function unpackProductVariants(rawDescription?: string | null): { cleanDescription: string; variants: string[]; weightEnabled: boolean; minWeightAmount: number } {
+function unpackProductVariants(rawDescription?: string | null): { cleanDescription: string; variants: string[]; weightEnabled: boolean; minWeightAmount: number; oldPrice: number; isBundle: boolean; bundleItems: string[] } {
   let raw = String(rawDescription || "");
   let variants: string[] = [];
   let weightEnabled = false;
   let minWeightAmount = 100;
+  let oldPrice = 0;
+  let isBundle = false;
+  let bundleItems: string[] = [];
   const vm = raw.match(/\[\[variants:(\[[\s\S]*?\])\]\]/);
   if (vm) {
     raw = (raw.slice(0, vm.index) + raw.slice((vm.index || 0) + vm[0].length)).trim();
@@ -678,7 +681,17 @@ function unpackProductVariants(rawDescription?: string | null): { cleanDescripti
       }
     } catch {}
   }
-  return { cleanDescription: raw.trim(), variants, weightEnabled, minWeightAmount };
+  const om = raw.match(/\[\[offer:(\{[\s\S]*?\})\]\]/);
+  if (om) {
+    raw = (raw.slice(0, om.index) + raw.slice((om.index || 0) + om[0].length)).trim();
+    try {
+      const parsed = JSON.parse(om[1]);
+      if (Number(parsed.oldPrice) > 0) oldPrice = Math.round(Number(parsed.oldPrice));
+      if (parsed.isBundle) isBundle = true;
+      if (Array.isArray(parsed.bundleItems)) bundleItems = parsed.bundleItems.map((x: any) => String(x || "").trim()).filter(Boolean);
+    } catch {}
+  }
+  return { cleanDescription: raw.trim(), variants, weightEnabled, minWeightAmount, oldPrice, isBundle, bundleItems };
 }
 
 function formatWeightLabel(grams: number): string {
@@ -883,7 +896,8 @@ function ProductCard({ product, onOpen, onAiRecipe, priority = false }: { produc
   const { add, isFavorite, toggleFavorite } = useStore();
   const favorite = isFavorite(product.id);
   const disabled = product.stock !== null && product.stock < (product.minQuantity || 1);
-  const { variants, weightEnabled, minWeightAmount } = useMemo(() => unpackProductVariants(product.description), [product.description]);
+  const { variants, weightEnabled, minWeightAmount, oldPrice, isBundle, bundleItems } = useMemo(() => unpackProductVariants(product.description), [product.description]);
+  const hasOffer = oldPrice > product.price;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerVariant, setPickerVariant] = useState<string>("");
 
@@ -905,10 +919,12 @@ function ProductCard({ product, onOpen, onAiRecipe, priority = false }: { produc
         {product.imageUrl ? <img src={product.imageUrl} alt={product.name} loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : "auto"} decoding="async" /> : <div className="product-no-image"><Leaf size={27} strokeWidth={1.4} /><span>صورة المنتج</span></div>}
         <button type="button" className={"favorite-toggle " + (favorite ? "is-favorite" : "")} aria-label={favorite ? "إزالة من المفضلة" : "أضف للمفضلة"} aria-pressed={favorite} onClick={event => { event.stopPropagation(); toggleFavorite(product.id); toast.success(favorite ? "أُزيل من المفضلة" : "أُضيف إلى المفضلة على هذا الجهاز"); }}><Heart size={17} fill={favorite ? "currentColor" : "none"} /></button>
         {onAiRecipe && <button type="button" className="ai-recipe-toggle" aria-label="أفكار وتحضير بالذكاء الاصطناعي" title="أفكار ووصفات تحضير" onClick={event => { event.stopPropagation(); onAiRecipe(product); }}><Sparkles size={16} /></button>}
+        {hasOffer && !disabled && <span className="offer-corner-badge">{isBundle ? "🎁 تجميعة توفيرية" : ("🔥 وفّر " + formatPrice(oldPrice - product.price))}</span>}
         {disabled && <span className="product-sold-out">غير متوفر</span>}
       </div>
       <button type="button" className="product-title-button" onClick={onOpen}><strong>{product.name}</strong><span>{product.unit}</span></button>
-      <div className="product-card-bottom"><div><b>{formatPrice(product.price)}</b><small> / {product.unit}</small></div><button type="button" className="add-button" disabled={disabled} onClick={e => handleAddClick(e)} aria-label={"إضافة " + product.name + " للسلة"}><Plus size={18} /></button></div>
+      {isBundle && bundleItems.length > 0 && <div className="bundle-items-chip" onClick={onOpen}>🎁 يشمل: {bundleItems.join(" + ")}</div>}
+      <div className="product-card-bottom">{hasOffer ? (<div className="price-with-offer"><span className="old-price-x" title="السعر قبل الخصم"><s>{formatPrice(oldPrice)}</s><i aria-hidden="true">✕</i></span><div><b className="new-offer-price">{formatPrice(product.price)}</b><small> / {product.unit}</small></div></div>) : (<div><b>{formatPrice(product.price)}</b><small> / {product.unit}</small></div>)}<button type="button" className="add-button" disabled={disabled} onClick={e => handleAddClick(e)} aria-label={"إضافة " + product.name + " للسلة"}><Plus size={18} /></button></div>
     </article>
     {pickerOpen && (
       <VariantPickerModal
@@ -929,7 +945,7 @@ function ProductGrid({ items, onOpen, onAiRecipe }: { items: PublicProduct[]; on
   return <div className="product-grid">{items.map((product, idx) => <ProductCard key={product.id} product={product} priority={idx < 8} onOpen={() => onOpen(product.id)} onAiRecipe={onAiRecipe} />)}</div>;
 }
 
-function CategoryStrip({ data, onSelect }: { data: HomeData["categories"]; onSelect: (id: number) => void }) {
+function CategoryStrip({ data, onSelect, offersCount = 0, onSelectOffers }: { data: HomeData["categories"]; onSelect: (id: number) => void; offersCount?: number; onSelectOffers?: () => void }) {
   if (!data.length) return <div className="category-empty"><span className="category-empty-mark"><SlidersHorizontal size={19} /></span><div><strong>الأقسام قيد التجهيز</strong><p>أضف أقسام متجرك لتبدأ ترتيب المنتجات.</p></div><Link href="/categories"><ChevronLeft size={18} /></Link></div>;
   return (
     <div
@@ -946,6 +962,35 @@ function CategoryStrip({ data, onSelect }: { data: HomeData["categories"]; onSel
         scrollbarWidth: "none",
       }}
     >
+      {onSelectOffers && (
+        <button
+          type="button"
+          onClick={onSelectOffers}
+          style={{
+            flex: "0 0 156px",
+            width: "156px",
+            scrollSnapAlign: "start",
+            background: "linear-gradient(145deg, #fff9f0 0%, #ffe8d6 100%)",
+            border: "1.5px solid #e86c12",
+            borderRadius: "18px",
+            padding: "5px 5px 9px",
+            cursor: "pointer",
+            boxShadow: "0 6px 16px rgba(232, 108, 18, 0.14)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <div style={{ width: "100%", height: "134px", borderRadius: "14px", background: "linear-gradient(135deg, #870210 0%, #d90429 60%, #e86c12 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#ffffff", gap: "6px" }}>
+            <BadgePercent size={44} strokeWidth={2} />
+            <strong style={{ fontSize: "13px", color: "#ffe6a7" }}>{offersCount > 0 ? `${offersCount} عرض متاح` : "عروض وتجميعات"}</strong>
+          </div>
+          <span style={{ display: "inline-block", maxWidth: "100%", padding: "5px 12px", borderRadius: "10px", backgroundColor: "#d90429", color: "#ffffff", fontSize: "11px", fontWeight: 800, lineHeight: 1.35, textAlign: "center" }}>
+            🔥 قسم العروضات
+          </span>
+        </button>
+      )}
       {data.map(category => {
         const btnColor = category.color && category.color.trim() ? category.color.trim() : "#b8332a";
         return (
@@ -1027,7 +1072,23 @@ function HomePage({ data, onOpen, onAiRecipe }: { data: HomeData; onOpen: (id: n
     <PromoPopupModal banners={popupBanners} />
     <BannerCarousel banners={topBanners} />
     {data.offers.length > 0 && <section className="offers-row"><div className="section-heading compact"><div><span className="eyebrow">عروض المتجر</span><h2>فرص تستحق الانتباه</h2></div><BadgePercent size={22} /></div><div className="offer-strip">{data.offers.map(offer => <div className="offer-chip" key={offer.id}><span className="offer-chip-icon"><BadgePercent size={18} /></span><div><strong>{offer.title}</strong><small>{offer.description || (offer.discountType === "percent" ? "خصم " + offer.discountValue + "%" : "خصم " + formatPrice(offer.discountValue))}</small></div><code>{offer.code}</code></div>)}</div></section>}
-    <section className="store-section categories-section"><div className="section-heading"><div><h2>الأقسام</h2></div><Link className="text-link" href="/categories">عرض الكل <ArrowLeft size={15} /></Link></div><CategoryStrip data={data.categories} onSelect={changeCategory} /></section>
+    <section className="store-section categories-section"><div className="section-heading"><div><h2>الأقسام</h2></div><Link className="text-link" href="/categories">عرض الكل <ArrowLeft size={15} /></Link></div><CategoryStrip data={data.categories} onSelect={changeCategory} offersCount={(data.products ?? []).filter(p => { const u = unpackProductVariants(p.description); return u.oldPrice > p.price || u.isBundle; }).length} onSelectOffers={() => navigate("/products?offers=1")} /></section>
+    {(() => {
+      const offerItems = (data.products ?? []).filter(p => { const u = unpackProductVariants(p.description); return u.oldPrice > p.price || u.isBundle; });
+      if (!offerItems.length) return null;
+      return (
+        <section className="store-section offers-showcase-section">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow" style={{ color: "#d90429", fontWeight: 900 }}>🔥 عروض وتجميعات التوفير</span>
+              <h2>قسم العروضات الخاصة ({offerItems.length})</h2>
+            </div>
+            <Link className="text-link" href="/products?offers=1">عرض كل العروض <ArrowLeft size={15} /></Link>
+          </div>
+          <ProductGrid items={offerItems.slice(0, 8)} onOpen={onOpen} onAiRecipe={onAiRecipe} />
+        </section>
+      );
+    })()}
     {middleBanners.length > 0 && <BannerCarousel banners={middleBanners} />}
     <section className="store-section products-section"><div className="section-heading"><div><h2>منتجات المتجر</h2></div><div className="section-tools"><label className="sort-select"><ArrowUpDown size={15} /><select aria-label="ترتيب المنتجات" value={sort} onChange={event => setSort(event.target.value as typeof sort)}><option value="featured">الأبرز</option><option value="price-asc">السعر: الأقل أولًا</option><option value="price-desc">السعر: الأعلى أولًا</option></select></label><Link className="text-link" href="/products">عرض الكل <ArrowLeft size={15} /></Link></div></div>{productsLoading && !featured.length ? <Loading /> : <ProductGrid items={featured} onOpen={onOpen} onAiRecipe={onAiRecipe} />}</section>
     {bottomBanners.length > 0 && <BannerCarousel banners={bottomBanners} />}
@@ -1039,6 +1100,7 @@ function ProductListPage({ data, onOpen, onAiRecipe }: { data: HomeData; onOpen:
   const searchString = useSearch();
   const params = new URLSearchParams(searchString);
   const selectedCategory = params.get("category");
+  const onlyOffers = params.get("offers") === "1";
   const routeSearch = params.get("search") ?? "";
   const [search, setSearch] = useState(routeSearch);
   const debouncedSearch = useDebouncedValue(search.trim());
@@ -1081,7 +1143,7 @@ function ProductListPage({ data, onOpen, onAiRecipe }: { data: HomeData; onOpen:
           )}
           <div>
             <h1 style={{ fontSize: "19px", fontWeight: 800, color: "#5e010b", margin: 0, lineHeight: 1.25 }}>
-              {activeCategory ? activeCategory.name : (debouncedSearch ? ("نتائج البحث: " + debouncedSearch) : "كل المنتجات")}
+              {onlyOffers ? "🔥 قسم العروضات والتجميعات التوفيرية" : activeCategory ? activeCategory.name : (debouncedSearch ? ("نتائج البحث: " + debouncedSearch) : "كل المنتجات")}
             </h1>
             {activeCategory?.description && (
               <small style={{ fontSize: "11.5px", color: "#5c7063", display: "block", marginTop: "2px" }}>{activeCategory.description}</small>
@@ -1123,6 +1185,24 @@ function ProductListPage({ data, onOpen, onAiRecipe }: { data: HomeData; onOpen:
             scrollbarWidth: "none",
           }}
         >
+          <button
+            type="button"
+            onClick={() => setLocation("/products?offers=1")}
+            style={{
+              padding: "6px 13px",
+              borderRadius: "99px",
+              border: onlyOffers ? "1.5px solid #d90429" : "1px solid #f0cfa0",
+              background: onlyOffers ? "#d90429" : "#fff8eb",
+              color: onlyOffers ? "#ffffff" : "#870210",
+              fontSize: "12px",
+              fontWeight: 900,
+              whiteSpace: "nowrap",
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+          >
+            🔥 قسم العروضات
+          </button>
           <button
             type="button"
             onClick={() => setLocation("/products")}
@@ -1175,7 +1255,7 @@ function ProductListPage({ data, onOpen, onAiRecipe }: { data: HomeData; onOpen:
         </div>
       )}
 
-      {query.isLoading ? <Loading /> : query.error ? <LoadError onRetry={() => void query.refetch()} /> : <ProductGrid items={query.data ?? []} onOpen={onOpen} onAiRecipe={onAiRecipe} />}
+      {query.isLoading ? <Loading /> : query.error ? <LoadError onRetry={() => void query.refetch()} /> : <ProductGrid items={(query.data ?? []).filter(p => !onlyOffers || (() => { const u = unpackProductVariants(p.description); return u.oldPrice > p.price || u.isBundle; })())} onOpen={onOpen} onAiRecipe={onAiRecipe} />}
     </main>
   );
 }
@@ -1261,9 +1341,9 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
   const { data: fetchedProduct, isLoading, error } = trpc.commerce.catalog.product.useQuery({ id }, {
     retry: 1,
     staleTime: 30000,
-    placeholderData: cachedProduct ? { ...cachedProduct, recommendations: allProducts.filter(p => p.id !== id).slice(0, 4) } : undefined,
+    placeholderData: cachedProduct ? { ...cachedProduct, recommendations: [] } : undefined,
   });
-  const product = fetchedProduct ?? (cachedProduct ? { ...cachedProduct, recommendations: allProducts.filter(p => p.id !== id).slice(0, 4) } : null);
+  const product = fetchedProduct ?? (cachedProduct ? { ...cachedProduct, recommendations: [] } : null);
   const { add } = useStore();
   const [quantity, setQuantity] = useState(1);
   const [detailPickerOpen, setDetailPickerOpen] = useState(false);
@@ -1272,6 +1352,7 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
   const touchStartX = useRef<number | null>(null);
 
   useEffect(() => {
+    try { window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior }); } catch { window.scrollTo(0, 0); }
     setQuantity(product?.minQuantity || 1);
     setSelectedDetailVariant("");
   }, [id, product?.minQuantity]);
@@ -1400,7 +1481,30 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
               </div>
             </div>
           )}
-          <div className="detail-price">{formatPrice(product.price)} <small>/ {product.unit}</small></div>
+          {unpackedDetail.isBundle && unpackedDetail.bundleItems.length > 0 && (
+            <div style={{ margin: "10px 0", padding: "12px 14px", borderRadius: "14px", background: "#fff8eb", border: "1.5px solid #f0cfa0", display: "grid", gap: "6px" }}>
+              <strong style={{ fontSize: "13px", color: "#870210" }}>🎁 مكونات التجميعة المشمولة في العرض:</strong>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {unpackedDetail.bundleItems.map((bi, idx) => (
+                  <span key={idx} style={{ background: "#ffffff", border: "1px solid #ead4b0", borderRadius: "9px", padding: "4px 10px", fontSize: "12px", fontWeight: 700, color: "#2b120f" }}>✓ {bi}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="detail-price" style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+            {unpackedDetail.oldPrice > product.price && (
+              <span className="old-price-x" style={{ fontSize: "16px" }} title="السعر السابق قبل الخصم">
+                <s>{formatPrice(unpackedDetail.oldPrice)}</s>
+                <i aria-hidden="true" style={{ fontSize: "13px" }}>✕</i>
+              </span>
+            )}
+            <span>{formatPrice(product.price)} <small>/ {product.unit}</small></span>
+            {unpackedDetail.oldPrice > product.price && (
+              <span style={{ background: "#fceee9", color: "#d90429", border: "1px solid #f5c2c7", borderRadius: "99px", padding: "3px 10px", fontSize: "12px", fontWeight: 900 }}>
+                🔥 وفّرت {formatPrice(unpackedDetail.oldPrice - product.price)}
+              </span>
+            )}
+          </div>
           <div className="detail-meta"><span><Package size={15} /> الوحدة: {product.unit}</span><span>{product.stock === null ? "التوفر يحدده المتجر" : "المتاح: " + product.stock}</span></div>
           <div className="quantity-control"><button type="button" aria-label="تقليل" onClick={() => setQuantity(value => Math.max(product.minQuantity || 1, value - (product.quantityStep || 1)))}><Minus size={16} /></button><strong>{quantity}</strong><button type="button" aria-label="زيادة" disabled={quantity + (product.quantityStep || 1) > stockLimit} onClick={() => setQuantity(value => Math.min(stockLimit, value + (product.quantityStep || 1)))}><Plus size={16} /></button><small>{product.unit}</small></div>
           {onAiRecipe && <button type="button" className="button button-outline full-button" style={{ marginBottom: "8px", borderColor: "#870210", color: "#870210" }} onClick={() => onAiRecipe(product as PublicProduct)}><Sparkles size={16} /> أفكار وطرق تحضير بالذكاء الاصطناعي</button>}
@@ -3846,7 +3950,8 @@ export default function Home() {
     }
   }, [home.data]);
   const data = ((home.data && home.data.products ? home.data : instantStoreData) ?? { categories: [], products: [], banners: [], offers: [], settings: {} }) as HomeData;
-  const openProduct = (id: number) => navigate(`/product/${id}`);
+  useEffect(() => { try { window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior }); } catch { window.scrollTo(0, 0); } }, [location]);
+  const openProduct = (id: number) => { try { window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior }); } catch { window.scrollTo(0, 0); } navigate(`/product/${id}`); };
   const currentNav = location.startsWith("/categories") ? "/categories" : location.startsWith("/products") ? "/products" : location.startsWith("/assistant") ? "/assistant" : location.startsWith("/account") ? "/account" : "/";
   const productPath = location.startsWith("/product/");
   const productId = productPath ? Number(location.split("/")[2]) : 0;

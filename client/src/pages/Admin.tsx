@@ -618,11 +618,14 @@ function Overview() {
     </div>
   );
 }
-function unpackProductVariants(rawDescription?: string | null): { cleanDescription: string; variants: string[]; weightEnabled: boolean; minWeightAmount: number } {
+function unpackProductVariants(rawDescription?: string | null): { cleanDescription: string; variants: string[]; weightEnabled: boolean; minWeightAmount: number; oldPrice: number; isBundle: boolean; bundleItems: string[] } {
   let raw = String(rawDescription || "");
   let variants: string[] = [];
   let weightEnabled = false;
   let minWeightAmount = 100;
+  let oldPrice = 0;
+  let isBundle = false;
+  let bundleItems: string[] = [];
   const vm = raw.match(/\[\[variants:(\[[\s\S]*?\])\]\]/);
   if (vm) {
     raw = (raw.slice(0, vm.index) + raw.slice((vm.index || 0) + vm[0].length)).trim();
@@ -642,10 +645,20 @@ function unpackProductVariants(rawDescription?: string | null): { cleanDescripti
       }
     } catch {}
   }
-  return { cleanDescription: raw.trim(), variants, weightEnabled, minWeightAmount };
+  const om = raw.match(/\[\[offer:(\{[\s\S]*?\})\]\]/);
+  if (om) {
+    raw = (raw.slice(0, om.index) + raw.slice((om.index || 0) + om[0].length)).trim();
+    try {
+      const parsed = JSON.parse(om[1]);
+      if (Number(parsed.oldPrice) > 0) oldPrice = Math.round(Number(parsed.oldPrice));
+      if (parsed.isBundle) isBundle = true;
+      if (Array.isArray(parsed.bundleItems)) bundleItems = parsed.bundleItems.map((x: any) => String(x || "").trim()).filter(Boolean);
+    } catch {}
+  }
+  return { cleanDescription: raw.trim(), variants, weightEnabled, minWeightAmount, oldPrice, isBundle, bundleItems };
 }
 
-function packProductVariants(cleanDescription: string, variants: string[], weightEnabled = false, minWeightAmount = 100): string | null {
+function packProductVariants(cleanDescription: string, variants: string[], weightEnabled = false, minWeightAmount = 100, offerCfg?: { oldPrice?: number; isBundle?: boolean; bundleItems?: string[] }): string | null {
   let out = cleanDescription.trim();
   const valid = [...new Set(variants.map(v => v.trim()).filter(Boolean))].slice(0, 25);
   if (valid.length > 0) {
@@ -653,6 +666,12 @@ function packProductVariants(cleanDescription: string, variants: string[], weigh
   }
   if (weightEnabled) {
     out = (out ? out + "\n" : "") + "[[wcfg:" + JSON.stringify({ enabled: true, minAmount: Math.max(50, Number(minWeightAmount) || 100) }) + "]]";
+  }
+  if (offerCfg && ((Number(offerCfg.oldPrice) || 0) > 0 || offerCfg.isBundle)) {
+    out = (out ? out + "\n" : "") + "[[offer:" + JSON.stringify({
+      oldPrice: Math.max(0, Math.round(Number(offerCfg.oldPrice) || 0)),
+      ...(offerCfg.isBundle ? { isBundle: true, bundleItems: offerCfg.bundleItems || [] } : {})
+    }) + "]]";
   }
   return out || null;
 }
@@ -667,6 +686,9 @@ type ProductFormState = {
   imageUrl: string;
   categoryId: number | null;
   price: string;
+  oldPrice: string;
+  isBundle?: boolean;
+  bundleItems?: string[];
   unit: string;
   stock: string;
   minQuantity: string;
@@ -686,6 +708,9 @@ const blankProduct: ProductFormState = {
   imageUrl: "",
   categoryId: null,
   price: "",
+  oldPrice: "",
+  isBundle: false,
+  bundleItems: [],
   unit: "حبة",
   stock: "",
   minQuantity: "1",
@@ -1349,6 +1374,9 @@ function ProductsPanel({ isOwner = true, permissions = [], allowedCategoryIds = 
       imageUrl: item.imageUrl ?? "",
       categoryId: item.categoryId,
       price: String(item.price),
+      oldPrice: unpacked.oldPrice > 0 ? String(unpacked.oldPrice) : "",
+      isBundle: unpacked.isBundle,
+      bundleItems: unpacked.bundleItems,
       unit: item.unit,
       stock: item.stock === null ? "" : String(item.stock),
       minQuantity: String(item.minQuantity),
@@ -1370,7 +1398,7 @@ function ProductsPanel({ isOwner = true, permissions = [], allowedCategoryIds = 
     event.preventDefault();
     const extraParts = form.variantDraft.split(/[,،\n]+/).map(s => s.trim()).filter(Boolean);
     const allVariants = [...new Set([...form.variants, ...extraParts])];
-    const packedDesc = packProductVariants(form.description, allVariants, form.weightEnabled, Number(form.minWeightAmount) || 100);
+    const packedDesc = packProductVariants(form.description, allVariants, form.weightEnabled, Number(form.minWeightAmount) || 100, { oldPrice: Number(form.oldPrice) || 0, isBundle: form.isBundle, bundleItems: form.bundleItems });
     const effectiveUnit = form.weightEnabled && (form.unit === "حبة" || !form.unit.trim()) ? "كيلو" : (form.unit.trim() || "حبة");
     const values = {
       name: form.name,
@@ -1445,7 +1473,8 @@ function ProductsPanel({ isOwner = true, permissions = [], allowedCategoryIds = 
           <div className="product-form-layout">
             <div className="form-fields-grid">
               <label className="field-wide">اسم المنتج *<input required maxLength={180} value={form.name} onChange={e => setField("name", e.target.value)} placeholder="مثلاً: شاورما عربي، ساندوتش فلافل، عصير مانجو، صحن مقبلات..." /></label>
-              <label>{form.weightEnabled ? "سعر الكيلو الواحد (1000 جرام) بالريال *" : "السعر بالريال اليمني *"}<input ref={singlePriceInputRef} required type="number" min="0" value={form.price} onChange={e => setField("price", e.target.value)} placeholder={form.weightEnabled ? "مثلاً: 4000 (سعر الكيلو)" : "0"} /></label>
+              <label>{form.weightEnabled ? "سعر الكيلو الواحد (1000 جرام) بالريال *" : "السعر الحالي (بعد الخصم إن وجد) *"}<input ref={singlePriceInputRef} required type="number" min="0" value={form.price} onChange={e => setField("price", e.target.value)} placeholder={form.weightEnabled ? "مثلاً: 4000 (سعر الكيلو)" : "مثلاً: 1800"} /></label>
+              <label>🔥 السعر السابق قبل الخصم (اختياري — ليدخل في قسم العروضات)<input type="number" min="0" value={form.oldPrice} onChange={e => setField("oldPrice", e.target.value)} placeholder="مثلاً: 2000 (يظهر مشطوباً بعلامة ✕)" /></label>
               <label>القسم<select value={form.categoryId ?? ""} onChange={e => setField("categoryId", e.target.value ? Number(e.target.value) : null)}><option value="">اختر القسم...</option>{cats.data?.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
               <label className="field-wide">الوصف (اختياري)<textarea rows={2} value={form.description} onChange={e => setField("description", e.target.value)} placeholder="وصف مختصر للمنتج..." /></label>
 
@@ -3167,16 +3196,206 @@ function BannersPanel() {
   );
 }
 
+// === SHAHEZO_OFFERS_STUDIO_START ===
 function OffersPanel() {
-  const utils = trpc.useUtils(); const query = trpc.commerce.admin.offers.list.useQuery(undefined, { retry: 1 });
+  const utils = trpc.useUtils();
+  const query = trpc.commerce.admin.offers.list.useQuery(undefined, { retry: 1 });
+  const productsQuery = trpc.commerce.admin.products.list.useQuery(undefined, { retry: 1 });
+  const catsQuery = trpc.commerce.admin.categories.list.useQuery(undefined, { retry: 1 });
+
+  const [selectedProdId, setSelectedProdId] = useState<string>("");
+  const [prodOldPrice, setProdOldPrice] = useState<string>("");
+  const [prodNewPrice, setProdNewPrice] = useState<string>("");
+
+  const [bundleName, setBundleName] = useState<string>("");
+  const [bundlePrice, setBundlePrice] = useState<string>("");
+  const [bundleCategoryId, setBundleCategoryId] = useState<number | null>(null);
+  const [bundleImage, setBundleImage] = useState<string>("");
+  const [bundleNotes, setBundleNotes] = useState<string>("");
+  const [bundlePicked, setBundlePicked] = useState<Array<{ id: number; name: string; price: number; unit: string; qty: number; imageUrl: string | null }>>([]);
+  const [bundleSearch, setBundleSearch] = useState<string>("");
+
   const blank = { title: "", description: "", code: "", discountType: "percent" as "percent" | "fixed", discountValue: "", minimumOrder: "0", startsAt: "", endsAt: "", isActive: true };
   const [editing, setEditing] = useState<number | null>(null);
   const [form, setForm] = useState(blank);
   const reset = () => { setEditing(null); setForm(blank); };
-  const refresh = async () => { await utils.commerce.admin.offers.list.invalidate(); await utils.commerce.catalog.home.invalidate(); };
-  const create = trpc.commerce.admin.offers.create.useMutation({ onSuccess: async () => { toast.success("تم حفظ العرض"); reset(); await refresh(); }, onError: error => toast.error(error.message) });
-  const update = trpc.commerce.admin.offers.update.useMutation({ onSuccess: async (_result, variables) => { toast.success("تم تحديث العرض"); if (editing === variables.id) reset(); await refresh(); }, onError: error => toast.error(error.message) });
-  const remove = trpc.commerce.admin.offers.delete.useMutation({ onSuccess: () => { toast.success("تم حذف العرض نهائياً"); void utils.commerce.admin.offers.list.invalidate(); void utils.commerce.catalog.home.invalidate(); } });
+
+  const refreshAll = async () => {
+    await Promise.all([
+      utils.commerce.admin.offers.list.invalidate(),
+      utils.commerce.admin.products.list.invalidate(),
+      utils.commerce.catalog.home.invalidate(),
+      utils.commerce.catalog.listProducts.invalidate(),
+      utils.commerce.catalog.product.invalidate(),
+    ]);
+  };
+
+  const updateProductMut = trpc.commerce.admin.products.update.useMutation({
+    onSuccess: async () => {
+      toast.success("🔥 تم تحديث عرض المنتج بنجاح وظهوره في قسم العروضات!");
+      setSelectedProdId("");
+      setProdOldPrice("");
+      setProdNewPrice("");
+      await refreshAll();
+    },
+    onError: err => toast.error(err.message),
+  });
+
+  const createBundleMut = trpc.commerce.admin.products.create.useMutation({
+    onSuccess: async () => {
+      toast.success("🎁 تم إنشاء التجميعة التوفيرية وإضافتها لقسم العروضات بنجاح!");
+      setBundleName("");
+      setBundlePrice("");
+      setBundleImage("");
+      setBundleNotes("");
+      setBundlePicked([]);
+      await refreshAll();
+    },
+    onError: err => toast.error(err.message),
+  });
+
+  const deleteProductMut = trpc.commerce.admin.products.delete.useMutation({
+    onSuccess: async () => {
+      toast.success("تم حذف التجميعة");
+      await refreshAll();
+    },
+    onError: err => toast.error(err.message),
+  });
+
+  const create = trpc.commerce.admin.offers.create.useMutation({ onSuccess: async () => { toast.success("تم حفظ الكوبون"); reset(); await refreshAll(); }, onError: error => toast.error(error.message) });
+  const update = trpc.commerce.admin.offers.update.useMutation({ onSuccess: async (_result, variables) => { toast.success("تم تحديث الكوبون"); if (editing === variables.id) reset(); await refreshAll(); }, onError: error => toast.error(error.message) });
+  const remove = trpc.commerce.admin.offers.delete.useMutation({ onSuccess: () => { toast.success("تم حذف الكوبون نهائياً"); void refreshAll(); } });
+
+  const allProducts = productsQuery.data ?? [];
+  const discountedProducts = allProducts.filter(p => {
+    const u = unpackProductVariants(p.description);
+    return u.oldPrice > p.price && !u.isBundle;
+  });
+  const activeBundles = allProducts.filter(p => unpackProductVariants(p.description).isBundle);
+
+  const handleSelectProductForOffer = (idStr: string) => {
+    setSelectedProdId(idStr);
+    const found = allProducts.find(p => String(p.id) === idStr);
+    if (found) {
+      const u = unpackProductVariants(found.description);
+      const orig = u.oldPrice > found.price ? u.oldPrice : found.price;
+      setProdOldPrice(String(orig));
+      setProdNewPrice(u.oldPrice > found.price ? String(found.price) : "");
+    }
+  };
+
+  const applySingleProductOffer = (e: React.FormEvent) => {
+    e.preventDefault();
+    const found = allProducts.find(p => String(p.id) === selectedProdId);
+    if (!found) { toast.error("اختر المنتج أولاً"); return; }
+    const oldP = Math.round(Number(prodOldPrice) || 0);
+    const newP = Math.round(Number(prodNewPrice) || 0);
+    if (newP <= 0 || oldP <= newP) {
+      toast.error("يجب أن يكون السعر السابق (قبل الخصم) أكبر من السعر الجديد بعد التخفيض");
+      return;
+    }
+    const u = unpackProductVariants(found.description);
+    const packedDesc = packProductVariants(u.cleanDescription, u.variants, u.weightEnabled, u.minWeightAmount, {
+      oldPrice: oldP,
+      isBundle: u.isBundle,
+      bundleItems: u.bundleItems,
+    });
+    updateProductMut.mutate({
+      id: found.id,
+      values: {
+        name: found.name,
+        description: packedDesc,
+        imageUrl: found.imageUrl,
+        categoryId: found.categoryId,
+        price: newP,
+        unit: found.unit,
+        stock: found.stock,
+        minQuantity: found.minQuantity,
+        quantityStep: found.quantityStep,
+        isPublished: true,
+        isAvailable: true,
+        sortOrder: found.sortOrder,
+      },
+    });
+  };
+
+  const removeSingleProductOffer = (item: any) => {
+    const u = unpackProductVariants(item.description);
+    const restoredPrice = u.oldPrice > item.price ? u.oldPrice : item.price;
+    const packedDesc = packProductVariants(u.cleanDescription, u.variants, u.weightEnabled, u.minWeightAmount, { oldPrice: 0 });
+    updateProductMut.mutate({
+      id: item.id,
+      values: {
+        name: item.name,
+        description: packedDesc,
+        imageUrl: item.imageUrl,
+        categoryId: item.categoryId,
+        price: restoredPrice,
+        unit: item.unit,
+        stock: item.stock,
+        minQuantity: item.minQuantity,
+        quantityStep: item.quantityStep,
+        isPublished: item.isPublished,
+        isAvailable: item.isAvailable,
+        sortOrder: item.sortOrder,
+      },
+    });
+  };
+
+  const togglePickBundleProduct = (p: any) => {
+    setBundlePicked(curr => {
+      const exists = curr.find(x => x.id === p.id);
+      if (exists) return curr.filter(x => x.id !== p.id);
+      if (!bundleImage && p.imageUrl) setBundleImage(p.imageUrl);
+      return [...curr, { id: p.id, name: p.name, price: p.price, unit: p.unit, qty: 1, imageUrl: p.imageUrl }];
+    });
+  };
+
+  const changeBundleItemQty = (id: number, delta: number) => {
+    setBundlePicked(curr => curr.map(item => item.id === id ? { ...item, qty: Math.max(1, item.qty + delta) } : item));
+  };
+
+  const bundleOriginalSum = bundlePicked.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const bundleNewNum = Math.round(Number(bundlePrice) || 0);
+  const bundleSavings = Math.max(0, bundleOriginalSum - bundleNewNum);
+
+  const handleCreateBundle = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (bundlePicked.length < 2) {
+      toast.error("اختر منتجين على الأقل لتكوين تجميعة عرض");
+      return;
+    }
+    if (!bundleName.trim()) {
+      toast.error("اكتب اسماً مخصصاً للتجميعة");
+      return;
+    }
+    if (bundleNewNum <= 0 || bundleNewNum >= bundleOriginalSum) {
+      toast.error("أدخل سعر التجميعة بعد الخصم بحيث يكون أقل من إجمالي الأسعار الفردية (" + bundleOriginalSum + " ر.ي)");
+      return;
+    }
+    const itemsLabels = bundlePicked.map(i => (i.qty > 1 ? `${i.qty} × ${i.name}` : i.name));
+    const autoDesc = bundleNotes.trim() || ("تجميعة توفيرية خاصة تشمل: " + itemsLabels.join(" + "));
+    const packedDesc = packProductVariants(autoDesc, [], false, 100, {
+      oldPrice: bundleOriginalSum,
+      isBundle: true,
+      bundleItems: itemsLabels,
+    });
+    createBundleMut.mutate({
+      name: bundleName.trim(),
+      description: packedDesc,
+      imageUrl: bundleImage || bundlePicked.find(x => x.imageUrl)?.imageUrl || null,
+      categoryId: bundleCategoryId ?? (catsQuery.data?.[0]?.id ?? null),
+      price: bundleNewNum,
+      unit: "تجميعة",
+      stock: null,
+      minQuantity: 1,
+      quantityStep: 1,
+      isPublished: true,
+      isAvailable: true,
+      sortOrder: 0,
+    });
+  };
+
   const toLocal = (date: Date | string | null) => date ? new Date(date).toISOString().slice(0, 16) : "";
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -3185,8 +3404,240 @@ function OffersPanel() {
     if (editing) update.mutate({ id: editing, values }); else create.mutate({ ...values, description: form.description || undefined });
   };
   const edit = (item: NonNullable<typeof query.data>[number]) => { setEditing(item.id); setForm({ title: item.title, description: item.description ?? "", code: item.code, discountType: item.discountType, discountValue: String(item.discountValue), minimumOrder: String(item.minimumOrder), startsAt: toLocal(item.startsAt), endsAt: toLocal(item.endsAt), isActive: item.isActive }); window.scrollTo({ top: 0, behavior: "smooth" }); };
-  return <div className="admin-content"><AdminHeading eyebrow="تحفيز الشراء" title="العروض والخصومات" text="الخصم يطبّق ويُعاد حسابه على الخادم عند تقديم الطلب." icon={BadgePercent} /><section className="admin-form-card"><div className="form-card-heading"><span className="form-card-number">{editing ? "✳" : "01"}</span><div><h2>{editing ? "تعديل العرض" : "إنشاء عرض"}</h2><p>أضف شروط العرض ورمز الكوبون.</p></div>{editing && <button type="button" className="small-button" onClick={reset}>إلغاء التعديل<X size={14} /></button>}</div><form className="admin-form" onSubmit={submit}><div className="form-fields-grid"><label>اسم العرض<input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></label><label>رمز الخصم<input required value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} /></label><label className="field-wide">وصف العرض<textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></label><label>نوع الخصم<select value={form.discountType} onChange={e => setForm({ ...form, discountType: e.target.value as "percent" | "fixed" })}><option value="percent">نسبة مئوية</option><option value="fixed">قيمة ثابتة</option></select></label><label>{form.discountType === "percent" ? "النسبة %" : "قيمة الخصم ر.ي"}<input type="number" min="1" max={form.discountType === "percent" ? "100" : undefined} required value={form.discountValue} onChange={e => setForm({ ...form, discountValue: e.target.value })} /></label><label>الحد الأدنى للطلب ر.ي<input type="number" min="0" step="1" value={form.minimumOrder} onChange={e => setForm({ ...form, minimumOrder: e.target.value })} /></label><label>يبدأ العرض<input type="datetime-local" value={form.startsAt} onChange={e => setForm({ ...form, startsAt: e.target.value })} /></label><label>ينتهي العرض<input type="datetime-local" value={form.endsAt} onChange={e => setForm({ ...form, endsAt: e.target.value })} /></label><label className="toggle-field"><input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} /> العرض فعّال</label></div><div className="form-submit-row"><button type="submit" className="button button-primary" disabled={create.isPending || update.isPending}>{create.isPending || update.isPending ? <LoaderCircle className="spin" size={16} /> : editing ? <Save size={16} /> : <Plus size={16} />}{editing ? "حفظ تعديل العرض" : "إنشاء العرض"}</button></div></form></section><div className="admin-section-heading"><div><h2>العروض الحالية</h2><p>رموز العرض تُفحص عند إرسال الطلب.</p></div></div>{!query.data?.length ? <AdminEmpty title="لا توجد عروض مضافة" text="يمكنك إضافة رمز خصم متى أردت." /> : <div className="entity-list">{query.data.map(item => <article className="entity-row" key={item.id}><div className="entity-image offer-art"><BadgePercent size={20} /></div><div className="entity-main"><strong>{item.title}</strong><small>{item.code} · {item.discountType === "percent" ? item.discountValue + "%" : money(item.discountValue)} · حد أدنى {money(item.minimumOrder)} · {item.startsAt ? new Date(item.startsAt).toLocaleDateString("ar-YE") : "دون بداية محددة"} — {item.endsAt ? new Date(item.endsAt).toLocaleDateString("ar-YE") : "دون انتهاء محدد"}</small></div><label className="toggle-field compact-toggle"><input type="checkbox" checked={item.isActive} onChange={e => update.mutate({ id: item.id, values: { isActive: e.target.checked } })} /> فعّال</label><div className="entity-actions"><button type="button" className="small-button" onClick={() => edit(item)}>تعديل</button><button type="button" className="small-button danger-soft" onClick={() => { if (window.confirm("هل أنت متأكد من حذف العرض «" + item.title + "» نهائياً؟")) remove.mutate({ id: item.id }); }}><Trash2 size={14} /> حذف</button></div></article>)}</div>}</div>;
+
+  const filteredForBundle = allProducts.filter(p => !unpackProductVariants(p.description).isBundle && (!bundleSearch.trim() || p.name.toLowerCase().includes(bundleSearch.trim().toLowerCase())));
+
+  return (
+    <div className="admin-content">
+      <AdminHeading eyebrow="تحفيز المبيعات والتوفير" title="العروض الخاصة وتجميعات المنتجات" text="ضع خصماً مع السعر المشطوب (✕) على أي منتج، أو اجمع عدة منتجات في بوكس واحد بسعر مخفض يدخل تلقائياً في قسم العروضات." icon={BadgePercent} />
+
+      <section className="admin-form-card" style={{ border: "1.5px solid #e86c12", background: "linear-gradient(135deg, #fffdf9 0%, #fff6ec 100%)" }}>
+        <div className="form-card-heading">
+          <span className="form-card-number" style={{ background: "#870210", color: "#fff" }}>01</span>
+          <div>
+            <h2>🔥 عمل عرض وخصم مباشر على منتج (السعر السابق مشطوباً بعلامة ✕)</h2>
+            <p>اختر أي منتج من متجرك، حدد السعر السابق والسعر الجديد بعد التخفيض، وسيدخل تلقائياً في «قسم العروضات».</p>
+          </div>
+        </div>
+        <form className="admin-form" onSubmit={applySingleProductOffer}>
+          <div className="form-fields-grid">
+            <label className="field-wide">
+              اختر المنتج من المتجر *
+              <select required value={selectedProdId} onChange={e => handleSelectProductForOffer(e.target.value)}>
+                <option value="">-- اختر المنتج لعمل عرض عليه --</option>
+                {allProducts.filter(p => !unpackProductVariants(p.description).isBundle).map(p => (
+                  <option key={p.id} value={p.id}>{p.name} — (السعر الحالي: {money(p.price)})</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              السعر الأصلي (قبل الخصم — يظهر مشطوباً بعلامة ✕) *
+              <input required type="number" min="1" value={prodOldPrice} onChange={e => setProdOldPrice(e.target.value)} placeholder="مثلاً: 2000" />
+            </label>
+            <label>
+              السعر الجديد بعد التخفيض *
+              <input required type="number" min="1" value={prodNewPrice} onChange={e => setProdNewPrice(e.target.value)} placeholder="مثلاً: 1800" />
+            </label>
+          </div>
+          {Number(prodOldPrice) > Number(prodNewPrice) && Number(prodNewPrice) > 0 && (
+            <div style={{ padding: "10px 14px", borderRadius: "12px", background: "#ffffff", border: "1.5px dashed #d90429", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+              <span style={{ fontSize: "12px", fontWeight: 700, color: "#2b120f" }}>معاينة العرض للزبون:</span>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "10px" }}>
+                <span className="old-price-x" style={{ fontSize: "13px" }}><s>{money(Number(prodOldPrice))}</s><i>✕</i></span>
+                <strong style={{ color: "#870210", fontSize: "15px" }}>{money(Number(prodNewPrice))}</strong>
+                <span style={{ background: "#fceee9", color: "#d90429", padding: "2px 8px", borderRadius: "99px", fontSize: "11px", fontWeight: 800 }}>
+                  وفّر {money(Number(prodOldPrice) - Number(prodNewPrice))}
+                </span>
+              </div>
+            </div>
+          )}
+          <div className="form-submit-row">
+            <button type="submit" className="button button-primary" disabled={updateProductMut.isPending}>
+              {updateProductMut.isPending ? <LoaderCircle className="spin" size={16} /> : <BadgePercent size={16} />}
+              🔥 اعتماد العرض وإدخاله في قسم العروضات
+            </button>
+          </div>
+        </form>
+
+        {discountedProducts.length > 0 && (
+          <div style={{ marginTop: "16px", paddingTop: "12px", borderTop: "1px solid #ead8c3" }}>
+            <strong style={{ display: "block", fontSize: "13px", color: "#870210", marginBottom: "8px" }}>✨ المنتجات الخاضعة لعرض حالياً ({discountedProducts.length}):</strong>
+            <div className="entity-list">
+              {discountedProducts.map(item => {
+                const u = unpackProductVariants(item.description);
+                return (
+                  <article className="entity-row" key={item.id}>
+                    <div className="entity-image">{item.imageUrl ? <img src={item.imageUrl} alt={item.name} /> : <Package size={18} />}</div>
+                    <div className="entity-main">
+                      <strong>{item.name}</strong>
+                      <small>السعر السابق: <s>{money(u.oldPrice)}</s> ✕ ← السعر بعد الخصم: <b style={{ color: "#870210" }}>{money(item.price)}</b></small>
+                    </div>
+                    <div className="entity-actions">
+                      <button type="button" className="small-button danger-soft" onClick={() => removeSingleProductOffer(item)}>
+                        إلغاء العرض وإرجاع ({money(u.oldPrice)})
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="admin-form-card" style={{ border: "1.5px solid #870210", background: "linear-gradient(135deg, #ffffff 0%, #fdf6f0 100%)" }}>
+        <div className="form-card-heading">
+          <span className="form-card-number" style={{ background: "#e86c12", color: "#fff" }}>02</span>
+          <div>
+            <h2>🎁 صانع التجميعات والبوكسات التوفيرية (اجمع عدة منتجات بسعر مخفض)</h2>
+            <p>اختَر 2 أو 4 أو 5 منتجات من المتجر، وسيحسب الموقع إجمالي سعرها تلقائياً ويشطب عليه (✕) ويكتب سعرك الجديد مع اسم مخصص للتجميعة!</p>
+          </div>
+        </div>
+        <form className="admin-form" onSubmit={handleCreateBundle}>
+          <div style={{ display: "grid", gap: "10px" }}>
+            <label>
+              1️⃣ اختر المنتجات التي تدخل في التجميعة (اضغط على المنتج لإضافته):
+              <input type="search" value={bundleSearch} onChange={e => setBundleSearch(e.target.value)} placeholder="ابحث عن منتج لإضافته للتجميعة..." style={{ marginTop: "4px" }} />
+            </label>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "7px", maxHeight: "230px", overflowY: "auto", padding: "8px", background: "#ffffff", borderRadius: "12px", border: "1px solid #e5d8ce" }}>
+              {filteredForBundle.map(p => {
+                const picked = bundlePicked.find(x => x.id === p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => togglePickBundleProduct(p)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "7px",
+                      padding: "7px 9px",
+                      borderRadius: "10px",
+                      border: picked ? "2px solid #870210" : "1px solid #e6ece8",
+                      background: picked ? "#fceee9" : "#fafbf9",
+                      cursor: "pointer",
+                      textAlign: "right",
+                    }}
+                  >
+                    {p.imageUrl ? <img src={p.imageUrl} alt="" style={{ width: "32px", height: "32px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }} /> : <Package size={18} />}
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <strong style={{ display: "block", fontSize: "11px", color: "#2b120f", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</strong>
+                      <small style={{ fontSize: "10px", color: "#870210", fontWeight: 700 }}>{money(p.price)}</small>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {bundlePicked.length > 0 && (
+              <div style={{ padding: "12px", borderRadius: "14px", background: "#fff8eb", border: "1.5px solid #e8c47c", display: "grid", gap: "8px" }}>
+                <strong style={{ fontSize: "12.5px", color: "#870210" }}>🧺 الأصناف المختارة في التجميعة ({bundlePicked.length}):</strong>
+                <div style={{ display: "grid", gap: "6px" }}>
+                  {bundlePicked.map(item => (
+                    <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#ffffff", padding: "6px 10px", borderRadius: "10px", border: "1px solid #efe0c6" }}>
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: "#2b120f" }}>{item.name} ({money(item.price)} × {item.qty} = {money(item.price * item.qty)})</span>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                        <button type="button" className="small-button" onClick={() => changeBundleItemQty(item.id, -1)} style={{ minHeight: "26px", padding: "0 8px" }}>-</button>
+                        <b style={{ fontSize: "12px" }}>{item.qty}</b>
+                        <button type="button" className="small-button" onClick={() => changeBundleItemQty(item.id, 1)} style={{ minHeight: "26px", padding: "0 8px" }}>+</button>
+                        <button type="button" className="small-button danger-soft" onClick={() => setBundlePicked(curr => curr.filter(x => x.id !== item.id))} style={{ minHeight: "26px", padding: "0 7px" }}><Trash2 size={13} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ padding: "10px 12px", borderRadius: "10px", background: "#870210", color: "#ffffff", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                  <span style={{ fontSize: "12.5px", fontWeight: 800 }}>💡 إجمالي سعر المنتجات الفردية: <b>{money(bundleOriginalSum)}</b></span>
+                  <span style={{ fontSize: "12px", color: "#ffe6a7", fontWeight: 700 }}>كم سعرك للتجميعة بعد الخصم؟ املأ الحقل بالأسفل 👇</span>
+                </div>
+              </div>
+            )}
+
+            <div className="product-form-layout" style={{ marginTop: "6px" }}>
+              <div className="form-fields-grid">
+                <label className="field-wide">
+                  2️⃣ اسم التجميعة المخصص *
+                  <input required value={bundleName} onChange={e => setBundleName(e.target.value)} placeholder="مثلاً: بوكس العائلة الملكي، تجميعة شاورما وعصائر، وجبة الأصدقاء..." />
+                </label>
+                <label>
+                  إجمالي السعر قبل الخصم (محسوب تلقائياً)
+                  <input type="text" readOnly value={bundleOriginalSum ? `${bundleOriginalSum.toLocaleString("en-US")} ر.ي` : "اختر المنتجات أولاً"} style={{ background: "#f4eee8", fontWeight: 800, color: "#870210" }} />
+                </label>
+                <label>
+                  3️⃣ سعر التجميعة الجديد بعد الخصم *
+                  <input required type="number" min="1" value={bundlePrice} onChange={e => setBundlePrice(e.target.value)} placeholder={bundleOriginalSum > 200 ? `مثلاً: ${bundleOriginalSum - 200}` : "مثلاً: 1800"} />
+                </label>
+                <label>
+                  القسم (اختياري)
+                  <select value={bundleCategoryId ?? ""} onChange={e => setBundleCategoryId(e.target.value ? Number(e.target.value) : null)}>
+                    <option value="">قسم العروضات + القسم الافتراضي</option>
+                    {catsQuery.data?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </label>
+                <label>
+                  وصف إضافي للتجميعة (اختياري)
+                  <input value={bundleNotes} onChange={e => setBundleNotes(e.target.value)} placeholder="يُكتب تلقائياً بأسماء الأصناف المختارة إن تركته فارغاً" />
+                </label>
+              </div>
+              <ImageField title="صورة التجميعة (أو تُؤخذ تلقائياً)" value={bundleImage} onChange={setBundleImage} kind="product" aspect={1} />
+            </div>
+
+            {bundleOriginalSum > 0 && bundleNewNum > 0 && bundleNewNum < bundleOriginalSum && (
+              <div style={{ padding: "10px 14px", borderRadius: "12px", background: "#ffffff", border: "1.5px dashed #870210", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+                <span style={{ fontSize: "12px", fontWeight: 800, color: "#2b120f" }}>🎁 شكل السعر في المتجر:</span>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "10px" }}>
+                  <span className="old-price-x" style={{ fontSize: "13.5px" }}><s>{money(bundleOriginalSum)}</s><i>✕</i></span>
+                  <strong style={{ color: "#870210", fontSize: "16px" }}>{money(bundleNewNum)}</strong>
+                  <span style={{ background: "#edf6eb", color: "#1f7a4c", padding: "3px 9px", borderRadius: "99px", fontSize: "11px", fontWeight: 900 }}>
+                    توفير {money(bundleSavings)} للزبون!
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="form-submit-row" style={{ marginTop: "10px" }}>
+            <button type="submit" className="button button-primary" disabled={createBundleMut.isPending}>
+              {createBundleMut.isPending ? <LoaderCircle className="spin" size={16} /> : <Plus size={16} />}
+              🎁 إنشاء ونشر التجميعة في قسم العروضات
+            </button>
+          </div>
+        </form>
+
+        {activeBundles.length > 0 && (
+          <div style={{ marginTop: "16px", paddingTop: "12px", borderTop: "1px solid #ead8c3" }}>
+            <strong style={{ display: "block", fontSize: "13px", color: "#870210", marginBottom: "8px" }}>🎁 التجميعات والبوكسات المنشورة حالياً ({activeBundles.length}):</strong>
+            <div className="entity-list">
+              {activeBundles.map(item => {
+                const u = unpackProductVariants(item.description);
+                return (
+                  <article className="entity-row" key={item.id}>
+                    <div className="entity-image">{item.imageUrl ? <img src={item.imageUrl} alt={item.name} /> : <Package size={18} />}</div>
+                    <div className="entity-main">
+                      <strong>🎁 {item.name}</strong>
+                      <small>{u.bundleItems.join(" + ")} · السعر السابق: <s>{money(u.oldPrice)}</s> ✕ ← السعر الجديد: <b style={{ color: "#870210" }}>{money(item.price)}</b></small>
+                    </div>
+                    <div className="entity-actions">
+                      <button type="button" className="small-button danger-soft" onClick={() => { if (window.confirm("حذف التجميعة «" + item.name + "»؟")) deleteProductMut.mutate({ id: item.id }); }}>
+                        <Trash2 size={14} /> حذف التجميعة
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="admin-form-card">
+        <div className="form-card-heading"><span className="form-card-number">{editing ? "✳" : "03"}</span><div><h2>{editing ? "تعديل كوبون الخصم" : "🎟️ إنشاء كود خصم للسلة (كوبون)"}</h2><p>أضف شروط الكوبون ورمز الخصم عند إتمام الطلب.</p></div>{editing && <button type="button" className="small-button" onClick={reset}>إلغاء التعديل<X size={14} /></button>}</div>
+        <form className="admin-form" onSubmit={submit}><div className="form-fields-grid"><label>اسم العرض<input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></label><label>رمز الخصم<input required value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} /></label><label className="field-wide">وصف العرض<textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></label><label>نوع الخصم<select value={form.discountType} onChange={e => setForm({ ...form, discountType: e.target.value as "percent" | "fixed" })}><option value="percent">نسبة مئوية</option><option value="fixed">قيمة ثابتة</option></select></label><label>{form.discountType === "percent" ? "النسبة %" : "قيمة الخصم ر.ي"}<input type="number" min="1" max={form.discountType === "percent" ? "100" : undefined} required value={form.discountValue} onChange={e => setForm({ ...form, discountValue: e.target.value })} /></label><label>الحد الأدنى للطلب ر.ي<input type="number" min="0" step="1" value={form.minimumOrder} onChange={e => setForm({ ...form, minimumOrder: e.target.value })} /></label><label>يبدأ العرض<input type="datetime-local" value={form.startsAt} onChange={e => setForm({ ...form, startsAt: e.target.value })} /></label><label>ينتهي العرض<input type="datetime-local" value={form.endsAt} onChange={e => setForm({ ...form, endsAt: e.target.value })} /></label><label className="toggle-field"><input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} /> العرض فعّال</label></div><div className="form-submit-row"><button type="submit" className="button button-primary" disabled={create.isPending || update.isPending}>{create.isPending || update.isPending ? <LoaderCircle className="spin" size={16} /> : editing ? <Save size={16} /> : <Plus size={16} />}{editing ? "حفظ تعديل الكوبون" : "إنشاء الكوبون"}</button></div></form>
+      </section>
+      <div className="admin-section-heading"><div><h2>الكوبونات الحالية</h2><p>رموز العرض تُفحص عند إرسال الطلب.</p></div></div>
+      {!query.data?.length ? <AdminEmpty title="لا توجد كوبونات مضافة" text="يمكنك إضافة رمز خصم متى أردت." /> : <div className="entity-list">{query.data.map(item => <article className="entity-row" key={item.id}><div className="entity-image offer-art"><BadgePercent size={20} /></div><div className="entity-main"><strong>{item.title}</strong><small>{item.code} · {item.discountType === "percent" ? item.discountValue + "%" : money(item.discountValue)} · حد أدنى {money(item.minimumOrder)} · {item.startsAt ? new Date(item.startsAt).toLocaleDateString("ar-YE") : "دون بداية محددة"} — {item.endsAt ? new Date(item.endsAt).toLocaleDateString("ar-YE") : "دون انتهاء محدد"}</small></div><label className="toggle-field compact-toggle"><input type="checkbox" checked={item.isActive} onChange={e => update.mutate({ id: item.id, values: { isActive: e.target.checked } })} /> فعّال</label><div className="entity-actions"><button type="button" className="small-button" onClick={() => edit(item)}>تعديل</button><button type="button" className="small-button danger-soft" onClick={() => { if (window.confirm("هل أنت متأكد من حذف العرض «" + item.title + "» نهائياً؟")) remove.mutate({ id: item.id }); }}><Trash2 size={14} /> حذف</button></div></article>)}</div>}
+    </div>
+  );
 }
+// === SHAHEZO_OFFERS_STUDIO_END ===
 
 function printOrderInvoiceWindow(order: any) {
   const w = window.open("", "_blank", "width=460,height=680");
