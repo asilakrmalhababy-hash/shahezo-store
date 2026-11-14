@@ -310,16 +310,16 @@ async function notifyCustomerOrderStatus(orderId: number, orderNumber: string, s
   if (!uniqueByEndpoint.length) return;
   const shortNo = orderNumber.split("-").pop() || orderNumber;
   const defaultBodies: Record<string, string> = {
-    new: "تم استلام طلبك بنجاح وبانتظار التجهيز ✨",
+    new: "تم استلام طلبك بنجاح، شكراً لك. وبانتظار التجهيز ✨",
     preparing: "طلبك الآن قيد التجهيز بعناية 👨‍🍳",
     ready: "طلبك جاهز للتوصيل الكامل 📦",
     out_for_delivery: "طلبك خرج للتوصيل وهو في طريقه إليك 🛵",
-    delivered: "تم تسليم طلبك بنجاح، بالهناء والشفاء من بوفية شهيزو 🥙❤️",
+    delivered: "شكراً لطلبك من جاهز، ننتظرك مجدداً.، بالهناء والشفاء من بوفية شهيزو 🥙❤️",
     cancelled: "عذراً، تم إلغاء الطلب #" + shortNo,
   };
   const statusTitles: Record<string, string> = {
     new: "🥙 بوفية شهيزو | تأكيد استلام الطلب #" + shortNo,
-    preparing: "👨‍🍳 بوفية شهيزو | جاري تجهيز طلبك #" + shortNo,
+    preparing: "👨‍🍳 بوفية شهيزو | طلبك الآن قيد التجهيز. #" + shortNo,
     ready: "📦 بوفية شهيزو | طلبك #" + shortNo + " جاهز للتوصيل",
     out_for_delivery: "🛵 بوفية شهيزو | طلبك #" + shortNo + " في الطريق إليك",
     delivered: "❤️ بوفية شهيزو | تم تسليم طلبك #" + shortNo,
