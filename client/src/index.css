@@ -1031,3 +1031,134 @@ button, a, input, select, textarea, summary, [role="button"] { touch-action: man
   border: 1px solid #f2cfc6;
 }
 /* === SHAHEZO_FINAL_POLISH_V6_END === */
+
+/* === SHAHEZO_WHATSAPP_REFINED_START === */
+.header-wa-shortcut {
+  display: none !important;
+}
+
+.shahezo-wa-widget {
+  position: fixed !important;
+  right: 15px !important;
+  bottom: calc(82px + env(safe-area-inset-bottom, 0px)) !important;
+  z-index: 90 !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  gap: 10px !important;
+  direction: rtl !important;
+  pointer-events: none !important;
+}
+
+.shahezo-wa-widget > * {
+  pointer-events: auto !important;
+}
+
+.shahezo-wa-fab {
+  width: 56px !important;
+  height: 56px !important;
+  min-width: 56px !important;
+  min-height: 56px !important;
+  border: 3px solid #fff !important;
+  border-radius: 50% !important;
+  background: #25D366 !important;
+  color: #fff !important;
+  display: grid !important;
+  place-items: center !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,.2),
+              0 0 0 4px rgba(37,211,102,.12) !important;
+  cursor: pointer !important;
+  transition: transform .25s ease, box-shadow .25s ease !important;
+  flex-shrink: 0 !important;
+  padding: 0 !important;
+}
+
+.shahezo-wa-fab:active {
+  transform: scale(.91) !important;
+}
+
+.shahezo-wa-fab.is-open {
+  transform: scale(1.04) !important;
+  box-shadow: 0 5px 20px rgba(37,211,102,.35) !important;
+}
+
+.shahezo-wa-fab svg {
+  display: block !important;
+}
+
+.shahezo-wa-strip {
+  width: min(310px, calc(100vw - 94px)) !important;
+  max-width: 310px !important;
+  box-sizing: border-box !important;
+  background: #fff !important;
+  border: 1px solid #e7e0d5 !important;
+  border-radius: 16px !important;
+  padding: 11px !important;
+  box-shadow: 0 8px 28px rgba(43,18,15,.17) !important;
+  transform-origin: bottom right !important;
+  transition: opacity .22s ease, transform .22s ease !important;
+  margin-bottom: 2px !important;
+}
+
+.shahezo-wa-strip.is-closed {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateY(9px) scale(.96) !important;
+  position: absolute !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+
+.shahezo-wa-strip.is-open {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateY(0) scale(1) !important;
+}
+
+.shahezo-wa-strip-head {
+  padding-bottom: 8px !important;
+  margin-bottom: 7px !important;
+}
+
+.shahezo-wa-strip-head strong {
+  color: #7b101b !important;
+  font-size: 12px !important;
+}
+
+.shahezo-wa-row {
+  padding: 5px 0 !important;
+  gap: 5px !important;
+}
+
+.shahezo-wa-label b {
+  font-size: 12px !important;
+  color: #252525 !important;
+}
+
+.shahezo-wa-btn {
+  background: #25D366 !important;
+  border-radius: 8px !important;
+  padding: 6px 10px !important;
+}
+
+.shahezo-call-btn {
+  border-radius: 8px !important;
+  padding: 6px 9px !important;
+}
+
+@media (max-width: 380px) {
+  .shahezo-wa-widget {
+    right: 10px !important;
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .shahezo-wa-fab {
+    width: 51px !important;
+    height: 51px !important;
+    min-width: 51px !important;
+    min-height: 51px !important;
+  }
+  .shahezo-wa-strip {
+    width: min(275px, calc(100vw - 78px)) !important;
+  }
+}
+/* === SHAHEZO_WHATSAPP_REFINED_END === */
