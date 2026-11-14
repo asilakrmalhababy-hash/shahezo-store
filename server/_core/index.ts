@@ -289,7 +289,7 @@ async function startServer() {
       { src: "/app-icon-192-v4.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/app-icon-512-v4.png", sizes: "512x512", type: "image/png", purpose: "any" },
     ];
-    res.set("Cache-Control", "public, max-age=300").type("application/manifest+json").send(JSON.stringify({ id: "/", name: brand.name, short_name: "شهيزو", description: "متجر شهيزو – SHAHEZO", lang: "ar", dir: "rtl", start_url: "/", scope: "/", display: "standalone", background_color: "#fdf9f4", theme_color: "#870210", icons }));
+    res.set("Cache-Control", "public, max-age=300").type("application/manifest+json").send(JSON.stringify({ id: "/", name: "شهيزو – SHAHEZO", short_name: "شهيزو", description: "متجر شهيزو – SHAHEZO", lang: "ar", dir: "rtl", start_url: "/", scope: "/", display: "standalone", background_color: "#fdf9f4", theme_color: "#870210", icons }));
   });
 
   app.get("/api/store-icon", async (_req, res) => {
