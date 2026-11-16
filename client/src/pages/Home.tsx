@@ -2784,10 +2784,6 @@ function AccountPage() {
       toast.error("يرجى اختيار منطقة التوصيل (المدينة والمنطقة والشارع).");
       return;
     }
-    if (!address.city.trim() || !address.district.trim()) {
-      toast.error("يرجى اختيار منطقة التوصيل (المدينة والمنطقة والشارع).");
-      return;
-    }
     customer.saveAddress({
       ...address,
       phone: cleanYemeniPhone(address.phone),
@@ -2797,28 +2793,23 @@ function AccountPage() {
     resetAddressForm();
   };
 
-  return (
-    <main className="page-shell inner-page">
-      <div className="page-title-row">
-        <div><span className="eyebrow">مساحتك الخاصة على هذا الجهاز</span><h1>حسابي</h1><p>معلومات حسابك وعناوين التوصيل المحفوظة لإتمام طلباتك بنقرة واحدة.</p></div>
-        <span className="page-title-icon"><UserRound size={23} /></span>
-      </div>
+  const carrierName = getYemenCarrierName(cleanedCustomerPhone);
 
-      <div className="account-grid" style={{ gap: "16px", alignItems: "start" }}>
+  return (
+    <main className="page-shell inner-page" style={{ paddingTop: "10px", paddingBottom: "24px" }}>
+      <div style={{ display: "grid", gap: "12px", maxWidth: "680px", margin: "0 auto" }}>
         <section
-          className="panel-card"
           style={{
-            padding: 0,
-            overflow: "hidden",
             borderRadius: "20px",
-            border: "1.5px solid #cfe2d5",
-            boxShadow: "0 8px 24px rgba(135, 2, 16, 0.06)",
+            overflow: "hidden",
+            border: "1.5px solid #ead8cc",
             background: "#ffffff",
+            boxShadow: "0 8px 22px rgba(135, 2, 16, 0.06)",
           }}
         >
           <div
             style={{
-              padding: "16px 18px",
+              padding: "14px 16px",
               background: "linear-gradient(135deg, #870210 0%, #5e010b 100%)",
               color: "#ffffff",
               display: "flex",
@@ -2827,13 +2818,38 @@ function AccountPage() {
               gap: "10px",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <span style={{ width: "42px", height: "42px", borderRadius: "13px", background: "rgba(241, 216, 151, 0.18)", border: "1.5px solid #f1d897", color: "#f1d897", display: "grid", placeItems: "center", fontWeight: 900, fontSize: "17px" }}>
-                {(customer.name || name || "أ").trim().slice(0, 1)}
+            <div style={{ display: "flex", alignItems: "center", gap: "11px", minWidth: 0 }}>
+              <span
+                style={{
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "14px",
+                  background: "rgba(241, 216, 151, 0.16)",
+                  border: "1.5px solid #f1d897",
+                  color: "#f1d897",
+                  display: "grid",
+                  placeItems: "center",
+                  fontWeight: 900,
+                  fontSize: "18px",
+                  flexShrink: 0,
+                }}
+              >
+                {(customer.name || name || "ش").trim().slice(0, 1)}
               </span>
-              <div>
-                <span style={{ fontSize: "10.5px", color: "#f1d897", fontWeight: 800, display: "block" }}>البيانات الشخصية</span>
-                <h2 style={{ margin: 0, fontSize: "17px", color: "#ffffff" }}>معلومات الحساب</h2>
+              <div style={{ minWidth: 0 }}>
+                <strong style={{ display: "block", fontSize: "16px", color: "#ffffff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {hasSavedProfile ? customer.name : "مرحباً بك في شهيزو"}
+                </strong>
+                <div style={{ display: "flex", alignItems: "center", gap: "7px", flexWrap: "wrap", marginTop: "2px" }}>
+                  <span dir="ltr" style={{ fontSize: "12.5px", color: "#fde8d7", fontWeight: 700, letterSpacing: "0.4px" }}>
+                    {hasSavedProfile ? cleanedCustomerPhone : "أكمل بياناتك للطلب السريع"}
+                  </span>
+                  {hasSavedProfile && carrierName && (
+                    <span style={{ fontSize: "10px", fontWeight: 800, padding: "1px 8px", borderRadius: "99px", background: "rgba(255,255,255,0.16)", color: "#f1d897" }}>
+                      {carrierName}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             {!isEditingProfile && (
@@ -2841,52 +2857,25 @@ function AccountPage() {
                 type="button"
                 onClick={() => setIsEditingProfile(true)}
                 style={{
-                  padding: "7px 14px",
+                  padding: "6px 12px",
                   borderRadius: "10px",
-                  border: "1px solid #f1d897",
+                  border: "1px solid rgba(241, 216, 151, 0.7)",
                   background: "rgba(255,255,255,0.12)",
                   color: "#f1d897",
                   fontWeight: 800,
-                  fontSize: "12px",
+                  fontSize: "11.5px",
                   cursor: "pointer",
+                  flexShrink: 0,
                 }}
               >
-                ✏️ تعديل البيانات
+                ✏️ تعديل
               </button>
             )}
           </div>
 
-          <div style={{ padding: "18px" }}>
-            {!isEditingProfile ? (
-              <div style={{ display: "grid", gap: "14px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}>
-                  <div style={{ padding: "12px 14px", borderRadius: "14px", background: "#f5faf7", border: "1px solid #dce9e0" }}>
-                    <small style={{ color: "#5a7062", fontSize: "11px", display: "block", marginBottom: "3px" }}>👤 اسم العميل</small>
-                    <strong style={{ fontSize: "15px", color: "#123826" }}>{customer.name}</strong>
-                  </div>
-                  <div style={{ padding: "12px 14px", borderRadius: "14px", background: "#f5faf7", border: "1px solid #dce9e0" }}>
-                    <small style={{ color: "#5a7062", fontSize: "11px", display: "block", marginBottom: "3px" }}>📞 رقم الجوال المعتمد</small>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                      <strong style={{ fontSize: "15px", color: "#870210", letterSpacing: "0.6px" }} dir="ltr">{cleanedCustomerPhone}</strong>
-                      {getYemenCarrierName(cleanedCustomerPhone) && (
-                        <span style={{ fontSize: "10px", fontWeight: 800, padding: "2px 8px", borderRadius: "99px", background: "#fceee9", color: "#870210" }}>
-                          {getYemenCarrierName(cleanedCustomerPhone)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", paddingTop: "6px", borderTop: "1px solid #edf2ee", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                    <Link href="/orders" className="small-button" style={{ background: "#fdf6f0", fontWeight: 800 }}>📦 طلباتي ({customer.orders.length})</Link>
-                    <span className="small-button" style={{ background: "#fdf6f0", cursor: "default" }}>📍 العناوين المحفوظة ({customer.addresses.length})</span>
-                  </div>
-                  <small style={{ color: "#687b6f", fontSize: "11px" }}>✓ محفوظ وجاهز للطلب السريع</small>
-                </div>
-              </div>
-            ) : (
-              <form className="form-stack" onSubmit={saveProfile} style={{ gap: "12px" }}>
+          {isEditingProfile && (
+            <div style={{ padding: "14px 16px", borderTop: "1px solid #f0e4da" }}>
+              <form className="form-stack" onSubmit={saveProfile} style={{ gap: "10px" }}>
                 <label>الاسم الكامل *
                   <input required minLength={2} maxLength={160} autoComplete="name" value={name} onChange={event => setName(event.target.value)} placeholder="أدخل اسمك الكامل..." />
                 </label>
@@ -2911,7 +2900,7 @@ function AccountPage() {
                 </label>
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                   <button type="submit" className="button button-primary" disabled={name.trim().length < 2 || !profilePhoneValid} style={{ flex: 1 }}>
-                    <Check size={16} /> حفظ معلومات الحساب
+                    <Check size={16} /> حفظ البيانات
                   </button>
                   {hasSavedProfile && (
                     <button type="button" className="button button-quiet" onClick={() => { setName(customer.name); setPhone(cleanedCustomerPhone); setIsEditingProfile(false); }}>
@@ -2920,28 +2909,46 @@ function AccountPage() {
                   )}
                 </div>
               </form>
-            )}
+            </div>
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "8px", padding: "12px" }}>
+            <Link href="/orders" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "4px", padding: "10px 4px", borderRadius: "14px", background: "#fdf9f4", border: "1px solid #eedfd3", color: "#2b120f", textDecoration: "none" }}>
+              <Package size={19} color="#870210" />
+              <strong style={{ fontSize: "11px", color: "#870210" }}>طلباتي ({customer.orders.length})</strong>
+            </Link>
+            <Link href="/favorites" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "4px", padding: "10px 4px", borderRadius: "14px", background: "#fdf9f4", border: "1px solid #eedfd3", color: "#2b120f", textDecoration: "none" }}>
+              <Heart size={19} color="#d90429" />
+              <strong style={{ fontSize: "11px", color: "#2b120f" }}>المفضلة</strong>
+            </Link>
+            <Link href="/products?offers=1" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "4px", padding: "10px 4px", borderRadius: "14px", background: "#fff8eb", border: "1px solid #f0cfa0", color: "#2b120f", textDecoration: "none" }}>
+              <BadgePercent size={19} color="#e86c12" />
+              <strong style={{ fontSize: "11px", color: "#870210" }}>العروضات</strong>
+            </Link>
+            <Link href="/cart" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "4px", padding: "10px 4px", borderRadius: "14px", background: "#fdf9f4", border: "1px solid #eedfd3", color: "#2b120f", textDecoration: "none" }}>
+              <ShoppingCart size={19} color="#870210" />
+              <strong style={{ fontSize: "11px", color: "#2b120f" }}>السلة</strong>
+            </Link>
           </div>
         </section>
 
         <section
-          className="panel-card"
           style={{
-            padding: "18px",
+            padding: "14px 16px",
             borderRadius: "20px",
-            border: "1.5px solid #cfe2d5",
-            boxShadow: "0 8px 24px rgba(135, 2, 16, 0.06)",
+            border: "1.5px solid #ead8cc",
+            boxShadow: "0 8px 22px rgba(135, 2, 16, 0.05)",
             background: "#ffffff",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px", paddingBottom: "12px", borderBottom: "1px solid #e6efe9", marginBottom: "14px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", paddingBottom: "10px", borderBottom: "1px solid #f3e8df", marginBottom: "12px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ width: "36px", height: "36px", borderRadius: "11px", background: "#fceee9", color: "#870210", display: "grid", placeItems: "center" }}>
-                <MapPin size={18} />
+              <span style={{ width: "34px", height: "34px", borderRadius: "11px", background: "#fceee9", color: "#870210", display: "grid", placeItems: "center" }}>
+                <MapPin size={17} />
               </span>
               <div>
-                <h2 style={{ margin: 0, fontSize: "16.5px", color: "#123826" }}>عناويني المحفوظة ({customer.addresses.length})</h2>
-                <small style={{ color: "#5e7265", fontSize: "11px" }}>انقر على أي عنوان عند تأكيد الطلب لاختياره فوراً</small>
+                <h2 style={{ margin: 0, fontSize: "15px", color: "#2b120f" }}>عناويني المحفوظة ({customer.addresses.length})</h2>
+                <small style={{ color: "#7a5e54", fontSize: "10.5px" }}>تُختار تلقائياً عند تأكيد طلبك</small>
               </div>
             </div>
             {!showAddressForm && (
@@ -2954,49 +2961,49 @@ function AccountPage() {
                   setShowAddressForm(true);
                 }}
               >
-                <Plus size={14} /> إضافة عنوان جديد
+                <Plus size={14} /> إضافة عنوان
               </button>
             )}
           </div>
 
           {!customer.addresses.length && !showAddressForm ? (
-            <div style={{ textAlign: "center", padding: "18px 12px", borderRadius: "14px", background: "#f7faf8", border: "1px dashed #c8d9ce" }}>
-              <p style={{ margin: "0 0 10px", fontSize: "12.5px", color: "#52685b" }}>لا توجد عناوين محفوظة بعد. سيُحفظ عنوانك تلقائياً عند أول طلب أو يمكنك إضافته الآن.</p>
-              <button type="button" className="small-button selected" onClick={() => setShowAddressForm(true)}><Plus size={14} /> إضافة أول عنوان توصيل</button>
+            <div style={{ textAlign: "center", padding: "16px 12px", borderRadius: "14px", background: "#fdf9f4", border: "1px dashed #dfcbbd" }}>
+              <p style={{ margin: "0 0 10px", fontSize: "12px", color: "#6e564d" }}>لا توجد عناوين محفوظة بعد. أضف عنوانك مرة واحدة للطلب السريع.</p>
+              <button type="button" className="small-button selected" onClick={() => setShowAddressForm(true)}><Plus size={14} /> إضافة أول عنوان</button>
             </div>
           ) : (
-            <div style={{ display: "grid", gap: "10px" }}>
+            <div style={{ display: "grid", gap: "8px" }}>
               {customer.addresses.map(item => (
                 <div
                   key={item.id}
                   style={{
-                    padding: "12px 14px",
+                    padding: "11px 13px",
                     borderRadius: "14px",
-                    background: item.isDefault ? "#f3faf5" : "#ffffff",
-                    border: item.isDefault ? "1.5px solid #870210" : "1px solid #dce6df",
+                    background: item.isDefault ? "#fffaf5" : "#ffffff",
+                    border: item.isDefault ? "1.5px solid #870210" : "1px solid #ead8cc",
                     display: "flex",
                     justifyContent: "space-between",
-                    alignItems: "flex-start",
+                    alignItems: "center",
                     flexWrap: "wrap",
-                    gap: "10px",
+                    gap: "8px",
                   }}
                 >
-                  <div style={{ display: "grid", gap: "4px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                      <strong style={{ fontSize: "14px", color: "#123826" }}>📍 {item.label}</strong>
-                      {item.isDefault && <span className="default-tag">العنوان الافتراضي ✓</span>}
+                  <div style={{ display: "grid", gap: "3px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "7px", flexWrap: "wrap" }}>
+                      <strong style={{ fontSize: "13.5px", color: "#2b120f" }}>📍 {item.label}</strong>
+                      {item.isDefault && <span style={{ fontSize: "10px", fontWeight: 800, padding: "2px 8px", borderRadius: "99px", background: "#edf6eb", color: "#1f7a4c" }}>الافتراضي ✓</span>}
                     </div>
-                    <div style={{ fontSize: "12.5px", color: "#2c4738", fontWeight: 700 }}>
+                    <div style={{ fontSize: "12px", color: "#5c433b", fontWeight: 700 }}>
                       {item.recipientName} · <span dir="ltr" style={{ color: "#870210" }}>{cleanYemeniPhone(item.phone)}</span>
                     </div>
-                    <div style={{ fontSize: "12px", color: "#516659" }}>
+                    <div style={{ fontSize: "11.5px", color: "#785f56" }}>
                       {item.city} — {item.district}{item.details ? (" · " + item.details) : ""}
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                     {!item.isDefault && (
                       <button type="button" className="small-button" onClick={() => { customer.setDefaultAddress(item.id); toast.success("تم تعيينه كعنوان افتراضي ✓"); }}>
-                        تعيين كافتراضي
+                        تعيين افتراضي
                       </button>
                     )}
                     <button
@@ -3028,7 +3035,7 @@ function AccountPage() {
                         if (editingAddressId === item.id) resetAddressForm();
                       }}
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={15} />
                     </button>
                   </div>
                 </div>
@@ -3037,11 +3044,11 @@ function AccountPage() {
           )}
 
           {showAddressForm && (
-            <form className="form-stack" onSubmit={submitAddress} style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1.5px dashed #cfe0d4", gap: "10px" }}>
-              <strong style={{ fontSize: "13.5px", color: "#870210" }}>{editingAddressId ? "✏️ تعديل العنوان المحفوظ" : "➕ إضافة عنوان توصيل جديد"}</strong>
+            <form className="form-stack" onSubmit={submitAddress} style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1.5px dashed #e5d2c3", gap: "10px" }}>
+              <strong style={{ fontSize: "13px", color: "#870210" }}>{editingAddressId ? "✏️ تعديل العنوان المحفوظ" : "➕ إضافة عنوان توصيل جديد"}</strong>
               <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                 {["المنزل", "العمل", "منزل العائلة", "استراحة"].map(preset => (
-                  <button key={preset} type="button" className={"small-button" + (address.label === preset ? " selected" : "")} style={{ minHeight: "28px", padding: "2px 10px", fontSize: "11.5px" }} onClick={() => setAddress({ ...address, label: preset })}>{preset}</button>
+                  <button key={preset} type="button" className={"small-button" + (address.label === preset ? " selected" : "")} style={{ minHeight: "28px", padding: "2px 10px", fontSize: "11px" }} onClick={() => setAddress({ ...address, label: preset })}>{preset}</button>
                 ))}
               </div>
               <div className="form-grid">
@@ -3081,10 +3088,38 @@ function AccountPage() {
             </form>
           )}
         </section>
+
+        <section
+          style={{
+            borderRadius: "18px",
+            border: "1px solid #ead8cc",
+            background: "#ffffff",
+            overflow: "hidden",
+            display: "grid",
+          }}
+        >
+          <Link href="/assistant" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 15px", textDecoration: "none", color: "#2b120f", borderBottom: "1px solid #f5ebe3" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "9px", fontSize: "13px", fontWeight: 700 }}>
+              <Sparkles size={17} color="#870210" /> مساعد شهيزو الذكي للطلبات والوجبات
+            </span>
+            <ChevronLeft size={16} color="#8c766e" />
+          </Link>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("toggle-shahezo-wa"))}
+            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 15px", background: "transparent", border: 0, cursor: "pointer", color: "#2b120f", width: "100%", textAlign: "right" }}
+          >
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "9px", fontSize: "13px", fontWeight: 700 }}>
+              <MessageCircle size={17} color="#25D366" /> تواصل واتساب وخدمة العملاء (779542219)
+            </span>
+            <ChevronLeft size={16} color="#8c766e" />
+          </button>
+        </section>
       </div>
     </main>
   );
 }
+
 type AssistantProductLine = { productId: number; name: string; price: number; unit: string; quantity: number; stock: number | null; minQuantity: number; quantityStep: number };
 type AssistantCartAction = { id: string; type: "add" | "remove"; items: AssistantProductLine[]; status: "pending" | "confirmed" | "cancelled" };
 type AssistantMessage = {
