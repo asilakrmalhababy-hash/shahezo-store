@@ -120,6 +120,45 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   app.get("/api/health", (_req, res) => res.json({ status: "ok", ts: Date.now() }));
+
+  // --- SEO_SITEMAP_AND_ROBOTS_START ---
+  app.get("/robots.txt", (_req, res) => {
+    const host = "https://shahezo-store.onrender.com";
+    res.set("Content-Type", "text/plain; charset=utf-8").send(
+      `User-agent: *\nAllow: /\nAllow: /products\nAllow: /categories\nDisallow: /admin\nDisallow: /api/trpc\n\nSitemap: ${host}/sitemap.xml\n`
+    );
+  });
+
+  app.get("/sitemap.xml", async (_req, res) => {
+    const host = "https://shahezo-store.onrender.com";
+    const nowIso = new Date().toISOString();
+    const urls: Array<{ loc: string; priority: string; changefreq: string }> = [
+      { loc: `${host}/`, priority: "1.0", changefreq: "daily" },
+      { loc: `${host}/products`, priority: "0.95", changefreq: "daily" },
+      { loc: `${host}/products?offers=1`, priority: "0.95", changefreq: "daily" },
+      { loc: `${host}/categories`, priority: "0.90", changefreq: "weekly" },
+      { loc: `${host}/products?search=${encodeURIComponent("فلافل")}`, priority: "0.95", changefreq: "daily" },
+      { loc: `${host}/products?search=${encodeURIComponent("شاورما")}`, priority: "0.90", changefreq: "daily" },
+      { loc: `${host}/products?search=${encodeURIComponent("عصائر")}`, priority: "0.85", changefreq: "daily" },
+    ];
+    try {
+      const g = globalThis as any;
+      const cats = g.__fastHomeData?.categories || [];
+      const prods = g.__fastHomeData?.products || [];
+      for (const c of cats) {
+        if (c?.id) urls.push({ loc: `${host}/products?category=${c.id}`, priority: "0.85", changefreq: "weekly" });
+      }
+      for (const p of prods) {
+        if (p?.id) urls.push({ loc: `${host}/product/${p.id}`, priority: "0.80", changefreq: "weekly" });
+      }
+    } catch {}
+    const xmlItems = urls.map(u => `<url><loc>${u.loc}</loc><lastmod>${nowIso}</lastmod><changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`).join("");
+    res.set("Content-Type", "application/xml; charset=utf-8").send(
+      `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${xmlItems}</urlset>`
+    );
+  });
+  // --- SEO_SITEMAP_AND_ROBOTS_END ---
+
   // --- GZIP_AND_DB_MONITOR_START ---
   app.get("/api/db-status", async (req, res) => {
     try {

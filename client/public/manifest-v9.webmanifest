@@ -2,7 +2,7 @@
   "id": "/?pwa=v9",
   "name": "شهيزو",
   "short_name": "شهيزو",
-  "description": "بوفية شهيزو – شاورما • فلافل • عصائر",
+  "description": "شهيزو – أشهر بوفية ومطعم فلافل وشاورما وعصائر طازجة. اطلب الآن أونلاين مع توصيل سريع!",
   "lang": "ar",
   "dir": "rtl",
   "start_url": "/",
@@ -11,6 +11,11 @@
   "orientation": "portrait",
   "background_color": "#fdf9f4",
   "theme_color": "#870210",
+  "categories": [
+    "food",
+    "shopping",
+    "lifestyle"
+  ],
   "icons": [
     {
       "src": "/app-icon-192-v8.png",
