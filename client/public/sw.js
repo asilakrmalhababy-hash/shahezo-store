@@ -1,4 +1,4 @@
-const CACHE = "shahezo-shell-v9";
+const CACHE = "shahezo-shell-v10";
 const PRECACHE = ["/", "/offline.html", "/manifest-v9.webmanifest", "/app-icon-192-v8.png", "/chef-hat.png", "/notif-icon-v8.png", "/notif-badge-v8.png"];
 
 self.addEventListener("install", event => {
@@ -19,9 +19,38 @@ self.addEventListener("fetch", event => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/admin")) return;
+
+  // Cache-first for hashed static assets (/assets/*, icons, fonts) for instant load on weak phones
+  if (url.pathname.startsWith("/assets/") || url.pathname.endsWith(".png") || url.pathname.endsWith(".webp") || url.pathname.endsWith(".webmanifest")) {
+    event.respondWith(
+      caches.match(request).then(cached => {
+        if (cached) return cached;
+        return fetch(request).then(resp => {
+          if (resp && resp.status === 200) {
+            const copy = resp.clone();
+            caches.open(CACHE).then(c => c.put(request, copy)).catch(() => {});
+          }
+          return resp;
+        });
+      })
+    );
+    return;
+  }
+
+  // Instant Stale-While-Revalidate for PWA app shell navigation
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request).catch(() => caches.match("/offline.html") || caches.match("/"))
+      caches.open(CACHE).then(async cache => {
+        const cachedShell = await cache.match("/");
+        const networkPromise = fetch(request).then(resp => {
+          if (resp && resp.status === 200) {
+            cache.put("/", resp.clone()).catch(() => {});
+          }
+          return resp;
+        }).catch(() => cachedShell || cache.match("/offline.html"));
+        return cachedShell || networkPromise;
+      })
     );
   }
 });

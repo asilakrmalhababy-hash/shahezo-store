@@ -1521,42 +1521,99 @@ function CartPage({ minOrder = 0 }: { minOrder?: number }) {
   const { cart, setQuantity, remove, clear } = useStore();
   const [checkout, setCheckout] = useState(false);
   const subtotal = cart.reduce((sum, line) => sum + line.price * line.quantity, 0);
+  const totalItemsCount = cart.reduce((sum, line) => sum + line.quantity, 0);
   const belowMin = minOrder > 0 && subtotal < minOrder;
+
   return (
-    <main className="page-shell inner-page">
-      <div className="page-title-row">
-        <div>
-          <span className="eyebrow"></span>
-          <h1>سلة التسوق</h1>
-          <p></p>
+    <main className="page-shell inner-page" style={{ paddingTop: "12px", paddingBottom: "28px" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "10px",
+          padding: "12px 16px",
+          borderRadius: "18px",
+          background: "#ffffff",
+          border: "1.5px solid #ead8cc",
+          boxShadow: "0 6px 18px rgba(135, 2, 16, 0.05)",
+          marginBottom: "14px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ width: "42px", height: "42px", borderRadius: "13px", background: "linear-gradient(135deg, #870210 0%, #5e010b 100%)", color: "#f1d897", display: "grid", placeItems: "center", flexShrink: 0 }}>
+            <ShoppingCart size={20} />
+          </span>
+          <div>
+            <h1 style={{ margin: 0, fontSize: "18px", fontWeight: 900, color: "#2b120f" }}>سلة التسوق</h1>
+            <small style={{ fontSize: "11px", color: "#7a5e54", fontWeight: 700 }}>
+              {cart.length > 0 ? `${cart.length} أصناف (${totalItemsCount} وحدة) جاهزة للطلب` : "سلتك فارغة حالياً"}
+            </small>
+          </div>
         </div>
-        <span className="page-title-icon"><ShoppingCart size={24} /></span>
+        {cart.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm("هل تريد إفراغ السلة بالكامل؟")) clear();
+            }}
+            style={{
+              padding: "6px 11px",
+              borderRadius: "10px",
+              border: "1px solid #f2cfc6",
+              background: "#fff5f4",
+              color: "#b42318",
+              fontSize: "11px",
+              fontWeight: 800,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "5px",
+            }}
+          >
+            <Trash2 size={13} /> إفراغ السلة
+          </button>
+        )}
       </div>
+
       {!cart.length ? (
-        <EmptyState
-          icon={ShoppingCart}
-          title="السلة فارغة الآن"
-          description="عندما تضيف منتجات من المتجر، ستجدها هنا."
-          action="ابدأ التسوق"
-          href="/products"
-        />
+        <div className="shahezo-empty-hero">
+          <div className="shahezo-empty-icon-ring">
+            <ShoppingCart size={34} strokeWidth={1.8} />
+          </div>
+          <div style={{ display: "grid", gap: "5px" }}>
+            <strong style={{ fontSize: "18px", color: "#2b120f", fontWeight: 900 }}>سلتك بانتظار أشهى الوجبات الساخنة! 🥙</strong>
+            <p style={{ margin: 0, fontSize: "12.5px", color: "#6e564d", lineHeight: 1.65, maxWidth: "340px" }}>
+              لم تضف أي طلبات للسلة بعد. استكشف تشكيلة الشاورما والفلافل المقرمشة والعصائر الطازجة أو تصفح عروض التوفير الآن.
+            </p>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "9px", width: "100%", marginTop: "4px" }}>
+            <Link href="/products" className="button button-primary" style={{ flex: "1 1 160px", maxWidth: "220px", textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
+              <ShoppingBag size={16} /> تسوق المتجر الآن
+            </Link>
+            <Link href="/products?offers=1" className="button" style={{ flex: "1 1 150px", maxWidth: "200px", textDecoration: "none", background: "#fff8eb", color: "#870210", border: "1.5px solid #e86c12", fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+              <BadgePercent size={16} /> قسم العروضات
+            </Link>
+          </div>
+        </div>
       ) : (
-        <div className="cart-layout">
-          <div className="cart-list">
+        <div className="cart-layout shahezo-card-enter">
+          <div className="cart-list" style={{ borderRadius: "20px", border: "1.5px solid #ead8cc", background: "#ffffff", padding: "8px 14px", boxShadow: "0 8px 22px rgba(135, 2, 16, 0.05)" }}>
             {cart.map(line => (
               <CartRow
-                key={line.variant ? line.id + "::" + line.variant : String(line.id)}
+                key={line.id}
                 line={line}
-                onQuantity={quantity => setQuantity(line.id, quantity, line.variant)}
-                onRemove={() => remove(line.id, line.variant)}
+                onQuantity={quantity => setQuantity(line.id, quantity)}
+                onRemove={() => remove(line.id)}
               />
             ))}
-            <button className="text-link clear-cart" onClick={clear}>
-              <Trash2 size={15} /> إفراغ السلة
-            </button>
           </div>
-          <aside className="summary-card">
-            <span className="eyebrow">ملخص الطلب</span>
+          <aside className="summary-card" style={{ borderRadius: "20px", border: "1.5px solid #ead8cc", background: "linear-gradient(180deg, #ffffff 0%, #fffaf5 100%)", boxShadow: "0 10px 26px rgba(135, 2, 16, 0.07)" }}>
+            <span className="eyebrow" style={{ color: "#e86c12", fontWeight: 800 }}>فاتورة طلبك المبدئية</span>
+            <div className="summary-line">
+              <span>عدد الأصناف</span>
+              <strong>{cart.length} أصناف ({totalItemsCount} وحدة)</strong>
+            </div>
             <div className="summary-line">
               <span>المجموع الفرعي</span>
               <strong>{formatPrice(subtotal)}</strong>
@@ -1568,34 +1625,33 @@ function CartPage({ minOrder = 0 }: { minOrder?: number }) {
               </div>
             )}
             <div className="summary-line">
-              <span>التوصيل</span>
-              <span className="subtle-note">يحسب بعد تحديد المنطقة</span>
+              <span>رسوم التوصيل</span>
+              <span style={{ fontSize: "11px", color: "#1f7a4c", fontWeight: 700 }}>تُحسب تلقائياً عند اختيار الحي</span>
             </div>
-            <div className="summary-total">
-              <span>الإجمالي الحالي</span>
-              <strong>{formatPrice(subtotal)}</strong>
+            <div className="summary-total" style={{ borderTop: "1.5px dashed #e5d2c3", marginTop: "6px", paddingTop: "12px" }}>
+              <span style={{ fontWeight: 800, color: "#2b120f" }}>الإجمالي الحالي</span>
+              <strong style={{ fontSize: "19px", color: "#870210" }}>{formatPrice(subtotal)}</strong>
             </div>
-            {belowMin ? (
+            {belowMin && (
               <p
-                className="summary-note"
                 style={{
                   color: "#b42318",
                   background: "#fef3f2",
                   border: "1px solid #fecdca",
-                  padding: "8px 10px",
-                  borderRadius: "10px",
+                  padding: "9px 11px",
+                  borderRadius: "12px",
                   fontWeight: 700,
+                  fontSize: "11.5px",
+                  margin: "8px 0",
                 }}
               >
                 ⚠️ الحد الأدنى للطلب هو {formatPrice(minOrder)} — أضف منتجات بقيمة {formatPrice(minOrder - subtotal)} لإتمام الطلب.
               </p>
-            ) : (
-              <p className="summary-note">
-                
-              </p>
             )}
             <button
+              type="button"
               className="button button-primary full-button"
+              style={{ marginTop: "8px", minHeight: "46px", fontSize: "14px", fontWeight: 900, borderRadius: "14px" }}
               onClick={() => {
                 if (belowMin) {
                   toast.error(`الحد الأدنى للطلب من المتجر هو ${formatPrice(minOrder)} (متبقي ${formatPrice(minOrder - subtotal)})`);
@@ -1604,7 +1660,7 @@ function CartPage({ minOrder = 0 }: { minOrder?: number }) {
                 setCheckout(true);
               }}
             >
-              المتابعة لإتمام الطلب<ArrowLeft size={17} />
+              <Check size={17} /> المتابعة لإتمام الطلب ({formatPrice(subtotal)}) <ArrowLeft size={16} />
             </button>
             {checkout && <Checkout onClose={() => setCheckout(false)} onSuccess={clear} cart={cart} />}
           </aside>
@@ -1615,8 +1671,32 @@ function CartPage({ minOrder = 0 }: { minOrder?: number }) {
 }
 
 function CartRow({ line, onQuantity, onRemove }: { line: CartLine; onQuantity: (n: number) => void; onRemove: () => void }) {
-  return <article className="cart-row"><div className="cart-thumb">{line.imageUrl ? <img src={line.imageUrl} alt="" loading="lazy" decoding="async" /> : <Leaf size={22} />}</div><div className="cart-row-info"><strong>{line.name}</strong><small>{formatPrice(line.price)} / {line.unit}</small><div className="cart-row-tools"><div className="quantity-compact"><button aria-label="تقليل" onClick={() => onQuantity(line.quantity - (line.quantityStep || 1))}><Minus size={14} /></button><b>{line.quantity}</b><button aria-label="زيادة" disabled={line.stock !== null && line.stock !== undefined && line.quantity + (line.quantityStep || 1) > line.stock} onClick={() => onQuantity(line.quantity + (line.quantityStep || 1))}><Plus size={14} /></button></div><button className="remove-line" onClick={onRemove}><Trash2 size={14} /> إزالة</button></div></div><strong className="cart-line-total">{formatPrice(line.price * line.quantity)}</strong></article>;
+  return (
+    <article className="cart-row" style={{ padding: "12px 0", borderBottom: "1px solid #f5ebe3" }}>
+      <div className="cart-thumb" style={{ borderRadius: "14px", overflow: "hidden", border: "1px solid #ead8cc" }}>
+        {line.imageUrl ? <img src={line.imageUrl} alt="" loading="lazy" decoding="async" /> : <Leaf size={22} />}
+      </div>
+      <div className="cart-row-info">
+        <strong style={{ fontSize: "13.5px", color: "#2b120f" }}>{line.name}</strong>
+        <small style={{ color: "#7a5e54", fontWeight: 600 }}>{formatPrice(line.price)} / {line.unit}</small>
+        <div className="cart-row-tools" style={{ marginTop: "6px" }}>
+          <div className="quantity-compact" style={{ background: "#fdf9f4", border: "1px solid #ead8cc", borderRadius: "10px" }}>
+            <button type="button" aria-label="تقليل" onClick={() => onQuantity(line.quantity - (line.quantityStep || 1))}><Minus size={14} /></button>
+            <b style={{ color: "#870210", minWidth: "22px", textAlign: "center" }}>{line.quantity}</b>
+            <button type="button" aria-label="زيادة" disabled={line.stock !== null && line.stock !== undefined && line.quantity + (line.quantityStep || 1) > line.stock} onClick={() => onQuantity(line.quantity + (line.quantityStep || 1))}><Plus size={14} /></button>
+          </div>
+          <button type="button" className="remove-line" onClick={onRemove} style={{ color: "#b42318", fontWeight: 700 }}>
+            <Trash2 size={14} /> حذف
+          </button>
+        </div>
+      </div>
+      <strong className="cart-line-total" style={{ fontSize: "14px", color: "#870210", fontWeight: 900 }}>
+        {formatPrice(line.price * line.quantity)}
+      </strong>
+    </article>
+  );
 }
+
 
 function getYemenCarrierName(phone: string): string {
   const clean = cleanYemeniPhone(phone);
@@ -2409,30 +2489,107 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
   );
 }
 function FavoritesPage() {
-  const { favoriteIds } = useStore();
+  const { favoriteIds, add } = useStore();
   const [, navigate] = useLocation();
   const query = trpc.commerce.catalog.productsForReorder.useQuery({ ids: favoriteIds }, { enabled: favoriteIds.length > 0, retry: 1, staleTime: 30_000 });
-  const products = query.data ?? [];
-  return <main className="page-shell inner-page"><div className="page-title-row"><div><span className="eyebrow">احتفظ بما تحب</span><h1>المفضلة</h1><p>تُحفظ مفضلتك على هذا المتصفح دون إنشاء حساب.</p></div><span className="page-title-icon"><Heart size={23} /></span></div>{query.isLoading ? <Loading /> : query.error ? <LoadError onRetry={() => void query.refetch()} /> : !favoriteIds.length ? <EmptyState icon={Heart} title="لم تحفظ منتجات بعد" description="اضغط علامة القلب على أي منتج لإضافته هنا." action="تصفح المنتجات" href="/products" /> : !products.length ? <EmptyState icon={Heart} title="لا توجد منتجات متاحة من مفضلتك الآن" description="قد تكون المنتجات التي حفظتها أُخفيت أو نفدت." action="تصفح المنتجات" href="/products" /> : <ProductGrid items={products as PublicProduct[]} onOpen={id => navigate("/product/" + id)} />}</main>;
+  const products = (query.data ?? []) as PublicProduct[];
+
+  const addAllFavoritesToCart = () => {
+    let count = 0;
+    for (const p of products) {
+      if (p.stock !== null && p.stock < (p.minQuantity || 1)) continue;
+      add(p, p.minQuantity || 1);
+      count += 1;
+    }
+    if (count > 0) toast.success(`🛒 تمت إضافة ${count} أصناف من مفضلتك إلى السلة!`);
+    else toast.error("لا توجد أصناف متاحة للإضافة حالياً");
+  };
+
+  return (
+    <main className="page-shell inner-page" style={{ paddingTop: "12px", paddingBottom: "28px" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "10px",
+          padding: "12px 16px",
+          borderRadius: "18px",
+          background: "#ffffff",
+          border: "1.5px solid #ead8cc",
+          boxShadow: "0 6px 18px rgba(135, 2, 16, 0.05)",
+          marginBottom: "14px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ width: "42px", height: "42px", borderRadius: "13px", background: "#fceee9", color: "#d90429", display: "grid", placeItems: "center", flexShrink: 0 }}>
+            <Heart size={20} fill="currentColor" />
+          </span>
+          <div>
+            <h1 style={{ margin: 0, fontSize: "18px", fontWeight: 900, color: "#2b120f" }}>قائمتي المفضلة</h1>
+            <small style={{ fontSize: "11px", color: "#7a5e54", fontWeight: 700 }}>
+              {favoriteIds.length > 0 ? `${favoriteIds.length} وجبات وأصناف محفوظة لطلبها سريعاً` : "احتفظ بوجباتك المفضلة هنا"}
+            </small>
+          </div>
+        </div>
+        {products.length > 0 && (
+          <button
+            type="button"
+            onClick={addAllFavoritesToCart}
+            className="small-button selected"
+            style={{ background: "#870210", color: "#ffffff", border: "none", padding: "8px 13px", borderRadius: "11px", fontWeight: 800, fontSize: "11.5px" }}
+          >
+            <ShoppingCart size={14} /> أضف الكل للسلة
+          </button>
+        )}
+      </div>
+
+      {query.isLoading ? (
+        <Loading />
+      ) : query.error ? (
+        <LoadError onRetry={() => void query.refetch()} />
+      ) : !favoriteIds.length ? (
+        <div className="shahezo-empty-hero">
+          <div className="shahezo-empty-icon-ring" style={{ color: "#d90429" }}>
+            <Heart size={34} strokeWidth={1.8} />
+          </div>
+          <div style={{ display: "grid", gap: "5px" }}>
+            <strong style={{ fontSize: "18px", color: "#2b120f", fontWeight: 900 }}>قائمة المفضلة فارغة حالياً ❤️</strong>
+            <p style={{ margin: 0, fontSize: "12.5px", color: "#6e564d", lineHeight: 1.65, maxWidth: "340px" }}>
+              اضغط على رمز القلب بأعلى أي وجبة أو عصير في المتجر لحفظه هنا والوصول إليه بنقرة واحدة متى ما اشتهيته!
+            </p>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "9px", width: "100%", marginTop: "4px" }}>
+            <Link href="/products" className="button button-primary" style={{ flex: "1 1 160px", maxWidth: "220px", textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
+              <ShoppingBag size={16} /> استكشف قائمة الطعام
+            </Link>
+          </div>
+        </div>
+      ) : !products.length ? (
+        <EmptyState icon={Heart} title="لا توجد منتجات متاحة من مفضلتك الآن" description="قد تكون المنتجات التي حفظتها أُخفيت أو نفدت." action="تصفح المنتجات" href="/products" />
+      ) : (
+        <div className="shahezo-card-enter">
+          <ProductGrid items={products} onOpen={id => navigate("/product/" + id)} />
+        </div>
+      )}
+    </main>
+  );
 }
 
 function OrdersPage() {
-  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const customer = useCustomer();
   const { add } = useStore();
   const searchStr = useSearch();
   const searchParams = new URLSearchParams(searchStr);
   const focusedOrderNumber = searchParams.get("order");
-  const justOrdered = searchParams.get("justOrdered") === "1";
   const refs = useMemo(() => customer.orders.slice(0, 50).map(({ orderNumber, idempotencyKey }) => ({ orderNumber, idempotencyKey })), [customer.orders]);
   const query = trpc.commerce.orders.trackMany.useQuery({ refs }, { enabled: refs.length > 0, retry: 1, staleTime: 25_000, refetchInterval: refs.length ? 45_000 : false, refetchIntervalInBackground: false });
   const publicKey = trpc.commerce.notifications.publicKey.useQuery(undefined, { enabled: false, retry: 1 });
   const subscribe = trpc.commerce.orders.subscribeToStatus.useMutation();
-  const [permission, setPermission] = useState(getPushPermissionState);
-  const [pushEnabled, setPushEnabled] = useState(false);
-  const [pushPending, setPushPending] = useState(false);
   const [reorder, setReorder] = useState<Array<{ productId: number; quantity: number }> | null>(null);
   const reorderQuery = trpc.commerce.catalog.productsForReorder.useQuery({ ids: reorder?.map(item => item.productId) ?? [1] }, { enabled: Boolean(reorder), retry: 1 });
+  const [expandedOrderNo, setExpandedOrderNo] = useState<string | null>(focusedOrderNumber);
 
   useEffect(() => {
     if (!refs.length) return;
@@ -2440,9 +2597,7 @@ function OrdersPage() {
       try {
         if (!localStorage.getItem("shahezo-orders-push-asked-v1")) {
           localStorage.setItem("shahezo-orders-push-asked-v1", "1");
-          void requestPushPermission().then(res => {
-            setPermission(res);
-          });
+          void requestPushPermission();
         }
       } catch {}
     }
@@ -2459,34 +2614,11 @@ function OrdersPage() {
           if (key) subscription = await ensureBrowserPushSubscription(key);
         }
         if (!subscription || !active) return;
-        const result = await subscribe.mutateAsync({ refs, subscription });
-        if (active) setPushEnabled(result.subscribed > 0);
+        await subscribe.mutateAsync({ refs, subscription });
       } catch {}
     })();
     return () => { active = false; };
   }, [refs.length]);
-
-  const enableNotifications = async () => {
-    if (!refs.length || pushPending) return;
-    setPushPending(true);
-    try {
-      const requestedPermission = await requestPushPermission();
-      setPermission(requestedPermission);
-      if (requestedPermission === "unsupported") throw new Error("متصفحك لا يدعم إشعارات Push لهذا التطبيق.");
-      if (requestedPermission !== "granted") throw new Error("يرجى السماح بالإشعارات من نافذة المتصفح لتتبع طلبك.");
-      const key = publicKey.data ?? (await publicKey.refetch()).data;
-      if (!key) throw new Error("تعذر الاتصال بخدمة الإشعارات. أعد المحاولة بعد قليل.");
-      const subscription = await ensureBrowserPushSubscription(key);
-      const result = await subscribe.mutateAsync({ refs, subscription });
-      if (!result.subscribed) throw new Error("لم نعثر على طلب محفوظ صالح لهذا المتصفح.");
-      setPushEnabled(true);
-      toast.success("تم تفعيل إشعارات تتبع الطلب بنجاح!");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "تعذر تفعيل الإشعارات الآن.");
-    } finally {
-      setPushPending(false);
-    }
-  };
 
   useEffect(() => {
     if (!reorder || !reorderQuery.data) return;
@@ -2494,16 +2626,18 @@ function OrdersPage() {
     for (const line of reorder) {
       const product = reorderQuery.data.find(candidate => candidate.id === line.productId);
       if (!product) continue;
-      const minimum = product.minQuantity || 1; const step = product.quantityStep || 1;
+      const minimum = product.minQuantity || 1;
+      const step = product.quantityStep || 1;
       let quantity = minimum + Math.max(0, Math.floor((Math.max(minimum, line.quantity) - minimum) / step)) * step;
       if (product.stock !== null) {
         const bounded = Math.min(quantity, product.stock);
         quantity = minimum + Math.max(0, Math.floor((bounded - minimum) / step)) * step;
         if (quantity > product.stock) continue;
       }
-      add(product, quantity); added += 1;
+      add(product, quantity);
+      added += 1;
     }
-    if (added) toast.success("أُضيف " + added + " منتج إلى السلة.");
+    if (added) toast.success("🛒 أُضيفت أصناف الطلب (" + added + ") إلى السلة بنجاح!");
     else toast.error("لا توجد منتجات متاحة من هذا الطلب الآن.");
     setReorder(null);
   }, [reorder, reorderQuery.data, add]);
@@ -2514,143 +2648,244 @@ function OrdersPage() {
     return raw;
   }, [query.data]);
 
+  useEffect(() => {
+    if (orders.length > 0 && expandedOrderNo === null) {
+      setExpandedOrderNo(focusedOrderNumber || orders[0].orderNumber);
+    }
+  }, [orders.length, focusedOrderNumber]);
+
   const stepOrder = ["new", "preparing", "ready", "out_for_delivery", "delivered"];
-  const stepTitles: Record<string, string> = {
-    new: "تم الاستلام",
-    preparing: "قيد التجهيز",
-    ready: "جاهز",
-    out_for_delivery: "خرج للتوصيل",
-    delivered: "تم التسليم",
+  const stepMeta: Record<string, { label: string; emoji: string }> = {
+    new: { label: "تم الاستلام", emoji: "📥" },
+    preparing: { label: "قيد التجهيز", emoji: "👨‍🍳" },
+    ready: { label: "جاهز", emoji: "📦" },
+    out_for_delivery: { label: "خرج للتوصيل", emoji: "🛵" },
+    delivered: { label: "تم التسليم", emoji: "✅" },
   };
 
+  const activeOrdersCount = orders.filter(o => o.status !== "delivered" && o.status !== "cancelled").length;
+
   return (
-    <main className="page-shell inner-page">
-      <div className="page-title-row">
-        <div><span className="eyebrow">متابعة حية ومباشرة</span><h1>طلباتي ({orders.length})</h1><p>مرتبة من الأحدث للأقدم — تابع حالة طلبك وفاتورتك خطوة بخطوة.</p></div>
-        <span className="page-title-icon"><Package size={23} /></span>
+    <main className="page-shell inner-page" style={{ paddingTop: "12px", paddingBottom: "28px" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "10px",
+          padding: "12px 16px",
+          borderRadius: "18px",
+          background: "#ffffff",
+          border: "1.5px solid #ead8cc",
+          boxShadow: "0 6px 18px rgba(135, 2, 16, 0.05)",
+          marginBottom: "14px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ width: "42px", height: "42px", borderRadius: "13px", background: "linear-gradient(135deg, #870210 0%, #5e010b 100%)", color: "#f1d897", display: "grid", placeItems: "center", flexShrink: 0 }}>
+            <Package size={20} />
+          </span>
+          <div>
+            <h1 style={{ margin: 0, fontSize: "18px", fontWeight: 900, color: "#2b120f" }}>طلباتي ومتابعة التوصيل</h1>
+            <small style={{ fontSize: "11px", color: "#7a5e54", fontWeight: 700 }}>
+              {orders.length > 0 ? `إجمالي الطلبات: ${orders.length}` + (activeOrdersCount > 0 ? ` · (${activeOrdersCount} قيد التنفيذ الآن 🔥)` : "") : "تتبع حالة طلباتك خطوة بخطوة"}
+            </small>
+          </div>
+        </div>
+        {orders.length > 0 && (
+          <button
+            type="button"
+            onClick={() => { void query.refetch(); toast.success("تم تحديث حالة الطلبات"); }}
+            className="small-button"
+            style={{ background: "#fdf9f4", border: "1px solid #ead8cc", color: "#870210", fontWeight: 800 }}
+          >
+            🔄 تحديث الحالة
+          </button>
+        )}
       </div>
 
-      {query.isLoading ? <Loading /> : query.error ? <LoadError onRetry={() => void query.refetch()} /> : !orders.length ? (
-        <EmptyState icon={Package} title={refs.length ? "لم نعثر على طلبات محفوظة على هذا الجهاز" : "لا توجد طلبات سابقة"} description="بعد إتمام طلب من هذا المتصفح، ستظهر حالته هنا مباشرة." action="تسوق الآن" href="/products" />
+      {query.isLoading ? (
+        <Loading />
+      ) : query.error ? (
+        <LoadError onRetry={() => void query.refetch()} />
+      ) : !orders.length ? (
+        <div className="shahezo-empty-hero">
+          <div className="shahezo-empty-icon-ring">
+            <Package size={34} strokeWidth={1.8} />
+          </div>
+          <div style={{ display: "grid", gap: "5px" }}>
+            <strong style={{ fontSize: "18px", color: "#2b120f", fontWeight: 900 }}>لا توجد طلبات مسجلة بعد 📦</strong>
+            <p style={{ margin: 0, fontSize: "12.5px", color: "#6e564d", lineHeight: 1.65, maxWidth: "340px" }}>
+              بمجرد إرسال أول طلب لك من بوفية شهيزو، ستظهر فاتورته ومراحل تجهيزه وتوصيله هنا لحظة بلحظة!
+            </p>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "9px", width: "100%", marginTop: "4px" }}>
+            <Link href="/products" className="button button-primary" style={{ flex: "1 1 160px", maxWidth: "220px", textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
+              <ShoppingBag size={16} /> اطلب وجبتك الآن
+            </Link>
+          </div>
+        </div>
       ) : (
-        <div style={{ display: "grid", gap: "14px" }}>
+        <div style={{ display: "grid", gap: "12px" }} className="shahezo-card-enter">
           {orders.map((order, idx) => {
             const isLatest = idx === 0;
-            const isFocused = focusedOrderNumber ? order.orderNumber === focusedOrderNumber : isLatest;
+            const isExpanded = expandedOrderNo === order.orderNumber;
             const currentStepIdx = stepOrder.indexOf(order.status);
             const cancelledNotes = (order.events || []).filter(ev => String(ev.note || "").startsWith("❌")).map(ev => String(ev.note || "").replace(/\s*\|\s*الإجمالي الجديد:.*$/, ""));
             const regularNotes = (order.events || []).filter(ev => ev.note && ev.note.trim() && ev.note !== "تم استلام الطلب" && !String(ev.note).startsWith("❌"));
             const latestStoreNote = regularNotes.at(-1);
             const ordAny = order as any;
-            const isExpanded = expandedOrder !== null ? expandedOrder === order.orderNumber : isFocused;
+            const shortOrderNo = order.orderNumber.split("-").pop() || order.orderNumber;
 
             return (
               <article
                 key={order.orderNumber}
                 style={{
-                  padding: "16px",
-                  borderRadius: "18px",
+                  borderRadius: "20px",
                   background: "#ffffff",
-                  border: isFocused ? "2px solid #870210" : "1px solid #dbe6df",
-                  boxShadow: isFocused ? "0 10px 24px rgba(135, 2, 16, 0.09)" : "0 4px 12px rgba(15, 42, 28, 0.04)",
-                  display: "grid",
-                  gap: "12px",
+                  border: isExpanded ? "2px solid #870210" : "1.5px solid #ead8cc",
+                  boxShadow: isExpanded ? "0 12px 26px rgba(135, 2, 16, 0.08)" : "0 4px 12px rgba(43, 18, 15, 0.04)",
+                  overflow: "hidden",
+                  transition: "border-color 0.2s, box-shadow 0.2s",
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "8px", paddingBottom: "10px", borderBottom: "1px solid #ebf1ed" }}>
+                <div
+                  onClick={() => setExpandedOrderNo(isExpanded ? "" : order.orderNumber)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={e => { if (e.key === "Enter") setExpandedOrderNo(isExpanded ? "" : order.orderNumber); }}
+                  style={{
+                    padding: "14px 16px",
+                    background: isExpanded ? "linear-gradient(135deg, #fffdf9 0%, #fff5eb 100%)" : "#ffffff",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: "10px",
+                    cursor: "pointer",
+                  }}
+                >
                   <div style={{ display: "grid", gap: "3px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                      <strong style={{ fontSize: "14.5px", color: "#123826", letterSpacing: "0.4px" }} dir="ltr">{order.orderNumber}</strong>
+                    <div style={{ display: "flex", alignItems: "center", gap: "7px", flexWrap: "wrap" }}>
+                      <strong style={{ fontSize: "15px", color: "#2b120f" }}>طلب #{shortOrderNo}</strong>
                       {isLatest && (
-                        <span style={{ fontSize: "10.5px", fontWeight: 800, padding: "2px 9px", borderRadius: "99px", background: "#870210", color: "#f1d897" }}>
-                          ✨ أحدث طلب
+                        <span style={{ fontSize: "10px", fontWeight: 900, padding: "2px 8px", borderRadius: "99px", background: "#870210", color: "#f1d897" }}>
+                          ✨ الأحدث
                         </span>
                       )}
+                      <span className={"status-pill status-" + order.status}>{stateLabels[order.status] || order.status}</span>
                     </div>
-                    <small style={{ color: "#607367", fontSize: "11.5px" }}>
-                      🕒 {new Date(order.createdAt).toLocaleString("ar-YE")}
-                      {ordAny.city ? (" · 📍 " + ordAny.city + (ordAny.district ? (" - " + ordAny.district) : "")) : ""}
+                    <small style={{ color: "#7a5e54", fontSize: "11px", fontWeight: 600 }}>
+                      🕒 {new Date(order.createdAt).toLocaleString("ar-YE")} · {order.items.length} أصناف
                     </small>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <span className={"status-pill status-" + order.status}>{stateLabels[order.status] || order.status}</span>
-                    <button type="button" className="small-button" style={{ minHeight: "28px", padding: "0 10px", fontSize: "11px" }} onClick={() => setExpandedOrder(isExpanded ? "" : order.orderNumber)}>
-                      {isExpanded ? "إخفاء التفاصيل ▴" : ("التفاصيل (" + formatPrice(order.total) + ") ▾")}
-                    </button>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div style={{ textAlign: "left" }}>
+                      <strong style={{ display: "block", fontSize: "15.5px", color: "#870210", fontWeight: 900 }}>{formatPrice(order.total)}</strong>
+                      <small style={{ fontSize: "10px", color: "#870210", fontWeight: 800 }}>
+                        {isExpanded ? "إخفاء التفاصيل ▴" : "عرض التفاصيل ▾"}
+                      </small>
+                    </div>
                   </div>
                 </div>
 
-                {isExpanded && (<>
-                {order.status !== "cancelled" && (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "5px", padding: "10px", borderRadius: "12px", background: "#fdf6f0", border: "1px solid #e1ece5" }}>
-                    {stepOrder.map((st, sIdx) => {
-                      const done = currentStepIdx >= sIdx;
-                      const active = currentStepIdx === sIdx;
-                      return (
-                        <div key={st} style={{ textAlign: "center", display: "grid", gap: "4px" }}>
-                          <div style={{ height: "5px", borderRadius: "99px", background: done ? "#870210" : "#d7e2da" }} />
-                          <span style={{ fontSize: "9.5px", fontWeight: active ? 900 : 600, color: done ? "#870210" : "#86968c" }}>{stepTitles[st]}</span>
-                        </div>
-                      );
-                    })}
+                {(isExpanded || (isLatest && order.status !== "delivered" && order.status !== "cancelled")) && order.status !== "cancelled" && (
+                  <div style={{ padding: "12px 14px", background: "#fdf9f4", borderTop: "1px solid #f2e4d8", borderBottom: isExpanded ? "1px solid #f2e4d8" : "none" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "6px" }}>
+                      {stepOrder.map((st, sIdx) => {
+                        const done = currentStepIdx >= sIdx;
+                        const active = currentStepIdx === sIdx;
+                        const meta = stepMeta[st];
+                        return (
+                          <div key={st} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "5px", textAlign: "center" }}>
+                            <span
+                              className={active ? "shahezo-step-dot-active" : ""}
+                              style={{
+                                width: "30px",
+                                height: "30px",
+                                borderRadius: "50%",
+                                background: active ? "#870210" : done ? "#fceee9" : "#eee6df",
+                                border: active ? "2px solid #f1d897" : done ? "1.5px solid #870210" : "1px solid #d8cbc0",
+                                display: "grid",
+                                placeItems: "center",
+                                fontSize: "13px",
+                              }}
+                            >
+                              {meta.emoji}
+                            </span>
+                            <div style={{ width: "100%", height: "4px", borderRadius: "99px", background: done ? "linear-gradient(90deg, #870210, #e86c12)" : "#e2d6cc" }} />
+                            <span style={{ fontSize: "9.5px", fontWeight: active ? 900 : 700, color: active ? "#870210" : done ? "#2b120f" : "#96827a", lineHeight: 1.2 }}>
+                              {meta.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 
-                {cancelledNotes.length > 0 && (
-                  <div style={{ padding: "10px 12px", borderRadius: "12px", background: "#fff6f4", border: "1px solid #f0c6be", display: "grid", gap: "4px" }}>
-                    <strong style={{ fontSize: "12px", color: "#8f3225" }}>🔔 تحديث على فاتورة الطلب:</strong>
-                    {cancelledNotes.map((cn, cIdx) => (
-                      <div key={cIdx} style={{ fontSize: "11.5px", color: "#5e251d", lineHeight: 1.55 }}>{cn}</div>
-                    ))}
+                {isExpanded && (
+                  <div style={{ padding: "14px 16px", display: "grid", gap: "11px" }}>
+                    {ordAny.city && (
+                      <div style={{ fontSize: "11.5px", color: "#5c433b", background: "#fffaf5", padding: "8px 11px", borderRadius: "10px", border: "1px solid #f0e0d2" }}>
+                        📍 <strong>عنوان التوصيل:</strong> {ordAny.city}{ordAny.district ? (" — " + ordAny.district) : ""}{ordAny.addressDetails ? (" · " + ordAny.addressDetails) : ""}
+                      </div>
+                    )}
+
+                    {cancelledNotes.length > 0 && (
+                      <div style={{ padding: "10px 12px", borderRadius: "12px", background: "#fff6f4", border: "1px solid #f0c6be", display: "grid", gap: "4px" }}>
+                        <strong style={{ fontSize: "12px", color: "#8f3225" }}>🔔 تحديث على فاتورة الطلب:</strong>
+                        {cancelledNotes.map((cn, cIdx) => (
+                          <div key={cIdx} style={{ fontSize: "11.5px", color: "#5e251d", lineHeight: 1.55 }}>{cn}</div>
+                        ))}
+                      </div>
+                    )}
+
+                    {latestStoreNote?.note && (
+                      <div style={{ padding: "10px 12px", borderRadius: "12px", background: "#fff9e8", border: "1px solid #edd691", color: "#574208", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+                        <BellRing size={15} />
+                        <span>رسالة المتجر: {latestStoreNote.note}</span>
+                      </div>
+                    )}
+
+                    <div style={{ padding: "10px 12px", borderRadius: "14px", background: "#fdf9f4", border: "1px solid #ead8cc", display: "grid", gap: "7px" }}>
+                      <small style={{ fontSize: "11px", fontWeight: 800, color: "#6e564d" }}>🛒 تفاصيل الأصناف ({order.items.length}):</small>
+                      <div style={{ display: "grid", gap: "5px" }}>
+                        {order.items.map(item => (
+                          <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", borderRadius: "10px", background: "#ffffff", border: "1px solid #efe2d7", fontSize: "12px" }}>
+                            <span style={{ fontWeight: 700, color: "#2b120f" }}>
+                              {item.productName} <strong style={{ color: "#870210" }}>× {item.quantity}</strong>
+                            </span>
+                            {item.lineTotal > 0 && <strong style={{ color: "#870210", fontSize: "12px" }}>{formatPrice(item.lineTotal)}</strong>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", paddingTop: "4px" }}>
+                      <div>
+                        <small style={{ display: "block", fontSize: "10.5px", color: "#7a5e54" }}>
+                          الفرعي: {formatPrice(order.subtotal)} · التوصيل: {formatPrice(order.deliveryFee)}
+                        </small>
+                        <strong style={{ fontSize: "16px", color: "#870210" }}>الإجمالي: {formatPrice(order.total)}</strong>
+                      </div>
+                      <button
+                        type="button"
+                        className="small-button selected"
+                        disabled={reorderQuery.isFetching}
+                        onClick={() => {
+                          const validItems = order.items.filter(item => item.productId !== null).map(item => ({ productId: item.productId!, quantity: item.quantity }));
+                          if (!validItems.length) { toast.error("لم تعد منتجات هذا الطلب متاحة في المتجر."); return; }
+                          setReorder(validItems);
+                        }}
+                        style={{ padding: "8px 14px", borderRadius: "11px", fontWeight: 800, background: "#870210", color: "#ffffff", border: "none" }}
+                      >
+                        🔄 إعادة الطلب للسلة
+                      </button>
+                    </div>
                   </div>
                 )}
-
-                {latestStoreNote?.note && (
-                  <div style={{ padding: "10px 12px", borderRadius: "12px", background: "#fff9e8", border: "1px solid #edd691", color: "#574208", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
-                    <BellRing size={15} />
-                    <span>رسالة المتجر: {latestStoreNote.note}</span>
-                  </div>
-                )}
-
-                <div style={{ padding: "10px 12px", borderRadius: "12px", background: "#f8fbf9", border: "1px solid #e2ece5", display: "grid", gap: "6px" }}>
-                  <small style={{ fontSize: "11px", fontWeight: 800, color: "#4d6658" }}>🛒 الأصناف في هذا الطلب ({order.items.length}):</small>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                    {order.items.map(item => (
-                      <span key={item.id} style={{ padding: "5px 10px", borderRadius: "9px", background: "#ffffff", border: "1px solid #d5e3da", fontSize: "12px", fontWeight: 700, color: "#153826" }}>
-                        {item.productName} <strong style={{ color: "#870210" }}>× {item.quantity}</strong>
-                        {item.lineTotal > 0 ? <small style={{ color: "#576e60", marginRight: "5px" }}>({formatPrice(item.lineTotal)})</small> : null}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", paddingTop: "4px" }}>
-                  <div>
-                    <small style={{ display: "block", fontSize: "11px", color: "#5c7063" }}>الإجمالي النهائي للفاتورة</small>
-                    <strong style={{ fontSize: "18px", color: "#870210" }}>{formatPrice(order.total)}</strong>
-                  </div>
-                  <button
-                    type="button"
-                    className="small-button selected"
-                    disabled={reorderQuery.isFetching}
-                    onClick={() => {
-                      const validItems = order.items.filter(item => item.productId !== null).map(item => ({ productId: item.productId!, quantity: item.quantity }));
-                      if (!validItems.length) { toast.error("لم تعد منتجات هذا الطلب متاحة في المتجر."); return; }
-                      setReorder(validItems);
-                    }}
-                    style={{ padding: "8px 14px", borderRadius: "11px", fontWeight: 800 }}
-                  >
-                    إضافة للسلة مجدداً <ArrowLeft size={14} />
-                  </button>
-                </div>
-
-                {order.events.length > 0 && (
-                  <details className="order-history">
-                    <summary style={{ fontSize: "11.5px", color: "#53695c", cursor: "pointer" }}>عرض سجل تحركات الطلب ({order.events.length})</summary>
-                    <ol>{order.events.map(event => <li key={event.id}><span className={"status-pill status-" + event.status}>{stateLabels[event.status] || event.status}</span><time>{new Date(event.createdAt).toLocaleString("ar-YE")}</time>{event.note && <small>{event.note}</small>}</li>)}</ol>
-                  </details>
-                )}
-                </>)}
               </article>
             );
           })}
@@ -2803,6 +3038,11 @@ function AccountPage() {
       instagram: "https://instagram.com/shizo.ye",
       tiktok: "https://tiktok.com/@shizo.ye",
       phone: "779542219",
+      whatsappEnabled: true,
+      facebookEnabled: true,
+      instagramEnabled: true,
+      tiktokEnabled: true,
+      phoneEnabled: true,
     };
     try {
       const raw = (homeCatalog.data?.settings as any)?.socialLinksConfig;
@@ -2811,11 +3051,16 @@ function AccountPage() {
       return {
         aboutTitle: p.aboutTitle || defaults.aboutTitle,
         aboutText: p.aboutText || defaults.aboutText,
-        whatsapp: p.whatsapp || defaults.whatsapp,
-        facebook: p.facebook || defaults.facebook,
-        instagram: p.instagram || defaults.instagram,
-        tiktok: p.tiktok || defaults.tiktok,
-        phone: p.phone || defaults.phone,
+        whatsapp: p.whatsapp ?? defaults.whatsapp,
+        facebook: p.facebook ?? defaults.facebook,
+        instagram: p.instagram ?? defaults.instagram,
+        tiktok: p.tiktok ?? defaults.tiktok,
+        phone: p.phone ?? defaults.phone,
+        whatsappEnabled: p.whatsappEnabled !== false,
+        facebookEnabled: p.facebookEnabled !== false,
+        instagramEnabled: p.instagramEnabled !== false,
+        tiktokEnabled: p.tiktokEnabled !== false,
+        phoneEnabled: p.phoneEnabled !== false,
       };
     } catch {
       return defaults;
@@ -3204,27 +3449,37 @@ function AccountPage() {
                   <p style={{ margin: 0, fontSize: "12px", lineHeight: 1.7, color: "#5c433b" }}>{socialCfg.aboutText}</p>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: "8px", paddingTop: "4px" }}>
-                  <a href={normalizeWaHref(socialCfg.whatsapp)} target="_blank" rel="noreferrer" aria-label="واتساب" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#eafaf0", border: "1px solid #bfead0", textDecoration: "none", color: "#128C7E" }}>
-                    <MessageCircle size={19} />
-                    <span style={{ fontSize: "10px", fontWeight: 800 }}>واتساب</span>
-                  </a>
-                  <a href={socialCfg.facebook || "https://facebook.com"} target="_blank" rel="noreferrer" aria-label="فيسبوك" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#eef4ff", border: "1px solid #c9dcff", textDecoration: "none", color: "#1877F2" }}>
-                    <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.99 3.66 9.13 8.44 9.88v-6.99H7.9V12h2.54V9.8c0-2.51 1.49-3.89 3.78-3.89 1.09 0 2.23.19 2.23.19v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99C18.34 21.13 22 16.99 22 12z"/></svg>
-                    <span style={{ fontSize: "10px", fontWeight: 800 }}>فيسبوك</span>
-                  </a>
-                  <a href={socialCfg.instagram || "https://instagram.com"} target="_blank" rel="noreferrer" aria-label="إنستغرام" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#fdf0f6", border: "1px solid #f7cde0", textDecoration: "none", color: "#E1306C" }}>
-                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
-                    <span style={{ fontSize: "10px", fontWeight: 800 }}>إنستغرام</span>
-                  </a>
-                  <a href={socialCfg.tiktok || "https://tiktok.com"} target="_blank" rel="noreferrer" aria-label="تيك توك" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#f4f4f5", border: "1px solid #d4d4d8", textDecoration: "none", color: "#18181b" }}>
-                    <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.87a8.16 8.16 0 0 0 4.76 1.52v-3.4a4.85 4.85 0 0 1-1-.3z"/></svg>
-                    <span style={{ fontSize: "10px", fontWeight: 800 }}>تيك توك</span>
-                  </a>
-                  <a href={"tel:" + (socialCfg.phone || "779542219").replace(/\s+/g, "")} aria-label="اتصال" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#fceee9", border: "1px solid #f2cfc6", textDecoration: "none", color: "#870210" }}>
-                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                    <span style={{ fontSize: "10px", fontWeight: 800 }}>اتصال</span>
-                  </a>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(56px, 1fr))", gap: "8px", paddingTop: "4px" }}>
+                  {socialCfg.whatsappEnabled && socialCfg.whatsapp.trim() !== "" && (
+                    <a href={normalizeWaHref(socialCfg.whatsapp)} target="_blank" rel="noreferrer" aria-label="واتساب" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#eafaf0", border: "1px solid #bfead0", textDecoration: "none", color: "#128C7E" }}>
+                      <MessageCircle size={19} />
+                      <span style={{ fontSize: "10px", fontWeight: 800 }}>واتساب</span>
+                    </a>
+                  )}
+                  {socialCfg.facebookEnabled && socialCfg.facebook.trim() !== "" && (
+                    <a href={socialCfg.facebook} target="_blank" rel="noreferrer" aria-label="فيسبوك" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#eef4ff", border: "1px solid #c9dcff", textDecoration: "none", color: "#1877F2" }}>
+                      <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.99 3.66 9.13 8.44 9.88v-6.99H7.9V12h2.54V9.8c0-2.51 1.49-3.89 3.78-3.89 1.09 0 2.23.19 2.23.19v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99C18.34 21.13 22 16.99 22 12z"/></svg>
+                      <span style={{ fontSize: "10px", fontWeight: 800 }}>فيسبوك</span>
+                    </a>
+                  )}
+                  {socialCfg.instagramEnabled && socialCfg.instagram.trim() !== "" && (
+                    <a href={socialCfg.instagram} target="_blank" rel="noreferrer" aria-label="إنستغرام" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#fdf0f6", border: "1px solid #f7cde0", textDecoration: "none", color: "#E1306C" }}>
+                      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                      <span style={{ fontSize: "10px", fontWeight: 800 }}>إنستغرام</span>
+                    </a>
+                  )}
+                  {socialCfg.tiktokEnabled && socialCfg.tiktok.trim() !== "" && (
+                    <a href={socialCfg.tiktok} target="_blank" rel="noreferrer" aria-label="تيك توك" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#f4f4f5", border: "1px solid #d4d4d8", textDecoration: "none", color: "#18181b" }}>
+                      <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.87a8.16 8.16 0 0 0 4.76 1.52v-3.4a4.85 4.85 0 0 1-1-.3z"/></svg>
+                      <span style={{ fontSize: "10px", fontWeight: 800 }}>تيك توك</span>
+                    </a>
+                  )}
+                  {socialCfg.phoneEnabled && socialCfg.phone.trim() !== "" && (
+                    <a href={"tel:" + socialCfg.phone.replace(/\s+/g, "")} aria-label="اتصال" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#fceee9", border: "1px solid #f2cfc6", textDecoration: "none", color: "#870210" }}>
+                      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                      <span style={{ fontSize: "10px", fontWeight: 800 }}>اتصال</span>
+                    </a>
+                  )}
                 </div>
               </div>
             )}

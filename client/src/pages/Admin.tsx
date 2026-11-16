@@ -4373,6 +4373,11 @@ function SettingsPanel() {
             instagram: parsed.instagram || "https://instagram.com/shizo.ye",
             tiktok: parsed.tiktok || "https://tiktok.com/@shizo.ye",
             phone: parsed.phone || "779542219",
+            whatsappEnabled: parsed.whatsappEnabled !== false,
+            facebookEnabled: parsed.facebookEnabled !== false,
+            instagramEnabled: parsed.instagramEnabled !== false,
+            tiktokEnabled: parsed.tiktokEnabled !== false,
+            phoneEnabled: parsed.phoneEnabled !== false,
           };
         } catch {
           return {
@@ -4581,18 +4586,53 @@ function SettingsPanel() {
       <div className="form-card-heading">
         <span className="form-card-number" style={{ background: "#fceee9", color: "#870210" }}>04</span>
         <div>
-          <h2>🏪 نبذة «من نحن» وروابط حساباتنا الرسمية (5 أيقونات)</h2>
-          <p>تظهر للزبون في صفحة «حسابي ← من نحن وحساباتنا الرسمية» وتقدر تعدل الروابط والأرقام في أي وقت.</p>
+          <h2>🏪 نبذة «من نحن» وروابط حساباتنا الرسمية (مع إمكانية إخفاء أو إظهار أي أيقونة)</h2>
+          <p>تظهر للزبون في صفحة «حسابي ← من نحن وحساباتنا الرسمية». أزل علامة الصح عن أي أيقونة لإخفائها فوراً من المتجر.</p>
         </div>
       </div>
       <div className="form-fields-grid">
         <label className="field-wide">عنوان النبذة<input value={values.socialLinksConfig.aboutTitle} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, aboutTitle: e.target.value })} placeholder="بوفية شهيزو – شهي ولذيذ" /></label>
         <label className="field-wide">نبذة «من نحن» المشوّقة للزبون<textarea rows={3} value={values.socialLinksConfig.aboutText} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, aboutText: e.target.value })} placeholder="اكتب نبذة جذابة عن بوفية شهيزو وجودة الطعام وسرعة التوصيل..." /></label>
-        <label>رابط أو رقم واتساب<input dir="ltr" value={values.socialLinksConfig.whatsapp} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, whatsapp: e.target.value })} placeholder="https://wa.me/967779542219" /></label>
-        <label>رقم الاتصال المباشر<input dir="ltr" value={values.socialLinksConfig.phone} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, phone: e.target.value })} placeholder="779542219" /></label>
-        <label>رابط فيسبوك<input dir="ltr" value={values.socialLinksConfig.facebook} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, facebook: e.target.value })} placeholder="https://facebook.com/shizo.ye" /></label>
-        <label>رابط إنستغرام<input dir="ltr" value={values.socialLinksConfig.instagram} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, instagram: e.target.value })} placeholder="https://instagram.com/shizo.ye" /></label>
-        <label className="field-wide">رابط تيك توك<input dir="ltr" value={values.socialLinksConfig.tiktok} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, tiktok: e.target.value })} placeholder="https://tiktok.com/@shizo.ye" /></label>
+
+        <div style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid #e6ece8", background: "#fafbf9", display: "grid", gap: "6px" }}>
+          <label className="toggle-field" style={{ minHeight: "24px", fontWeight: 800, color: "#128C7E" }}>
+            <input type="checkbox" checked={(values.socialLinksConfig as any).whatsappEnabled !== false} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, whatsappEnabled: e.target.checked } as any)} />
+            إظهار أيقونة واتساب
+          </label>
+          <input dir="ltr" value={values.socialLinksConfig.whatsapp} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, whatsapp: e.target.value })} placeholder="https://wa.me/967779542219" />
+        </div>
+
+        <div style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid #e6ece8", background: "#fafbf9", display: "grid", gap: "6px" }}>
+          <label className="toggle-field" style={{ minHeight: "24px", fontWeight: 800, color: "#870210" }}>
+            <input type="checkbox" checked={(values.socialLinksConfig as any).phoneEnabled !== false} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, phoneEnabled: e.target.checked } as any)} />
+            إظهار أيقونة الاتصال المباشر
+          </label>
+          <input dir="ltr" value={values.socialLinksConfig.phone} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, phone: e.target.value })} placeholder="779542219" />
+        </div>
+
+        <div style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid #e6ece8", background: "#fafbf9", display: "grid", gap: "6px" }}>
+          <label className="toggle-field" style={{ minHeight: "24px", fontWeight: 800, color: "#1877F2" }}>
+            <input type="checkbox" checked={(values.socialLinksConfig as any).facebookEnabled !== false} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, facebookEnabled: e.target.checked } as any)} />
+            إظهار أيقونة فيسبوك
+          </label>
+          <input dir="ltr" value={values.socialLinksConfig.facebook} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, facebook: e.target.value })} placeholder="https://facebook.com/shizo.ye" />
+        </div>
+
+        <div style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid #e6ece8", background: "#fafbf9", display: "grid", gap: "6px" }}>
+          <label className="toggle-field" style={{ minHeight: "24px", fontWeight: 800, color: "#E1306C" }}>
+            <input type="checkbox" checked={(values.socialLinksConfig as any).instagramEnabled !== false} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, instagramEnabled: e.target.checked } as any)} />
+            إظهار أيقونة إنستغرام
+          </label>
+          <input dir="ltr" value={values.socialLinksConfig.instagram} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, instagram: e.target.value })} placeholder="https://instagram.com/shizo.ye" />
+        </div>
+
+        <div className="field-wide" style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid #e6ece8", background: "#fafbf9", display: "grid", gap: "6px" }}>
+          <label className="toggle-field" style={{ minHeight: "24px", fontWeight: 800, color: "#18181b" }}>
+            <input type="checkbox" checked={(values.socialLinksConfig as any).tiktokEnabled !== false} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, tiktokEnabled: e.target.checked } as any)} />
+            إظهار أيقونة تيك توك
+          </label>
+          <input dir="ltr" value={values.socialLinksConfig.tiktok} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, tiktok: e.target.value })} placeholder="https://tiktok.com/@shizo.ye" />
+        </div>
       </div>
     </section>
 
