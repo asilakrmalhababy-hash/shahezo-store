@@ -3088,7 +3088,43 @@ function AccountPage() {
               </div>
               <div className="form-grid">
                 <label>تسمية العنوان *<input required maxLength={80} value={address.label} onChange={event => setAddress({ ...address, label: event.target.value })} placeholder="المنزل، العمل..." /></label>
-                <label>اسم المستلم *<input required minLength={2} maxLength={160} autoComplete="name" value={address.recipientName} onChange={event => setAddress({ ...a        <section
+                <label>اسم المستلم *<input required minLength={2} maxLength={160} autoComplete="name" value={address.recipientName} onChange={event => setAddress({ ...address, recipientName: event.target.value })} /></label>
+                <label className="form-wide">
+                  <span style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>رقم الجوال اليمني (9 أرقام) *</span>
+                    <small style={{ fontSize: "10px", fontWeight: 800, color: addressPhoneValid ? "#870210" : "#b43c2f" }}>{address.phone.length}/9</small>
+                  </span>
+                  <input required type="tel" inputMode="numeric" maxLength={9} dir="ltr" value={address.phone} onChange={event => setAddress({ ...address, phone: cleanYemeniPhone(event.target.value) })} placeholder="77XXXXXXX" style={{ textAlign: "left", fontWeight: 800 }} />
+                </label>
+                {deliveryTree ? (
+                  <div className="form-wide">
+                    <ThreeStepLocationPicker
+                      tree={deliveryTree}
+                      city={address.city}
+                      district={address.district}
+                      phone={address.phone}
+                      subtotal={0}
+                      onChangeLocation={(nextCity, nextDist) => setAddress(curr => ({ ...curr, city: nextCity, district: nextDist }))}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <label>المدينة / المنطقة *<input required maxLength={100} value={address.city} onChange={event => setAddress({ ...address, city: event.target.value })} placeholder="صنعاء" /></label>
+                    <label className="form-wide">الحي / الشارع *<input required maxLength={120} value={address.district} onChange={event => setAddress({ ...address, district: event.target.value })} placeholder="مثلاً: الرقاص، حدة، الأصبحي..." /></label>
+                  </>
+                )}
+                <label className="form-wide">أقرب معلم للعنوان<textarea required rows={2} maxLength={1000} value={address.details} onChange={event => setAddress({ ...address, details: event.target.value })} placeholder="مثال: بجوار بنك الكريمي، أمام جامع..." /></label>
+                <label className="toggle-field form-wide"><input type="checkbox" checked={address.isDefault} onChange={event => setAddress({ ...address, isDefault: event.target.checked })} /> اجعل هذا العنوان هو الافتراضي عند الطلب</label>
+              </div>
+              <div className="address-form-actions" style={{ display: "flex", gap: "8px" }}>
+                <button type="submit" className="button button-primary" disabled={!addressPhoneValid}><Check size={16} /> {editingAddressId ? "حفظ تعديل العنوان" : "حفظ العنوان"}</button>
+                <button type="button" className="button button-quiet" onClick={resetAddressForm}>إلغاء</button>
+              </div>
+            </form>
+          )}
+        </section>
+
+        <section
           style={{
             borderRadius: "18px",
             border: "1px solid #ead8cc",
@@ -3193,48 +3229,6 @@ function AccountPage() {
               </div>
             )}
           </div>
-        </section>
-      </div>
-    </main>holder="صنعاء" /></label>
-                    <label className="form-wide">الحي / الشارع *<input required maxLength={120} value={address.district} onChange={event => setAddress({ ...address, district: event.target.value })} placeholder="مثلاً: الرقاص، حدة، الأصبحي..." /></label>
-                  </>
-                )}
-                <label className="form-wide">أقرب معلم للعنوان<textarea required rows={2} maxLength={1000} value={address.details} onChange={event => setAddress({ ...address, details: event.target.value })} placeholder="مثال: بجوار بنك الكريمي، أمام جامع..." /></label>
-                <label className="toggle-field form-wide"><input type="checkbox" checked={address.isDefault} onChange={event => setAddress({ ...address, isDefault: event.target.checked })} /> اجعل هذا العنوان هو الافتراضي عند الطلب</label>
-              </div>
-              <div className="address-form-actions" style={{ display: "flex", gap: "8px" }}>
-                <button type="submit" className="button button-primary" disabled={!addressPhoneValid}><Check size={16} /> {editingAddressId ? "حفظ تعديل العنوان" : "حفظ العنوان"}</button>
-                <button type="button" className="button button-quiet" onClick={resetAddressForm}>إلغاء</button>
-              </div>
-            </form>
-          )}
-        </section>
-
-        <section
-          style={{
-            borderRadius: "18px",
-            border: "1px solid #ead8cc",
-            background: "#ffffff",
-            overflow: "hidden",
-            display: "grid",
-          }}
-        >
-          <Link href="/assistant" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 15px", textDecoration: "none", color: "#2b120f", borderBottom: "1px solid #f5ebe3" }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "9px", fontSize: "13px", fontWeight: 700 }}>
-              <Sparkles size={17} color="#870210" /> مساعد شهيزو الذكي للطلبات والوجبات
-            </span>
-            <ChevronLeft size={16} color="#8c766e" />
-          </Link>
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent("toggle-shahezo-wa"))}
-            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 15px", background: "transparent", border: 0, cursor: "pointer", color: "#2b120f", width: "100%", textAlign: "right" }}
-          >
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "9px", fontSize: "13px", fontWeight: 700 }}>
-              <MessageCircle size={17} color="#25D366" /> تواصل واتساب وخدمة العملاء (779542219)
-            </span>
-            <ChevronLeft size={16} color="#8c766e" />
-          </button>
         </section>
       </div>
     </main>
