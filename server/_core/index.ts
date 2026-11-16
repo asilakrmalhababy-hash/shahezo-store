@@ -120,6 +120,8 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   app.get("/api/health", (_req, res) => res.json({ status: "ok", ts: Date.now() }));
+  app.get("/google294ff42b81e08e98.html", (_req, res) => res.type("text/html").send("google-site-verification: google294ff42b81e08e98.html"));
+
 
   // --- SEO_SITEMAP_AND_ROBOTS_START ---
   app.get("/robots.txt", (_req, res) => {
