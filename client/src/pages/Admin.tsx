@@ -4319,6 +4319,15 @@ function SettingsPanel() {
     rewardValue: "0",
     rewardsMessage: "",
     aiInstructions: "",
+    socialLinksConfig: {
+  aboutTitle: "بوفية شهيزو – شهي ولذيذ",
+  aboutText: "في بوفية شهيزو نحضّر لكم يومياً أشهى الشاورما، الفلافل الساخنة المقرمشة، والعصائر الطبيعية الطازجة بأجود المكونات وبأعلى معايير النظافة والطعم الأصيل مع توصيل سريع لباب منزلك.",
+  whatsapp: "https://wa.me/967779542219",
+  facebook: "https://facebook.com/shizo.ye",
+  instagram: "https://instagram.com/shizo.ye",
+  tiktok: "https://tiktok.com/@shizo.ye",
+  phone: "779542219"
+},
   });
   const [rcfg, setRcfg] = useState<AdminRewardCfg>({
     rewardMode: "custom_gift",
@@ -4353,6 +4362,30 @@ function SettingsPanel() {
       rewardValue: raw.rewardValue || "0",
       rewardsMessage: unpacked.cleanMessage,
       aiInstructions: (raw as any).aiInstructions || "",
+      socialLinksConfig: (() => {
+        try {
+          const parsed = JSON.parse((raw as any).socialLinksConfig || "{}");
+          return {
+            aboutTitle: parsed.aboutTitle || "بوفية شهيزو – شهي ولذيذ",
+            aboutText: parsed.aboutText || "في بوفية شهيزو نحضّر لكم يومياً أشهى الشاورما، الفلافل الساخنة المقرمشة، والعصائر الطبيعية الطازجة بأجود المكونات وبأعلى معايير النظافة والطعم الأصيل مع توصيل سريع لباب منزلك.",
+            whatsapp: parsed.whatsapp || "https://wa.me/967779542219",
+            facebook: parsed.facebook || "https://facebook.com/shizo.ye",
+            instagram: parsed.instagram || "https://instagram.com/shizo.ye",
+            tiktok: parsed.tiktok || "https://tiktok.com/@shizo.ye",
+            phone: parsed.phone || "779542219",
+          };
+        } catch {
+          return {
+  aboutTitle: "بوفية شهيزو – شهي ولذيذ",
+  aboutText: "في بوفية شهيزو نحضّر لكم يومياً أشهى الشاورما، الفلافل الساخنة المقرمشة، والعصائر الطبيعية الطازجة بأجود المكونات وبأعلى معايير النظافة والطعم الأصيل مع توصيل سريع لباب منزلك.",
+  whatsapp: "https://wa.me/967779542219",
+  facebook: "https://facebook.com/shizo.ye",
+  instagram: "https://instagram.com/shizo.ye",
+  tiktok: "https://tiktok.com/@shizo.ye",
+  phone: "779542219"
+};
+        }
+      })(),
     });
     setRcfg(unpacked.cfg);
     setReady(true);
@@ -4400,6 +4433,7 @@ function SettingsPanel() {
       rewardType: mappedRewardType,
       rewardValue: Math.min(100, Math.max(0, Number(values.rewardValue) || 0)),
       rewardsMessage: packedMessage,
+      socialLinksConfig: JSON.stringify(values.socialLinksConfig),
     });
   };
 
@@ -4542,7 +4576,27 @@ function SettingsPanel() {
           </label>
         </div>
       </section>
-      <button className="button button-primary settings-save" disabled={save.isPending}>{save.isPending ? <LoaderCircle className="spin" size={16} /> : <Save size={17} />}{save.isPending ? "جارٍ الحفظ..." : "حفظ كل الإعدادات"}</button>
+      
+    <section className="admin-form-card" style={{ border: "1.5px solid #ead8cc", background: "#ffffff" }}>
+      <div className="form-card-heading">
+        <span className="form-card-number" style={{ background: "#fceee9", color: "#870210" }}>04</span>
+        <div>
+          <h2>🏪 نبذة «من نحن» وروابط حساباتنا الرسمية (5 أيقونات)</h2>
+          <p>تظهر للزبون في صفحة «حسابي ← من نحن وحساباتنا الرسمية» وتقدر تعدل الروابط والأرقام في أي وقت.</p>
+        </div>
+      </div>
+      <div className="form-fields-grid">
+        <label className="field-wide">عنوان النبذة<input value={values.socialLinksConfig.aboutTitle} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, aboutTitle: e.target.value })} placeholder="بوفية شهيزو – شهي ولذيذ" /></label>
+        <label className="field-wide">نبذة «من نحن» المشوّقة للزبون<textarea rows={3} value={values.socialLinksConfig.aboutText} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, aboutText: e.target.value })} placeholder="اكتب نبذة جذابة عن بوفية شهيزو وجودة الطعام وسرعة التوصيل..." /></label>
+        <label>رابط أو رقم واتساب<input dir="ltr" value={values.socialLinksConfig.whatsapp} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, whatsapp: e.target.value })} placeholder="https://wa.me/967779542219" /></label>
+        <label>رقم الاتصال المباشر<input dir="ltr" value={values.socialLinksConfig.phone} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, phone: e.target.value })} placeholder="779542219" /></label>
+        <label>رابط فيسبوك<input dir="ltr" value={values.socialLinksConfig.facebook} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, facebook: e.target.value })} placeholder="https://facebook.com/shizo.ye" /></label>
+        <label>رابط إنستغرام<input dir="ltr" value={values.socialLinksConfig.instagram} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, instagram: e.target.value })} placeholder="https://instagram.com/shizo.ye" /></label>
+        <label className="field-wide">رابط تيك توك<input dir="ltr" value={values.socialLinksConfig.tiktok} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, tiktok: e.target.value })} placeholder="https://tiktok.com/@shizo.ye" /></label>
+      </div>
+    </section>
+
+    <button className="button button-primary settings-save" disabled={save.isPending}>{save.isPending ? <LoaderCircle className="spin" size={16} /> : <Save size={17} />}{save.isPending ? "جارٍ الحفظ..." : "حفظ كل الإعدادات"}</button>
   </form>}</div>;
 }
 

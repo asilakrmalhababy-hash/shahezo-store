@@ -356,6 +356,7 @@ const settingSchema = z.object({
   rewardValue: z.number().int().min(0).max(100).optional(),
   aiInstructions: z.string().trim().max(3000).optional(),
   deliveryTreeConfig: z.string().max(600000).optional(),
+  socialLinksConfig: z.string().max(4000).optional(),
 });
 
 function slugify(value: string) {
@@ -367,7 +368,7 @@ const PUBLIC_STORE_SETTING_KEYS = new Set([
   "storeName", "storeDescription", "contactPhone", "currency", "storeIconUrl",
   "deliveryEnabled", "deliveryFee", "deliveryZones", "orderPaused", "pausedMessage",
   "rewardEnabled", "rewardsThreshold", "rewardType", "rewardValue", "rewardsMessage",
-  "aiInstructions", "deliveryTreeConfig",
+  "aiInstructions", "deliveryTreeConfig", "socialLinksConfig",
 ]);
 
 const __orderRateBuckets = new Map<string, { count: number; resetAt: number }>();

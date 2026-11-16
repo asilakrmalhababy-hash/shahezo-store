@@ -2435,6 +2435,20 @@ function OrdersPage() {
   const reorderQuery = trpc.commerce.catalog.productsForReorder.useQuery({ ids: reorder?.map(item => item.productId) ?? [1] }, { enabled: Boolean(reorder), retry: 1 });
 
   useEffect(() => {
+    if (!refs.length) return;
+    if (getPushPermissionState() === "default") {
+      try {
+        if (!localStorage.getItem("shahezo-orders-push-asked-v1")) {
+          localStorage.setItem("shahezo-orders-push-asked-v1", "1");
+          void requestPushPermission().then(res => {
+            setPermission(res);
+          });
+        }
+      } catch {}
+    }
+  }, [refs.length]);
+
+  useEffect(() => {
     if (!refs.length || getPushPermissionState() !== "granted") return;
     let active = true;
     void (async () => {
@@ -2515,47 +2529,6 @@ function OrdersPage() {
         <div><span className="eyebrow">متابعة حية ومباشرة</span><h1>طلباتي ({orders.length})</h1><p>مرتبة من الأحدث للأقدم — تابع حالة طلبك وفاتورتك خطوة بخطوة.</p></div>
         <span className="page-title-icon"><Package size={23} /></span>
       </div>
-
-      {refs.length > 0 && (
-        <section
-          style={{
-            marginBottom: "16px",
-            padding: "14px 16px",
-            borderRadius: "16px",
-            background: pushEnabled ? "linear-gradient(135deg, #edf7f0, #f7fbf8)" : "linear-gradient(135deg, #5e010b, #1d5c41)",
-            color: pushEnabled ? "#870210" : "#ffffff",
-            border: pushEnabled ? "1.5px solid #b8dec6" : "1.5px solid #f1d897",
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "12px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: "1 1 220px" }}>
-            <span style={{ width: "40px", height: "40px", borderRadius: "12px", background: pushEnabled ? "#870210" : "#f1d897", color: pushEnabled ? "#f1d897" : "#5e010b", display: "grid", placeItems: "center", flexShrink: 0 }}>
-              {pushEnabled ? <Check size={20} /> : <BellRing size={20} />}
-            </span>
-            <div>
-              <strong style={{ display: "block", fontSize: "13.5px", color: pushEnabled ? "#870210" : "#f9e8b8" }}>
-                {pushEnabled ? "إشعارات تتبع الطلب مفعّلة على جوالك" : (justOrdered ? "تم تأكيد طلبك! فعّل الإشعارات لمتابعته" : "فعّل إشعارات تتبع حالة طلبك")}
-              </strong>
-              <small style={{ fontSize: "11px", opacity: 0.92 }}>
-                {pushEnabled ? "يصلك تنبيه فوري عند تجهيز طلبك أو خروجه للتوصيل." : "اضغط زر التفعيل ليصلك إشعار فوري عند تحديث حالة طلبك."}
-              </small>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => void enableNotifications()}
-            disabled={pushPending || permission === "denied" || permission === "unsupported"}
-            className="small-button"
-            style={{ background: pushEnabled ? "#ffffff" : "#f1d897", color: "#5e010b", fontWeight: 800, border: pushEnabled ? "1px solid #870210" : "none" }}
-          >
-            <BellRing size={15} /> {pushPending ? "جارٍ التفعيل..." : pushEnabled ? "تحديث الإشعارات" : "تفعيل الإشعارات"}
-          </button>
-        </section>
-      )}
 
       {query.isLoading ? <Loading /> : query.error ? <LoadError onRetry={() => void query.refetch()} /> : !orders.length ? (
         <EmptyState icon={Package} title={refs.length ? "لم نعثر على طلبات محفوظة على هذا الجهاز" : "لا توجد طلبات سابقة"} description="بعد إتمام طلب من هذا المتصفح، ستظهر حالته هنا مباشرة." action="تسوق الآن" href="/products" />
@@ -2794,6 +2767,68 @@ function AccountPage() {
   };
 
   const carrierName = getYemenCarrierName(cleanedCustomerPhone);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [isStandaloneApp, setIsStandaloneApp] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as any).standalone);
+  });
+  const [pwaInstallPrompt, setPwaInstallPrompt] = useState<any>(() => (typeof window !== "undefined" ? (window as any).__deferredPwaPrompt ?? null : null));
+  const [pushPerm, setPushPerm] = useState(getPushPermissionState);
+
+  useEffect(() => {
+    const checkStandalone = () => {
+      const standalone = window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as any).standalone);
+      setIsStandaloneApp(standalone);
+      if (!standalone) {
+        try { localStorage.removeItem("shahezo-pwa-installed-v1"); } catch {}
+      }
+    };
+    checkStandalone();
+    const onPromptReady = () => setPwaInstallPrompt((window as any).__deferredPwaPrompt ?? null);
+    const onInstalled = () => { setIsStandaloneApp(true); setPwaInstallPrompt(null); };
+    window.addEventListener("pwa-prompt-ready", onPromptReady);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("pwa-prompt-ready", onPromptReady);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+
+  const socialCfg = useMemo(() => {
+    const defaults = {
+      aboutTitle: "بوفية شهيزو – شهي ولذيذ",
+      aboutText: "في بوفية شهيزو نحضّر لكم يومياً أشهى الشاورما، الفلافل الساخنة المقرمشة، والعصائر الطبيعية الطازجة بأجود المكونات وبأعلى معايير النظافة والطعم الأصيل مع توصيل سريع لباب منزلك.",
+      whatsapp: "https://wa.me/967779542219",
+      facebook: "https://facebook.com/shizo.ye",
+      instagram: "https://instagram.com/shizo.ye",
+      tiktok: "https://tiktok.com/@shizo.ye",
+      phone: "779542219",
+    };
+    try {
+      const raw = (homeCatalog.data?.settings as any)?.socialLinksConfig;
+      if (!raw) return defaults;
+      const p = JSON.parse(raw);
+      return {
+        aboutTitle: p.aboutTitle || defaults.aboutTitle,
+        aboutText: p.aboutText || defaults.aboutText,
+        whatsapp: p.whatsapp || defaults.whatsapp,
+        facebook: p.facebook || defaults.facebook,
+        instagram: p.instagram || defaults.instagram,
+        tiktok: p.tiktok || defaults.tiktok,
+        phone: p.phone || defaults.phone,
+      };
+    } catch {
+      return defaults;
+    }
+  }, [homeCatalog.data?.settings]);
+
+  const normalizeWaHref = (val: string) => {
+    const clean = val.trim();
+    if (clean.startsWith("http")) return clean;
+    const digits = clean.replace(/\D+/g, "");
+    if (!digits) return "https://wa.me/967779542219";
+    return "https://wa.me/" + (digits.startsWith("967") ? digits : ("967" + digits));
+  };
 
   return (
     <main className="page-shell inner-page" style={{ paddingTop: "10px", paddingBottom: "24px" }}>
@@ -3053,28 +3088,114 @@ function AccountPage() {
               </div>
               <div className="form-grid">
                 <label>تسمية العنوان *<input required maxLength={80} value={address.label} onChange={event => setAddress({ ...address, label: event.target.value })} placeholder="المنزل، العمل..." /></label>
-                <label>اسم المستلم *<input required minLength={2} maxLength={160} autoComplete="name" value={address.recipientName} onChange={event => setAddress({ ...address, recipientName: event.target.value })} /></label>
-                <label className="form-wide">
-                  <span style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>رقم الجوال اليمني (9 أرقام) *</span>
-                    <small style={{ fontSize: "10px", fontWeight: 800, color: addressPhoneValid ? "#870210" : "#b43c2f" }}>{address.phone.length}/9</small>
-                  </span>
-                  <input required type="tel" inputMode="numeric" maxLength={9} dir="ltr" value={address.phone} onChange={event => setAddress({ ...address, phone: cleanYemeniPhone(event.target.value) })} placeholder="77XXXXXXX" style={{ textAlign: "left", fontWeight: 800 }} />
-                </label>
-                {deliveryTree ? (
-                  <div className="form-wide">
-                    <ThreeStepLocationPicker
-                      tree={deliveryTree}
-                      city={address.city}
-                      district={address.district}
-                      phone={address.phone}
-                      subtotal={0}
-                      onChangeLocation={(nextCity, nextDist) => setAddress(curr => ({ ...curr, city: nextCity, district: nextDist }))}
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <label>المدينة / المنطقة *<input required maxLength={100} value={address.city} onChange={event => setAddress({ ...address, city: event.target.value })} placeholder="صنعاء" /></label>
+                <label>اسم المستلم *<input required minLength={2} maxLength={160} autoComplete="name" value={address.recipientName} onChange={event => setAddress({ ...a        <section
+          style={{
+            borderRadius: "18px",
+            border: "1px solid #ead8cc",
+            background: "#ffffff",
+            overflow: "hidden",
+            display: "grid",
+          }}
+        >
+          <button
+            type="button"
+            onClick={async () => {
+              const perm = getPushPermissionState();
+              if (perm === "unsupported") { toast.info("متصفحك لا يدعم إشعارات الويب الفورية"); return; }
+              if (perm === "denied") { toast.error("الإشعارات محظورة من إعدادات المتصفح — فعّلها من أيقونة القفل بالأعلى"); return; }
+              const granted = perm === "granted" ? "granted" : await requestPushPermission();
+              setPushPerm(granted);
+              if (granted === "granted") {
+                toast.success("🔔 إشعارات الطلبات الفورية مفعّلة بنجاح!");
+              }
+            }}
+            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 15px", background: "transparent", border: 0, borderBottom: "1px solid #f5ebe3", cursor: "pointer", color: "#2b120f", width: "100%", textAlign: "right" }}
+          >
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "9px", fontSize: "13px", fontWeight: 700 }}>
+              <BellRing size={17} color="#870210" /> تفعيل إشعارات الطلبات الفورية
+            </span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+              {pushPerm === "granted" && <small style={{ fontSize: "10px", fontWeight: 800, color: "#1f7a4c", background: "#edf6eb", padding: "2px 8px", borderRadius: "99px" }}>مفعّلة ✓</small>}
+              <ChevronLeft size={16} color="#8c766e" />
+            </span>
+          </button>
+
+          {!isStandaloneApp && (
+            <button
+              type="button"
+              onClick={async () => {
+                const activePrompt = pwaInstallPrompt || (window as any).__deferredPwaPrompt;
+                if (activePrompt) {
+                  try {
+                    await activePrompt.prompt();
+                    const choice = await activePrompt.userChoice;
+                    if (choice.outcome === "accepted") {
+                      setIsStandaloneApp(true);
+                      setPwaInstallPrompt(null);
+                      (window as any).__deferredPwaPrompt = null;
+                      toast.success("📲 جاري تثبيت تطبيق شهيزو على هاتفك!");
+                    }
+                    return;
+                  } catch {}
+                }
+                toast.info("اضغط على قائمة المتصفح (⋮) بالأعلى ثم اختر «إضافة إلى الشاشة الرئيسية» لتثبيت تطبيق شهيزو");
+              }}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 15px", background: "transparent", border: 0, borderBottom: "1px solid #f5ebe3", cursor: "pointer", color: "#2b120f", width: "100%", textAlign: "right" }}
+            >
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "9px", fontSize: "13px", fontWeight: 700 }}>
+                <ShoppingBag size={17} color="#e86c12" /> تثبيت تطبيق شهيزو على هاتفك
+              </span>
+              <ChevronLeft size={16} color="#8c766e" />
+            </button>
+          )}
+
+          <div>
+            <button
+              type="button"
+              onClick={() => setAboutOpen(v => !v)}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 15px", background: aboutOpen ? "#fffaf5" : "transparent", border: 0, cursor: "pointer", color: "#2b120f", width: "100%", textAlign: "right" }}
+            >
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "9px", fontSize: "13px", fontWeight: 700 }}>
+                <Sparkles size={17} color="#870210" /> من نحن وحساباتنا الرسمية
+              </span>
+              <ChevronDown size={16} color="#8c766e" style={{ transform: aboutOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+            </button>
+
+            {aboutOpen && (
+              <div style={{ padding: "14px 15px", background: "linear-gradient(180deg, #fffaf5 0%, #ffffff 100%)", borderTop: "1px solid #f3e4d7", display: "grid", gap: "12px" }}>
+                <div style={{ display: "grid", gap: "4px" }}>
+                  <strong style={{ fontSize: "14px", color: "#870210" }}>🥙 {socialCfg.aboutTitle}</strong>
+                  <p style={{ margin: 0, fontSize: "12px", lineHeight: 1.7, color: "#5c433b" }}>{socialCfg.aboutText}</p>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: "8px", paddingTop: "4px" }}>
+                  <a href={normalizeWaHref(socialCfg.whatsapp)} target="_blank" rel="noreferrer" aria-label="واتساب" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#eafaf0", border: "1px solid #bfead0", textDecoration: "none", color: "#128C7E" }}>
+                    <MessageCircle size={19} />
+                    <span style={{ fontSize: "10px", fontWeight: 800 }}>واتساب</span>
+                  </a>
+                  <a href={socialCfg.facebook || "https://facebook.com"} target="_blank" rel="noreferrer" aria-label="فيسبوك" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#eef4ff", border: "1px solid #c9dcff", textDecoration: "none", color: "#1877F2" }}>
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.99 3.66 9.13 8.44 9.88v-6.99H7.9V12h2.54V9.8c0-2.51 1.49-3.89 3.78-3.89 1.09 0 2.23.19 2.23.19v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99C18.34 21.13 22 16.99 22 12z"/></svg>
+                    <span style={{ fontSize: "10px", fontWeight: 800 }}>فيسبوك</span>
+                  </a>
+                  <a href={socialCfg.instagram || "https://instagram.com"} target="_blank" rel="noreferrer" aria-label="إنستغرام" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#fdf0f6", border: "1px solid #f7cde0", textDecoration: "none", color: "#E1306C" }}>
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                    <span style={{ fontSize: "10px", fontWeight: 800 }}>إنستغرام</span>
+                  </a>
+                  <a href={socialCfg.tiktok || "https://tiktok.com"} target="_blank" rel="noreferrer" aria-label="تيك توك" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#f4f4f5", border: "1px solid #d4d4d8", textDecoration: "none", color: "#18181b" }}>
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.87a8.16 8.16 0 0 0 4.76 1.52v-3.4a4.85 4.85 0 0 1-1-.3z"/></svg>
+                    <span style={{ fontSize: "10px", fontWeight: 800 }}>تيك توك</span>
+                  </a>
+                  <a href={"tel:" + (socialCfg.phone || "779542219").replace(/\s+/g, "")} aria-label="اتصال" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#fceee9", border: "1px solid #f2cfc6", textDecoration: "none", color: "#870210" }}>
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    <span style={{ fontSize: "10px", fontWeight: 800 }}>اتصال</span>
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    </main>holder="صنعاء" /></label>
                     <label className="form-wide">الحي / الشارع *<input required maxLength={120} value={address.district} onChange={event => setAddress({ ...address, district: event.target.value })} placeholder="مثلاً: الرقاص، حدة، الأصبحي..." /></label>
                   </>
                 )}
