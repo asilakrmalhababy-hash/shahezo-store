@@ -1,5 +1,5 @@
-const CACHE = "shahezo-shell-v7";
-const PRECACHE = ["/", "/offline.html", "/manifest.webmanifest", "/app-icon-192-v4.png", "/chef-hat.png", "/notif-icon-v5.png", "/notif-badge-v5.png"];
+const CACHE = "shahezo-shell-v8";
+const PRECACHE = ["/", "/offline.html", "/manifest.webmanifest", "/app-icon-192-v8.png", "/chef-hat.png", "/notif-icon-v8.png", "/notif-badge-v8.png"];
 
 self.addEventListener("install", event => {
   self.skipWaiting();
@@ -39,8 +39,8 @@ self.addEventListener("push", event => {
       const isAdminUrl = url.startsWith("/admin");
       await self.registration.showNotification(title, {
         body,
-        icon: "/notif-icon-v5.png",
-        badge: "/notif-badge-v5.png",
+        icon: "/notif-icon-v8.png",
+        badge: "/notif-badge-v8.png",
         tag,
         renotify: true,
         requireInteraction: isAdminUrl,
