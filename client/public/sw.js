@@ -1,5 +1,5 @@
-const CACHE = "shahezo-shell-v8";
-const PRECACHE = ["/", "/offline.html", "/manifest.webmanifest", "/app-icon-192-v8.png", "/chef-hat.png", "/notif-icon-v8.png", "/notif-badge-v8.png"];
+const CACHE = "shahezo-shell-v9";
+const PRECACHE = ["/", "/offline.html", "/manifest-v9.webmanifest", "/app-icon-192-v8.png", "/chef-hat.png", "/notif-icon-v8.png", "/notif-badge-v8.png"];
 
 self.addEventListener("install", event => {
   self.skipWaiting();

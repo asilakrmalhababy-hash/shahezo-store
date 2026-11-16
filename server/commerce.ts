@@ -407,7 +407,7 @@ async function readSettings(db: NonNullable<Awaited<ReturnType<typeof getDb>>>) 
       if (!PUBLIC_STORE_SETTING_KEYS.has(row.key)) continue;
       settings[row.key] = row.value;
     }
-    const oldStoreNameNorm = new RegExp("أوريجنال|أورجنال|اوريجنال|ORIGINAL", "gi");
+    const oldStoreNameNorm = new RegExp("أوريجنال|أورجنال|اوريجنال|ORIGINAL|جاهز", "gi");
     if (!settings.storeName || oldStoreNameNorm.test(settings.storeName)) settings.storeName = "شهيزو – SHAHEZO";
     if (!settings.contactPhone) settings.contactPhone = "779542219";
     if (!settings.storeDescription) settings.storeDescription = "شهيزو – شهي ولذيذ · شاورما • فلافل • عصائر طبيعية طازجة | للطلب والاستفسار: 779542219 - 772206455";
