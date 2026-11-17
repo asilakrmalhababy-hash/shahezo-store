@@ -2453,7 +2453,6 @@ export const commerceRouter = router({
           await tx.delete(orderItems);
           await tx.delete(orders);
         });
-        await recordStaffAudit(db, ctx.user, "RESET_ALL_ORDERS", "orders", null, "الطلبات", "تصفير قاعدة البيانات من جميع الطلبات وإعادة الترقيم من 1");
         return { success: true };
       }),
       delete: requirePermission("orders.manage").use(async ({ next }) => { clearCatalogCache(); return next(); }).input(z.object({ id: safeId })).mutation(async ({ input }) => {
