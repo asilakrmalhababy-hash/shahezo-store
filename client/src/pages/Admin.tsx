@@ -3469,7 +3469,7 @@ function OffersPanel() {
                     <div className="entity-image">{item.imageUrl ? <img src={item.imageUrl} alt={item.name} /> : <Package size={18} />}</div>
                     <div className="entity-main">
                       <strong>{item.name}</strong>
-                      <small>السعر السابق: <s>{money(u.oldPrice)}</s> ✕ ← السعر بعد الخصم: <b style={{ color: "#870210" }}>{money(item.price)}</b></small>
+                      <small>السابق: <s>{money(u.oldPrice)}</s> ← بعد الخصم: <b style={{ color: "#870210" }}>{money(item.price)}</b></small>
                     </div>
                     <div className="entity-actions">
                       <button type="button" className="small-button danger-soft" onClick={() => removeSingleProductOffer(item)}>
@@ -3498,7 +3498,7 @@ function OffersPanel() {
               1️⃣ اختر المنتجات التي تدخل في التجميعة (اضغط على المنتج لإضافته):
               <input type="search" value={bundleSearch} onChange={e => setBundleSearch(e.target.value)} placeholder="ابحث عن منتج لإضافته للتجميعة..." style={{ marginTop: "4px" }} />
             </label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "7px", maxHeight: "230px", overflowY: "auto", padding: "8px", background: "#ffffff", borderRadius: "12px", border: "1px solid #e5d8ce" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "6px", maxHeight: "220px", overflowY: "auto", padding: "8px", background: "#ffffff", borderRadius: "12px", border: "1px solid #e5d8ce" }}>
               {filteredForBundle.map(p => {
                 const picked = bundlePicked.find(x => x.id === p.id);
                 return (
@@ -5115,53 +5115,70 @@ function StaffManagementPanel({ actorIsOwner, actorPermissions, actorStaffId }: 
             )}
           </div>
 
-          <div style={{ padding: "12px 14px", borderRadius: "14px", border: "1.5px solid #cfe2d5", background: "#f3f9f5", display: "grid", gap: "8px" }}>
-            <strong style={{ fontSize: "12px", color: "#870210" }}>⚡ قوالب صلاحيات سريعة جاهزة (اختَر المهمة بنقرة واحدة):</strong>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-              <button type="button" className="small-button" onClick={() => { setRoleKey("staff"); setPermissions(["products.view", "products.add"]); toast.info("تم ضبط الصلاحيات: إضافة منتجات فقط (ممنوع التعديل والحذف)"); }}>
-                ➕ إضافة منتجات فقط (بدون حذف أو تعديل)
-              </button>
-              <button type="button" className="small-button" onClick={() => { setRoleKey("product_manager"); setPermissions(["products.view", "products.add", "products.edit", "inventory.manage"]); toast.info("تم ضبط الصلاحيات: إضافة وتعديل منتجات وأسعار (ممنوع الحذف النهائي)"); }}>
-                ✏️ إضافة وتعديل المنتجات والأسعار (ممنوع الحذف)
-              </button>
-              <button type="button" className="small-button" onClick={() => { setRoleKey("order_manager"); setPermissions(["overview.view", "orders.view", "orders.manage", "customers.view", "chats.manage"]); toast.info("تم ضبط الصلاحيات: إدارة الطلبات والفواتير والرد على الزبائن"); }}>
-                📦 مسؤول طلبات وتواصل مع الزبائن فقط
-              </button>
-              <button type="button" className="small-button" onClick={() => { setRoleKey("general_manager"); setPermissions(actorIsOwner ? [...PERMISSION_KEYS] : [...actorPermissions]); toast.info("تم تحديد كامل الصلاحيات"); }}>
-                👑 مدير شامل بجميع الصلاحيات
-              </button>
+          <div style={{ padding: "12px", borderRadius: "12px", border: "1px solid #e8ddd4", background: "#fcfaf8", display: "grid", gap: "8px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "4px" }}>
+              <strong style={{ fontSize: "11.5px", color: "#870210" }}>1️⃣ اختر قالب الصلاحيات السريع (بضغطة واحدة):</strong>
+              <small style={{ fontSize: "10px", color: "#78645d" }}>يضبط الدور والصلاحيات تلقائياً</small>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "7px" }}>
+              {[
+                { key: "staff_add", title: "➕ إضافة وجبات فقط", sub: "بدون تعديل أو حذف", active: roleKey === "staff" && permissions.length === 2 && permissions.includes("products.add"), run: () => { setRoleKey("staff"); setPermissions(["products.view", "products.add"]); toast.info("تم اختيار: إضافة وجبات فقط"); } },
+                { key: "prod_mgr", title: "✏️ مسؤول وجبات وأسعار", sub: "إضافة وتعديل بدون حذف", active: roleKey === "product_manager" && permissions.length === 4, run: () => { setRoleKey("product_manager"); setPermissions(["products.view", "products.add", "products.edit", "inventory.manage"]); toast.info("تم اختيار: مسؤول وجبات وأسعار"); } },
+                { key: "ord_mgr", title: "📦 مسؤول طلبات وتواصل", sub: "إدارة الفواتير والزبائن", active: roleKey === "order_manager", run: () => { setRoleKey("order_manager"); setPermissions(["overview.view", "orders.view", "orders.manage", "customers.view", "chats.manage"]); toast.info("تم اختيار: مسؤول طلبات وتواصل"); } },
+                { key: "gen_mgr", title: "👑 مدير شامل للنظام", sub: "جميع الصلاحيات المتاحة", active: roleKey === "general_manager" && permissions.length >= 8, run: () => { setRoleKey("general_manager"); setPermissions(actorIsOwner ? [...PERMISSION_KEYS] : [...actorPermissions]); toast.info("تم اختيار: مدير شامل"); } },
+              ].map(preset => (
+                <button
+                  key={preset.key}
+                  type="button"
+                  onClick={preset.run}
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: "10px",
+                    border: preset.active ? "1.5px solid #870210" : "1px solid #dfd3c9",
+                    background: preset.active ? "#fceee9" : "#ffffff",
+                    textAlign: "right",
+                    cursor: "pointer",
+                    display: "grid",
+                    gap: "2px",
+                  }}
+                >
+                  <strong style={{ fontSize: "11px", color: preset.active ? "#870210" : "#2b120f", fontWeight: 800 }}>{preset.title}</strong>
+                  <small style={{ fontSize: "9.5px", color: "#78645d" }}>{preset.sub}</small>
+                </button>
+              ))}
             </div>
           </div>
 
-          <div style={{ padding: "14px", borderRadius: "14px", border: "1.5px solid #d8e5dc", background: "#ffffff", display: "grid", gap: "10px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+          <div style={{ padding: "12px", borderRadius: "12px", border: "1px solid #e8ddd4", background: "#fcfaf8", display: "grid", gap: "8px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
               <div>
-                <strong style={{ fontSize: "12.5px", color: "#870210", display: "block" }}>📂 تخصيص الأقسام المسموح لهذا المشرف بالتحكم بها:</strong>
-                <small style={{ color: "#5b7063", fontSize: "11px" }}>
-                  {allowedCategoryIds.length === 0 ? "✅ مسموح له بإدارة جميع أقسام المتجر (اضغط على أي قسم بالأسفل إذا أردت حصره في أقسام معينة فقط مثل الشاورما أو العصائر)." : ("🔒 مقيّد بإدارة (" + allowedCategoryIds.length + ") قسم محدد فقط — لن يتمكن من إضافة أو تعديل منتجات خارجها.")}
+                <strong style={{ fontSize: "11.5px", color: "#870210", display: "block" }}>2️⃣ الأقسام المسموح له بإدارتها:</strong>
+                <small style={{ color: "#6e5a53", fontSize: "10px" }}>
+                  {allowedCategoryIds.length === 0 ? "✅ جميع أقسام المتجر متاحة له (أو اضغط لتحديد أقسام معينة فقط)" : ("🔒 مقيّد بـ (" + allowedCategoryIds.length + ") قسم محدد فقط")}
                 </small>
               </div>
               {allowedCategoryIds.length > 0 && (
-                <button type="button" className="small-button selected" onClick={() => setAllowedCategoryIds([])}>إتاحة كل الأقسام</button>
+                <button type="button" className="small-button selected" onClick={() => setAllowedCategoryIds([])}>إتاحة الكل</button>
               )}
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(115px, 1fr))", gap: "6px" }}>
               {(catsQuery.data ?? []).map(cat => {
                 const isSelected = allowedCategoryIds.includes(cat.id);
                 return (
                   <label
                     key={cat.id}
                     style={{
-                      display: "inline-flex",
+                      display: "flex",
+                      flexDirection: "row",
                       alignItems: "center",
                       gap: "6px",
-                      padding: "6px 12px",
-                      borderRadius: "99px",
-                      border: isSelected ? "2px solid #870210" : "1px solid #d4e0d8",
-                      background: isSelected ? "#fceee9" : "#f8faf9",
-                      fontWeight: 800,
-                      fontSize: "12px",
-                      color: "#153b29",
+                      padding: "6px 9px",
+                      borderRadius: "9px",
+                      border: isSelected ? "1.5px solid #870210" : "1px solid #dfd3c9",
+                      background: isSelected ? "#fceee9" : "#ffffff",
+                      fontWeight: 700,
+                      fontSize: "11px",
+                      color: "#2b120f",
                       cursor: "pointer",
                     }}
                   >
@@ -5169,24 +5186,23 @@ function StaffManagementPanel({ actorIsOwner, actorPermissions, actorStaffId }: 
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => setAllowedCategoryIds(curr => curr.includes(cat.id) ? curr.filter(id => id !== cat.id) : [...curr, cat.id])}
-                      style={{ width: "14px", minHeight: "14px", accentColor: "#870210" }}
                     />
-                    <span>{cat.name}</span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cat.name}</span>
                   </label>
                 );
               })}
             </div>
           </div>
 
-          <div style={{ padding: "14px", borderRadius: "14px", border: "1px solid #e2ebe4", background: "#f9fbf8" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", flexWrap: "wrap", gap: "8px" }}>
-              <strong style={{ fontSize: "12px", color: "#870210" }}>تخصيص الصلاحيات الدقيقة ({permissions.length} محددة)</strong>
-              <div style={{ display: "flex", gap: "6px" }}>
-                <button type="button" className="small-button" onClick={() => setPermissions(actorIsOwner ? [...PERMISSION_KEYS] : [...actorPermissions])}>تحديد الكل المسموح</button>
-                <button type="button" className="small-button" onClick={() => handleRoleChange(roleKey)}>إعادة الافتراضي للدور</button>
+          <div style={{ padding: "12px", borderRadius: "12px", border: "1px solid #e8ddd4", background: "#fcfaf8", display: "grid", gap: "8px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
+              <strong style={{ fontSize: "11.5px", color: "#870210" }}>3️⃣ الصلاحيات التفصيلية ({permissions.length} مفعّلة):</strong>
+              <div style={{ display: "flex", gap: "5px" }}>
+                <button type="button" className="small-button" onClick={() => setPermissions(actorIsOwner ? [...PERMISSION_KEYS] : [...actorPermissions])}>تحديد الكل</button>
+                <button type="button" className="small-button" onClick={() => handleRoleChange(roleKey)}>الافتراضي</button>
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "8px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "6px" }}>
               {PERMISSION_KEYS.map(perm => {
                 const meta = PERMISSION_LABELS[perm];
                 const checked = permissions.includes(perm);
@@ -5198,19 +5214,19 @@ function StaffManagementPanel({ actorIsOwner, actorPermissions, actorStaffId }: 
                       display: "flex",
                       flexDirection: "row",
                       alignItems: "center",
-                      gap: "8px",
-                      padding: "8px 10px",
-                      borderRadius: "10px",
-                      border: checked ? "1.5px solid #870210" : "1px solid #e1e8e2",
-                      background: checked ? "#eef6f0" : "#ffffff",
+                      gap: "7px",
+                      padding: "7px 9px",
+                      borderRadius: "9px",
+                      border: checked ? "1.5px solid #870210" : "1px solid #e2d7ce",
+                      background: checked ? "#fff7f4" : "#ffffff",
                       opacity: disabled ? 0.5 : 1,
                       cursor: disabled ? "not-allowed" : "pointer",
                     }}
                   >
-                    <input type="checkbox" checked={checked} disabled={disabled} onChange={() => togglePermission(perm)} style={{ width: "15px", minHeight: "15px", accentColor: "#870210" }} />
-                    <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                      <span style={{ fontSize: "11px", fontWeight: 700, color: "#1c3b2b" }}>{meta.label}</span>
-                      <small style={{ fontSize: "9px", color: meta.sensitive ? "#9b5346" : "#78847b" }}>{meta.group}{meta.sensitive ? " · صلاحية حساسة" : ""}</small>
+                    <input type="checkbox" checked={checked} disabled={disabled} onChange={() => togglePermission(perm)} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: "1px", minWidth: 0 }}>
+                      <span style={{ fontSize: "10.5px", fontWeight: 800, color: "#2b120f", lineHeight: 1.3 }}>{meta.label}</span>
+                      <small style={{ fontSize: "9px", color: meta.sensitive ? "#9b5346" : "#78645d" }}>{meta.group}</small>
                     </div>
                   </label>
                 );
@@ -5585,7 +5601,7 @@ function BroadcastPanel() {
             <p>اختر قالباً جاهزاً لتعبئة الإشعار والفئة تلقائياً أو اكتب إشعارك المخصص بالأسفل.</p>
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "8px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "7px" }}>
           {quickTemplates.map((tpl, idx) => (
             <button
               key={idx}
@@ -5852,7 +5868,7 @@ export default function Admin() {
       <main className="admin-main">
         <header className="admin-topbar">
           <button className="admin-menu-button" onClick={() => document.body.classList.toggle("admin-menu-open")}><ChevronDown size={18} />القائمة</button>
-          <span className="admin-breadcrumb">شهيزو – SHAHEZO <span>/</span> {allowedSections.find(item => item.id === activeSection)?.label}</span>
+          <span className="admin-breadcrumb">📍 {allowedSections.find(item => item.id === activeSection)?.label}</span>
           <Link className="small-button" href="/">فتح المتجر<ArrowLeft size={14} /></Link>
         </header>
         <AdminPanel section={activeSection} isOwner={isOwner} permissions={permissions} allowedCategoryIds={allowedCategoryIds} staffId={staffId} />
