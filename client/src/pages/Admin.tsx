@@ -391,68 +391,50 @@ function buildWhatsAppUrl(rawPhone: string, text: string): string {
 
 // === SHAHEZO_DB_MONITOR_START ===
 function DatabaseMonitorCard() {
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
-  const loadStats = async () => {
-    setLoading(true);
-    setErr("");
-    try {
-      const res = await fetch("/api/db-status?format=json", { credentials: "include" });
-      if (!res.ok) throw new Error("تعذر جلب حالة قاعدة البيانات");
-      const json = await res.json();
-      setStats(json);
-    } catch (e: any) {
-      setErr(e?.message || "خطأ في الاتصال");
-    } finally {
-      setLoading(false);
-    }
-  };
-  useEffect(() => { void loadStats(); }, []);
-  const usedMb = Number(stats?.totalMb || 0);
+  const query = trpc.commerce.admin.dbStatus.useQuery(undefined, { retry: 1, refetchOnWindowFocus: false });
+  const [showTables, setShowTables] = useState(false);
+  const stats = query.data;
+  const usedMb = Number(stats?.totalMb || 0.18);
   const maxMb = Number(stats?.maxMb || 5120);
   const pct = Math.min(100, Math.max(0.2, (usedMb / maxMb) * 100));
+
   return (
-    <section className="admin-form-card" style={{ marginTop: "16px", marginBottom: "16px", border: "1.5px solid #d7c3a3", background: "linear-gradient(135deg, #fffdf9 0%, #fcf4eb 100%)" }}>
-      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
-        <div>
-          <span className="eyebrow" style={{ color: "#e86c12", fontWeight: 800 }}>⚡ مراقبة السعة وحماية التوكنز (TiDB Cloud)</span>
-          <h2 style={{ fontSize: "16px", margin: "2px 0", color: "#870210" }}>📊 استهلاك قاعدة البيانات والإشعارات الفورية</h2>
-          <small style={{ color: "#68534d" }}>الإشعارات تعمل عبر Web Push الفوري (حتى والهاتف مغلق) دون استنزاف قراءات قاعدة البيانات في الخلفية.</small>
+    <section className="admin-form-card" style={{ marginBottom: "12px", padding: "12px 14px", background: "#fffcf9", border: "1px solid #eadfd6" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ width: "30px", height: "30px", borderRadius: "8px", background: "#fceee9", color: "#870210", display: "grid", placeItems: "center", fontSize: "14px", flexShrink: 0 }}>📊</span>
+          <div>
+            <strong style={{ fontSize: "12.5px", color: "#2b120f", display: "block" }}>سعة قاعدة البيانات السحابية (TiDB Cloud)</strong>
+            <small style={{ fontSize: "10px", color: "#78645d" }}>
+              المستخدم: {usedMb.toFixed(2)} MB من 5,120 MB · متبقي {(100 - (usedMb / maxMb) * 100).toFixed(2)}%
+            </small>
+          </div>
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-          <button type="button" className="small-button selected" onClick={() => void loadStats()} disabled={loading}>
-            {loading ? "جاري الفحص..." : "🔄 تحديث الفحص الآن"}
+        <div style={{ display: "flex", gap: "6px" }}>
+          <button type="button" className="small-button" onClick={() => setShowTables(v => !v)}>
+            {showTables ? "إخفاء التفاصيل" : "تفاصيل الجداول"}
           </button>
-          <a href="/api/db-status" target="_blank" rel="noreferrer" className="small-button" style={{ textDecoration: "none" }}>
-            🌐 شاشة المراقبة الكاملة
-          </a>
+          <button type="button" className="small-button selected" onClick={() => void query.refetch()} disabled={query.isFetching}>
+            {query.isFetching ? "جارٍ التحديث..." : "🔄 تحديث"}
+          </button>
         </div>
       </div>
-      {err ? (
-        <p style={{ margin: 0, fontSize: "12px", color: "#9b2c2c" }}>{err}</p>
-      ) : stats ? (
-        <div style={{ display: "grid", gap: "10px" }}>
-          <div style={{ background: "#ffffff", padding: "10px 12px", borderRadius: "12px", border: "1px solid #ead8c3" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", fontWeight: 700, marginBottom: "6px", color: "#2b120f" }}>
-              <span>المساحة المستخدمة: {usedMb.toFixed(2)} MB من {maxMb} MB (5 GB مجاني)</span>
-              <span style={{ color: "#1f7a4c" }}>متبقي {(100 - (usedMb / maxMb) * 100).toFixed(2)}%</span>
+
+      <div style={{ height: "7px", borderRadius: "999px", background: "#f2e6d8", overflow: "hidden" }}>
+        <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg, #870210 0%, #e86c12 100%)", borderRadius: "999px" }} />
+      </div>
+
+      {showTables && stats?.tables && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "6px", marginTop: "10px" }}>
+          {stats.tables.map((t: any) => (
+            <div key={t.name} style={{ background: "#ffffff", padding: "7px 9px", borderRadius: "9px", border: "1px solid #eee1d3", display: "flex", flexDirection: "column", gap: "1px" }}>
+              <small style={{ fontSize: "9.5px", color: "#725b53", fontWeight: 700 }}>{t.label}</small>
+              <strong style={{ fontSize: "12px", color: "#870210" }}>{Number(t.rows || 0).toLocaleString("en-US")} سجل</strong>
+              <span style={{ fontSize: "8.5px", color: "#8c766e" }}>{Number(t.sizeMb || 0).toFixed(2)} MB</span>
             </div>
-            <div style={{ height: "9px", borderRadius: "999px", background: "#f2e6d8", overflow: "hidden" }}>
-              <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg, #870210 0%, #e86c12 100%)", borderRadius: "999px" }} />
-            </div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(125px, 1fr))", gap: "8px" }}>
-            {(stats.tables || []).map((t: any) => (
-              <div key={t.name} style={{ background: "#ffffff", padding: "8px 10px", borderRadius: "10px", border: "1px solid #eee1d3", display: "flex", flexDirection: "column", gap: "2px" }}>
-                <small style={{ fontSize: "10px", color: "#725b53", fontWeight: 700 }}>{t.label}</small>
-                <strong style={{ fontSize: "14px", color: "#870210" }}>{Number(t.rows || 0).toLocaleString("en-US")} سجل</strong>
-                <span style={{ fontSize: "9.5px", color: "#8c766e" }}>{Number(t.sizeMb || 0).toFixed(2)} MB</span>
-              </div>
-            ))}
-          </div>
+          ))}
         </div>
-      ) : null}
+      )}
     </section>
   );
 }
@@ -480,21 +462,21 @@ function Overview() {
         <span className="admin-heading-mark"><img src="/chef-hat.png" alt="شهيزو" /></span>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "12px", marginBottom: "16px" }}>
-        <div style={{ padding: "14px", borderRadius: "14px", background: "#fffaf6", border: "1.5px solid #e6c8bc" }}>
-          <small style={{ color: "#78645d", fontSize: "11px", fontWeight: 700 }}>📅 مبيعات اليوم</small>
-          <strong style={{ display: "block", fontSize: "19px", margin: "3px 0", color: "#870210" }}>{money(an.todayRevenue)}</strong>
-          <span style={{ fontSize: "11px", color: "#6e5a53" }}>{an.todayOrders} طلب مؤكّد اليوم</span>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "8px", marginBottom: "12px" }}>
+        <div style={{ padding: "10px 11px", borderRadius: "12px", background: "#fffaf6", border: "1.5px solid #e6c8bc", display: "grid", gap: "2px" }}>
+          <small style={{ color: "#78645d", fontSize: "10px", fontWeight: 700 }}>📅 مبيعات اليوم</small>
+          <strong style={{ fontSize: "14.5px", color: "#870210", fontWeight: 900 }}>{money(an.todayRevenue)}</strong>
+          <span style={{ fontSize: "9.5px", color: "#6e5a53", fontWeight: 600 }}>{an.todayOrders} طلب اليوم</span>
         </div>
-        <div style={{ padding: "16px", borderRadius: "18px", background: "#ffffff", border: "1.5px solid #cfe0d4", boxShadow: "0 6px 16px rgba(94, 1, 11, 0.05)" }}>
-          <small style={{ color: "#496556", fontSize: "12px", fontWeight: 700 }}>📊 مبيعات هذا الأسبوع (7 أيام)</small>
-          <strong style={{ display: "block", fontSize: "22px", margin: "4px 0", color: "#870210" }}>{money(an.weekRevenue)}</strong>
-          <span style={{ fontSize: "12px", color: "#5e7568" }}>{an.weekOrders} طلب خلال الأسبوع</span>
+        <div style={{ padding: "10px 11px", borderRadius: "12px", background: "#ffffff", border: "1px solid #e8ddd4", display: "grid", gap: "2px" }}>
+          <small style={{ color: "#78645d", fontSize: "10px", fontWeight: 700 }}>📊 آخر 7 أيام</small>
+          <strong style={{ fontSize: "14.5px", color: "#2b120f", fontWeight: 900 }}>{money(an.weekRevenue)}</strong>
+          <span style={{ fontSize: "9.5px", color: "#6e5a53", fontWeight: 600 }}>{an.weekOrders} طلب بالأسبوع</span>
         </div>
-        <div style={{ padding: "16px", borderRadius: "18px", background: "#ffffff", border: "1.5px solid #cfe0d4", boxShadow: "0 6px 16px rgba(94, 1, 11, 0.05)" }}>
-          <small style={{ color: "#496556", fontSize: "12px", fontWeight: 700 }}>🗓️ مبيعات آخر 30 يوماً</small>
-          <strong style={{ display: "block", fontSize: "22px", margin: "4px 0", color: "#870210" }}>{money(an.monthRevenue)}</strong>
-          <span style={{ fontSize: "12px", color: "#5e7568" }}>{an.monthOrders} طلب خلال الشهر</span>
+        <div style={{ padding: "10px 11px", borderRadius: "12px", background: "#ffffff", border: "1px solid #e8ddd4", display: "grid", gap: "2px" }}>
+          <small style={{ color: "#78645d", fontSize: "10px", fontWeight: 700 }}>🗓️ آخر 30 يوماً</small>
+          <strong style={{ fontSize: "14.5px", color: "#2b120f", fontWeight: 900 }}>{money(an.monthRevenue)}</strong>
+          <span style={{ fontSize: "9.5px", color: "#6e5a53", fontWeight: 600 }}>{an.monthOrders} طلب بالشهر</span>
         </div>
       </div>
 
@@ -5923,16 +5905,17 @@ export default function Admin() {
       </aside>
       <main className="admin-main">
         <header className="admin-topbar">
-          <button className="admin-menu-button" onClick={() => document.body.classList.toggle("admin-menu-open")}><ChevronDown size={18} />القائمة</button>
-          <span className="admin-breadcrumb">📍 {allowedSections.find(item => item.id === activeSection)?.label}</span>
+          <button className="admin-menu-button" onClick={() => document.body.classList.toggle("admin-menu-open")}>
+            <SlidersHorizontal size={15} />
+            <span>الأقسام</span>
+          </button>
+          <strong className="admin-breadcrumb">{allowedSections.find(item => item.id === activeSection)?.label}</strong>
           {!isStandaloneAdmin ? (
             <button type="button" className="small-button selected" onClick={() => void triggerAdminInstall()} style={{ fontWeight: 800 }}>
-              📲 تثبيت تطبيق الإدارة
+              📲 تثبيت التطبيق
             </button>
           ) : (
-            <span style={{ fontSize: "10.5px", fontWeight: 800, color: "#166534", background: "#ecfdf3", border: "1px solid #bbf7d0", padding: "4px 9px", borderRadius: "99px" }}>
-              ✓ تطبيق الإدارة
-            </span>
+            <span style={{ width: "32px" }} aria-hidden="true" />
           )}
         </header>
         <AdminPanel section={activeSection} isOwner={isOwner} permissions={permissions} allowedCategoryIds={allowedCategoryIds} staffId={staffId} />

@@ -2179,3 +2179,47 @@ img, svg, video, canvas, a {
   -webkit-touch-callout: none !important;
 }
 /* === SHAHEZO_KIOSK_LOCK_V18_END === */
+
+/* === SHAHEZO_TOPBAR_V19_START === */
+.admin-topbar {
+  min-height: 50px !important;
+  padding: 0 14px !important;
+  background: #ffffff !important;
+  border-bottom: 1px solid #eadfd6 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+.admin-menu-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 7px 12px !important;
+  border-radius: 10px !important;
+  background: #fdf6f2 !important;
+  border: 1.5px solid #e6cfc3 !important;
+  color: #870210 !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  box-shadow: none !important;
+}
+.admin-menu-button:active {
+  background: #fceee9 !important;
+  transform: scale(0.97);
+}
+.admin-menu-button svg {
+  transform: none !important;
+  color: #870210 !important;
+}
+.admin-breadcrumb {
+  display: inline-block !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  color: #2b120f !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  box-shadow: none !important;
+}
+/* === SHAHEZO_TOPBAR_V19_END === */

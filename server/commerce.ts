@@ -1915,19 +1915,172 @@ export const commerceRouter = router({
         return { success: true };
       }),
     }),
-    overview: requirePermission("overview.view").query(async () => getCached("admin:overview", 30_000, async () => {
+    overview: requirePermission("overview.view").query(async () => getCached("admin:overview", 15_000, async () => {
       const db = await database();
-      const [productRows, categoryRows, orderRows, customerRows, orderMetrics, settings] = await Promise.all([
+      const [productRows, categoryRows, allOrderRows, allItemRows, allEventRows, settings] = await Promise.all([
         db.select({ count: sql<number>`count(*)` }).from(products),
         db.select({ count: sql<number>`count(*)` }).from(categories),
-        db.select({ count: sql<number>`count(*)` }).from(orders),
-        db.select({ count: sql<number>`count(distinct ${orders.phone})` }).from(orders).where(sql`${orders.phone} <> ''`),
-        db.select({ orderValue: sql<number>`coalesce(sum(case when ${orders.status} <> 'cancelled' then ${orders.total} else 0 end), 0)`, openOrders: sql<number>`coalesce(sum(case when ${orders.status} in ('new', 'preparing', 'ready', 'out_for_delivery') then 1 else 0 end), 0)` }).from(orders),
+        db.select().from(orders).orderBy(desc(orders.createdAt)).limit(500),
+        db.select().from(orderItems).limit(2000),
+        db.select().from(orderEvents).orderBy(desc(orderEvents.createdAt)).limit(500),
         readSettings(db),
       ]);
-      const recentOrders = await db.select().from(orders).orderBy(desc(orders.createdAt)).limit(6);
-      return { products: Number(productRows[0]?.count ?? 0), categories: Number(categoryRows[0]?.count ?? 0), orders: Number(orderRows[0]?.count ?? 0), customers: Number(customerRows[0]?.count ?? 0), orderValue: Number(orderMetrics[0]?.orderValue ?? 0), openOrders: Number(orderMetrics[0]?.openOrders ?? 0), recentOrders, settings };
+
+      const realOrders = allOrderRows.filter((o: any) => o.city !== "طلب توفير خاص" && !String(o.orderNumber || "").startsWith("REQ-"));
+      const reqOrders = allOrderRows.filter((o: any) => o.city === "طلب توفير خاص" || String(o.orderNumber || "").startsWith("REQ-"));
+
+      const nowMs = Date.now();
+      const dayCutoff = nowMs - 24 * 60 * 60 * 1000;
+      const weekCutoff = nowMs - 7 * 24 * 60 * 60 * 1000;
+      const monthCutoff = nowMs - 30 * 24 * 60 * 60 * 1000;
+
+      let todayOrders = 0, todayRevenue = 0;
+      let weekOrders = 0, weekRevenue = 0;
+      let monthOrders = 0, monthRevenue = 0;
+      let totalOrderValue = 0, openOrdersCount = 0;
+      const phoneSet = new Set<string>();
+      const districtMap = new Map<string, { district: string; count: number; revenue: number }>();
+      const validOrderIds = new Set<number>();
+
+      for (const ord of realOrders) {
+        const p = String(ord.phone || "").trim();
+        if (p) phoneSet.add(p);
+        if (["new", "preparing", "ready", "out_for_delivery"].includes(ord.status)) {
+          openOrdersCount++;
+        }
+        if (ord.status !== "cancelled") {
+          validOrderIds.add(ord.id);
+          const tot = Number(ord.total || 0);
+          totalOrderValue += tot;
+          const tMs = new Date(ord.createdAt).getTime();
+          if (tMs >= dayCutoff) { todayOrders++; todayRevenue += tot; }
+          if (tMs >= weekCutoff) { weekOrders++; weekRevenue += tot; }
+          if (tMs >= monthCutoff) { monthOrders++; monthRevenue += tot; }
+
+          const distKey = `${ord.city || "صنعاء"} — ${ord.district || "عام"}`;
+          const prevD = districtMap.get(distKey) || { district: distKey, count: 0, revenue: 0 };
+          prevD.count += 1;
+          prevD.revenue += tot;
+          districtMap.set(distKey, prevD);
+        }
+      }
+
+      const prodMap = new Map<string, { name: string; qty: number; revenue: number }>();
+      const itemsByOrderId = new Map<number, any[]>();
+      for (const it of allItemRows) {
+        const arr = itemsByOrderId.get(it.orderId) || [];
+        arr.push(it);
+        itemsByOrderId.set(it.orderId, arr);
+        if (validOrderIds.has(it.orderId)) {
+          const pName = String(it.productName || "").trim();
+          if (!pName || pName.startsWith("🎁 هدية")) continue;
+          const prevP = prodMap.get(pName) || { name: pName, qty: 0, revenue: 0 };
+          prevP.qty += Number(it.quantity || 1);
+          prevP.revenue += Number(it.lineTotal || 0);
+          prodMap.set(pName, prevP);
+        }
+      }
+
+      const topProducts = Array.from(prodMap.values()).sort((a, b) => b.qty - a.qty).slice(0, 6);
+      const topDistricts = Array.from(districtMap.values()).sort((a, b) => b.count - a.count).slice(0, 6);
+
+      const orderById = new Map<number, any>(allOrderRows.map((o: any) => [o.id, o]));
+      const cancelledItemsLog = allEventRows
+        .filter((ev: any) => String(ev.note || "").startsWith("❌"))
+        .slice(0, 20)
+        .map((ev: any) => {
+          const ord = orderById.get(ev.orderId);
+          return {
+            id: ev.id,
+            orderNumber: ord?.orderNumber || String(ev.orderId),
+            customerName: ord?.recipientName || "عميل",
+            phone: ord?.phone || "",
+            note: ev.note,
+            createdAt: ev.createdAt,
+          };
+        });
+
+      const missingRequests = reqOrders.slice(0, 25).map((ro: any) => {
+        const reqItems = itemsByOrderId.get(ro.id) || [];
+        const rawText = reqItems[0]?.productName || ro.addressDetails || ro.customerNote || "صنف مطلوب";
+        return {
+          id: ro.id,
+          itemText: String(rawText).replace(/^طلب توفير:\s*/i, "").trim(),
+          customerName: String(ro.recipientName || "").replace(/^🔔 طلب توفير \(|\)$/g, "").trim() || "زائر",
+          phone: ro.phone || "غير مسجل بالموقع",
+          createdAt: ro.createdAt,
+        };
+      });
+
+      const recentOrders = realOrders.slice(0, 6);
+      return {
+        products: Number(productRows[0]?.count ?? 0),
+        categories: Number(categoryRows[0]?.count ?? 0),
+        orders: realOrders.length,
+        customers: phoneSet.size,
+        orderValue: totalOrderValue,
+        openOrders: openOrdersCount,
+        recentOrders,
+        settings,
+        analytics: {
+          todayOrders,
+          todayRevenue,
+          weekOrders,
+          weekRevenue,
+          monthOrders,
+          monthRevenue,
+          topProducts,
+          topDistricts,
+          cancelledItemsLog,
+          missingRequests,
+        },
+      };
     })),
+    dbStatus: requirePermission("overview.view").query(async () => {
+      const db = await database();
+      const sizeRes: any = await db.execute(sql`
+        SELECT TABLE_NAME as tableName,
+               TABLE_ROWS as tableRows,
+               ROUND((DATA_LENGTH + INDEX_LENGTH) / 1024 / 1024, 3) as sizeMb
+        FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE()
+      `);
+      const rows = Array.isArray(sizeRes[0]) ? sizeRes[0] : Array.isArray(sizeRes) ? sizeRes : [];
+      const tblLabels: Record<string, string> = {
+        products: "🥙 الوجبات والمنتجات",
+        categories: "📂 الأقسام",
+        orders: "🧾 الطلبات",
+        order_items: "📋 أصناف الطلبات",
+        banners: "🖼️ الإعلانات",
+        owner_push_subscriptions: "🔔 أجهزة الإدارة",
+      };
+      const countMap: Record<string, { rows: number; sizeMb: number }> = {};
+      let totalMb = 0;
+      for (const r of rows) {
+        const tname = String(r.tableName || r.TABLE_NAME || "");
+        const sz = Number(r.sizeMb ?? r.SIZEMB ?? 0);
+        const rcount = Number(r.tableRows ?? r.TABLE_ROWS ?? 0);
+        totalMb += sz;
+        countMap[tname] = { rows: rcount, sizeMb: sz };
+      }
+      for (const tbl of ["products", "categories", "orders", "order_items", "banners", "owner_push_subscriptions"]) {
+        try {
+          const cRes: any = await db.execute(sql.raw(`SELECT COUNT(*) as c FROM ${tbl}`));
+          const cRow = Array.isArray(cRes[0]) ? cRes[0][0] : cRes[0];
+          const exactCount = Number(cRow?.c ?? 0);
+          if (!countMap[tbl]) countMap[tbl] = { rows: exactCount, sizeMb: 0.02 };
+          else countMap[tbl].rows = exactCount;
+        } catch {}
+      }
+      totalMb = Math.max(0.15, totalMb);
+      const tables = Object.keys(tblLabels).map(k => ({
+        name: k,
+        label: tblLabels[k],
+        rows: countMap[k]?.rows ?? 0,
+        sizeMb: countMap[k]?.sizeMb ?? 0.01,
+      }));
+      return { totalMb, maxMb: 5120, tables, status: "healthy", ts: Date.now() };
+    }),
     notifications: router({
       subscribe: adminProcedure.input(pushSubscriptionSchema).mutation(async ({ ctx, input }) => {
         if (!isAllowedPushEndpoint(input.endpoint)) {
