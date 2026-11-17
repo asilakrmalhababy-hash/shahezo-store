@@ -4244,6 +4244,8 @@ function GamifiedRewardBar({ settings, location }: { settings: Record<string, st
   );
 }
 
+function ShahezoWhatsAppBar(_props: any) { return null; }
+
 export default function Home() {
   const storeCtx = useStore();
   const trpcUtils = trpc.useUtils();
