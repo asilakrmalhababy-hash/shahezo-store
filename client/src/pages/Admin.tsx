@@ -481,10 +481,10 @@ function Overview() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "12px", marginBottom: "16px" }}>
-        <div style={{ padding: "16px", borderRadius: "18px", background: "linear-gradient(135deg, #870210 0%, #5e010b 100%)", color: "#ffffff", boxShadow: "0 10px 24px rgba(94, 1, 11, 0.16)" }}>
-          <small style={{ color: "#cfe6d8", fontSize: "12px", fontWeight: 700 }}>📅 مبيعات اليوم</small>
-          <strong style={{ display: "block", fontSize: "22px", margin: "4px 0", color: "#f1d897" }}>{money(an.todayRevenue)}</strong>
-          <span style={{ fontSize: "12px", color: "#e3f2e9" }}>{an.todayOrders} طلب مؤكّد اليوم</span>
+        <div style={{ padding: "14px", borderRadius: "14px", background: "#fffaf6", border: "1.5px solid #e6c8bc" }}>
+          <small style={{ color: "#78645d", fontSize: "11px", fontWeight: 700 }}>📅 مبيعات اليوم</small>
+          <strong style={{ display: "block", fontSize: "19px", margin: "3px 0", color: "#870210" }}>{money(an.todayRevenue)}</strong>
+          <span style={{ fontSize: "11px", color: "#6e5a53" }}>{an.todayOrders} طلب مؤكّد اليوم</span>
         </div>
         <div style={{ padding: "16px", borderRadius: "18px", background: "#ffffff", border: "1.5px solid #cfe0d4", boxShadow: "0 6px 16px rgba(94, 1, 11, 0.05)" }}>
           <small style={{ color: "#496556", fontSize: "12px", fontWeight: 700 }}>📊 مبيعات هذا الأسبوع (7 أيام)</small>
@@ -1439,20 +1439,18 @@ function ProductsPanel({ isOwner = true, permissions = [], allowedCategoryIds = 
         <div><span className="eyebrow">كتالوج متجرك السريع</span><h1>إدارة المنتجات</h1><p>واجهة مبسطة وسريعة جداً لرفع أصناف البوفية بالساندوتش أو الوجبة أو بالوزن والمبلغ (فلافل، مقبلات، صحون).</p></div>
         <span className="admin-heading-mark"><Package size={25} /></span>
       </div>
-      <div style={{ marginBottom: "14px", padding: "14px 16px", borderRadius: "18px", background: "linear-gradient(135deg, #870210 0%, #5e010b 100%)", color: "#ffffff", display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center", justifyContent: "space-between", boxShadow: "0 10px 24px rgba(94, 1, 11, 0.18)" }}>
-        <div style={{ display: "grid", gap: "4px" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#f1d897", fontSize: "12px", fontWeight: 900 }}>
-            <Sparkles size={15} /> الأسرع على الإطلاق — توفير 90% من وقت الإدخال
-          </span>
-          <strong style={{ fontSize: "16px" }}>⚡ ارفع حتى 30 صورة منتج دفعة واحدة والذكاء الاصطناعي يكتب الاسم والوصف والقسم!</strong>
-          <small style={{ color: "#d5e6dc", fontSize: "12px" }}>اختَر كل صور المنتجات من الاستوديو أو الصق قائمة أسعار، وسيبقى عليك فقط كتابة السعر أمام كل منتج.</small>
+      <div style={{ marginBottom: "12px", padding: "12px 14px", borderRadius: "14px", background: "#fffaf6", border: "1px solid #ead8cc", display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "grid", gap: "2px" }}>
+          <strong style={{ fontSize: "13px", color: "#870210", display: "inline-flex", alignItems: "center", gap: "5px" }}><Sparkles size={14} /> الإضافة الجماعية السريعة (حتى 30 وجبة دفعة واحدة)</strong>
+          <small style={{ color: "#6e5a53", fontSize: "11px" }}>ارفع صور الوجبات أو الصق قائمة أسعار وسيتولى النظام كتابة الاسم والوصف وتحديد القسم تلقائياً.</small>
         </div>
         <button
           type="button"
           onClick={() => setShowBulkStudio(true)}
-          style={{ padding: "11px 18px", borderRadius: "13px", border: "none", background: "#f1d897", color: "#123828", fontWeight: 900, fontSize: "13px", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "7px", boxShadow: "0 4px 12px rgba(0,0,0,0.18)" }}
+          className="small-button selected"
+          style={{ padding: "7px 13px", fontWeight: 800 }}
         >
-          <ImagePlus size={17} /> فتح استوديو الإضافة السريعة (30 منتج)
+          <ImagePlus size={15} /> فتح استوديو الإضافة السريعة
         </button>
       </div>
       {showBulkStudio && (
@@ -1474,8 +1472,8 @@ function ProductsPanel({ isOwner = true, permissions = [], allowedCategoryIds = 
           <div className="product-form-layout">
             <div className="form-fields-grid">
               <label className="field-wide">اسم المنتج *<input required maxLength={180} value={form.name} onChange={e => setField("name", e.target.value)} placeholder="مثلاً: شاورما عربي، ساندوتش فلافل، عصير مانجو، صحن مقبلات..." /></label>
-              <label>{form.weightEnabled ? "سعر الكيلو الواحد (1000 جرام) بالريال *" : "السعر الحالي (بعد الخصم إن وجد) *"}<input ref={singlePriceInputRef} required type="number" min="0" value={form.price} onChange={e => setField("price", e.target.value)} placeholder={form.weightEnabled ? "مثلاً: 4000 (سعر الكيلو)" : "مثلاً: 1800"} /></label>
-              <label>🔥 السعر السابق قبل الخصم (اختياري — ليدخل في قسم العروضات)<input type="number" min="0" value={form.oldPrice} onChange={e => setField("oldPrice", e.target.value)} placeholder="مثلاً: 2000 (يظهر مشطوباً بعلامة ✕)" /></label>
+              <label>{form.weightEnabled ? "سعر الكيلو (ر.ي) *" : "السعر الحالي (ر.ي) *"}<input ref={singlePriceInputRef} required type="number" min="0" value={form.price} onChange={e => setField("price", e.target.value)} placeholder={form.weightEnabled ? "مثلاً: 4000 (سعر الكيلو)" : "مثلاً: 1800"} /></label>
+              <label>السعر قبل الخصم (اختياري للعروض)<input type="number" min="0" value={form.oldPrice} onChange={e => setField("oldPrice", e.target.value)} placeholder="مثلاً: 2000 (يظهر مشطوباً بعلامة ✕)" /></label>
               <label>القسم<select value={form.categoryId ?? ""} onChange={e => setField("categoryId", e.target.value ? Number(e.target.value) : null)}><option value="">اختر القسم...</option>{cats.data?.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
               <label className="field-wide">الوصف (اختياري)<textarea rows={2} value={form.description} onChange={e => setField("description", e.target.value)} placeholder="وصف مختصر للمنتج..." /></label>
 
@@ -2426,19 +2424,19 @@ function DeliveryZonesPanel() {
         icon={Truck}
       />
 
-      <div style={{ marginBottom: "16px", padding: "16px 18px", borderRadius: "18px", background: "linear-gradient(135deg, #870210 0%, #5e010b 100%)", color: "#ffffff", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "12px", boxShadow: "0 10px 26px rgba(94, 1, 11, 0.18)" }}>
+      <div style={{ marginBottom: "14px", padding: "13px 15px", borderRadius: "14px", background: "#fffaf6", border: "1px solid #ead8cc", color: "#2b120f", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
         <div style={{ display: "grid", gap: "4px" }}>
-          <span style={{ color: "#f1d897", fontSize: "12px", fontWeight: 900 }}>🚀 منظومة التوصيل الذكية بالاختيار المتدرج (المحافظة ➔ المنطقة ➔ الشارع)</span>
-          <strong style={{ fontSize: "15.5px" }}>
-            لديك حالياً: {tree.cities.length} محافظات · {totalAreas} مديرية/منطقة · {totalStreets} شارع مسعّر · {tree.vipFreePhones.length} عميل توصيل مجاني
+          <span style={{ color: "#870210", fontSize: "11px", fontWeight: 800 }}>منظومة التوصيل المتدرج (المحافظة ➔ المنطقة ➔ الشارع)</span>
+          <strong style={{ fontSize: "13.5px", color: "#2b120f" }}>
+            المسجل حالياً: {tree.cities.length} محافظات · {totalAreas} منطقة · {totalStreets} شارع · {tree.vipFreePhones.length} عميل VIP
           </strong>
-          <small style={{ color: "#d4e8dc", fontSize: "11.5px" }}>بعد أي تعديل، اضغط زر «حفظ واعتماد التغييرات» ليظهر فوراً للزبائن عند تأكيد الطلب.</small>
+          <small style={{ color: "#6e5a53", fontSize: "11px" }}>بعد أي تعديل، اضغط «حفظ واعتماد مناطق التوصيل» ليظهر للزبائن فوراً.</small>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
           <button
             type="button"
             className="small-button"
-            style={{ background: "rgba(255,255,255,0.14)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.3)", fontWeight: 800 }}
+            style={{ background: "#ffffff", color: "#4a352f", border: "1px solid #dfd3c9", fontWeight: 700 }}
             onClick={() => {
               if (tree.cities.length > 0 && !window.confirm("هل تريد تحميل القالب الجاهز لمحافظتي صنعاء وإب (مع المديريات والشوارع الشهيرة)؟ يمكنك تعديله بحرية بعد التحميل.")) return;
               const tpl = makeDefaultYemenDeliveryTree();
@@ -2455,7 +2453,7 @@ function DeliveryZonesPanel() {
             type="button"
             onClick={() => saveTreeNow(tree)}
             disabled={saveMut.isPending}
-            style={{ padding: "10px 18px", borderRadius: "12px", border: "none", background: "#f1d897", color: "#113826", fontWeight: 900, fontSize: "13px", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "7px", boxShadow: "0 4px 14px rgba(0,0,0,0.2)" }}
+            style={{ padding: "8px 14px", borderRadius: "10px", border: "none", background: "#870210", color: "#ffffff", fontWeight: 800, fontSize: "12px", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px" }}
           >
             {saveMut.isPending ? <LoaderCircle size={16} className="spin" /> : <Save size={16} />}
             💾 حفظ واعتماد مناطق وأسعار التوصيل الآن
@@ -3412,11 +3410,11 @@ function OffersPanel() {
     <div className="admin-content">
       <AdminHeading eyebrow="تحفيز المبيعات والتوفير" title="العروض الخاصة وتجميعات المنتجات" text="ضع خصماً مع السعر المشطوب (✕) على أي منتج، أو اجمع عدة منتجات في بوكس واحد بسعر مخفض يدخل تلقائياً في قسم العروضات." icon={BadgePercent} />
 
-      <section className="admin-form-card" style={{ border: "1.5px solid #e86c12", background: "linear-gradient(135deg, #fffdf9 0%, #fff6ec 100%)" }}>
+      <section className="admin-form-card">
         <div className="form-card-heading">
           <span className="form-card-number" style={{ background: "#870210", color: "#fff" }}>01</span>
           <div>
-            <h2>🔥 عمل عرض وخصم مباشر على منتج (السعر السابق مشطوباً بعلامة ✕)</h2>
+            <h2>🔥 عرض وخصم مباشر على صنف</h2>
             <p>اختر أي منتج من متجرك، حدد السعر السابق والسعر الجديد بعد التخفيض، وسيدخل تلقائياً في «قسم العروضات».</p>
           </div>
         </div>
@@ -3432,11 +3430,11 @@ function OffersPanel() {
               </select>
             </label>
             <label>
-              السعر الأصلي (قبل الخصم — يظهر مشطوباً بعلامة ✕) *
+              السعر قبل الخصم (مشطوب ✕) *
               <input required type="number" min="1" value={prodOldPrice} onChange={e => setProdOldPrice(e.target.value)} placeholder="مثلاً: 2000" />
             </label>
             <label>
-              السعر الجديد بعد التخفيض *
+              السعر الجديد بعد الخصم *
               <input required type="number" min="1" value={prodNewPrice} onChange={e => setProdNewPrice(e.target.value)} placeholder="مثلاً: 1800" />
             </label>
           </div>
@@ -3486,11 +3484,11 @@ function OffersPanel() {
         )}
       </section>
 
-      <section className="admin-form-card" style={{ border: "1.5px solid #870210", background: "linear-gradient(135deg, #ffffff 0%, #fdf6f0 100%)" }}>
+      <section className="admin-form-card">
         <div className="form-card-heading">
           <span className="form-card-number" style={{ background: "#e86c12", color: "#fff" }}>02</span>
           <div>
-            <h2>🎁 صانع التجميعات والبوكسات التوفيرية (اجمع عدة منتجات بسعر مخفض)</h2>
+            <h2>🎁 إنشاء بوكس أو تجميعة توفيرية</h2>
             <p>اختَر 2 أو 4 أو 5 منتجات من المتجر، وسيحسب الموقع إجمالي سعرها تلقائياً ويشطب عليه (✕) ويكتب سعرك الجديد مع اسم مخصص للتجميعة!</p>
           </div>
         </div>
@@ -4216,7 +4214,7 @@ function OwnerNotificationControl() {
   };
 
   return (
-    <section className="owner-push-control" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "14px 16px", borderRadius: "16px", background: enabled ? "#edf7f0" : "#fff9e8", border: enabled ? "1.5px solid #b8dec6" : "1.5px solid #f0dc9c" }}>
+    <section className="owner-push-control" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "8px", padding: "10px 13px", borderRadius: "12px", background: "#ffffff", border: "1px solid #e8ddd4" }}>
       <div>
         <strong style={{ display: "block", color: "#870210", fontSize: "13px" }}>{enabled ? "🔔 إشعارات الإدارة الفورية نشطة على هذا الجهاز" : "🔔 تفعيل إشعارات الطلبات الفورية للإدارة"}</strong>
         <small style={{ color: "#4e6258", fontSize: "11px" }}>{permission === "denied" ? "الإذن محظور من إعدادات المتصفح؛ يرجى السماح به من أيقونة القفل أعلى المتصفح." : enabled ? "يصلك إشعار فوري مع كل طلب جديد لجميع الصلاحيات حتى لو كان الموقع مغلقاً لساعات." : "فعّل الإشعارات مرة واحدة ليصلك تنبيه فوري بشعار المتجر عند تأكيد أي طلب جديد."}</small>
