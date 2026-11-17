@@ -4587,8 +4587,8 @@ function SettingsPanel() {
       <div className="form-card-heading">
         <span className="form-card-number" style={{ background: "#fceee9", color: "#870210" }}>04</span>
         <div>
-          <h2>🏪 نبذة «من نحن» وروابط حساباتنا الرسمية (مع إمكانية إخفاء أو إظهار أي أيقونة)</h2>
-          <p>تظهر للزبون في صفحة «حسابي ← من نحن وحساباتنا الرسمية». أزل علامة الصح عن أي أيقونة لإخفائها فوراً من المتجر.</p>
+          <h2>🏪 نبذة «من نحن» وروابط حساباتنا الرسمية (واتساب 1 و 2 + أيقونات مخصصة بصورة)</h2>
+          <p>تحكم في إظهار أو إخفاء أي أيقونة، عدّل رقمي الواتساب 1 و 2، أو أضف أيقونة جديدة بصورة وكلمة مخصصة.</p>
         </div>
       </div>
       <div className="form-fields-grid">
@@ -4598,9 +4598,17 @@ function SettingsPanel() {
         <div style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid #e6ece8", background: "#fafbf9", display: "grid", gap: "6px" }}>
           <label className="toggle-field" style={{ minHeight: "24px", fontWeight: 800, color: "#128C7E" }}>
             <input type="checkbox" checked={(values.socialLinksConfig as any).whatsappEnabled !== false} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, whatsappEnabled: e.target.checked } as any)} />
-            إظهار أيقونة واتساب
+            إظهار أيقونة واتساب (رقم 1)
           </label>
           <input dir="ltr" value={values.socialLinksConfig.whatsapp} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, whatsapp: e.target.value })} placeholder="https://wa.me/967779542219" />
+        </div>
+
+        <div style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid #e6ece8", background: "#fafbf9", display: "grid", gap: "6px" }}>
+          <label className="toggle-field" style={{ minHeight: "24px", fontWeight: 800, color: "#128C7E" }}>
+            <input type="checkbox" checked={(values.socialLinksConfig as any).whatsapp2Enabled !== false} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, whatsapp2Enabled: e.target.checked } as any)} />
+            إظهار أيقونة واتساب (رقم 2)
+          </label>
+          <input dir="ltr" value={(values.socialLinksConfig as any).whatsapp2 ?? "https://wa.me/967772206455"} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, whatsapp2: e.target.value } as any)} placeholder="https://wa.me/967772206455" />
         </div>
 
         <div style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid #e6ece8", background: "#fafbf9", display: "grid", gap: "6px" }}>
@@ -4627,12 +4635,97 @@ function SettingsPanel() {
           <input dir="ltr" value={values.socialLinksConfig.instagram} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, instagram: e.target.value })} placeholder="https://instagram.com/shizo.ye" />
         </div>
 
-        <div className="field-wide" style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid #e6ece8", background: "#fafbf9", display: "grid", gap: "6px" }}>
+        <div style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid #e6ece8", background: "#fafbf9", display: "grid", gap: "6px" }}>
           <label className="toggle-field" style={{ minHeight: "24px", fontWeight: 800, color: "#18181b" }}>
             <input type="checkbox" checked={(values.socialLinksConfig as any).tiktokEnabled !== false} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, tiktokEnabled: e.target.checked } as any)} />
             إظهار أيقونة تيك توك
           </label>
           <input dir="ltr" value={values.socialLinksConfig.tiktok} onChange={e => update("socialLinksConfig", { ...values.socialLinksConfig, tiktok: e.target.value })} placeholder="https://tiktok.com/@shizo.ye" />
+        </div>
+
+        <div className="field-wide" style={{ padding: "12px", borderRadius: "14px", border: "1.5px dashed #d8c2b2", background: "#fffaf5", display: "grid", gap: "10px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+            <strong style={{ fontSize: "13px", color: "#870210" }}>✨ أيقونات مخصصة إضافية (صورة + كلمة + رابط)</strong>
+            <button
+              type="button"
+              className="small-button selected"
+              onClick={() => {
+                const curr = Array.isArray((values.socialLinksConfig as any).customIcons) ? (values.socialLinksConfig as any).customIcons : [];
+                update("socialLinksConfig", {
+                  ...values.socialLinksConfig,
+                  customIcons: [...curr, { id: "ci-" + Date.now(), label: "", url: "", imageUrl: "", enabled: true }],
+                } as any);
+              }}
+            >
+              <Plus size={14} /> إضافة أيقونة بصورة
+            </button>
+          </div>
+          {((values.socialLinksConfig as any).customIcons ?? []).map((ci: any, idx: number) => (
+            <div key={ci.id || idx} style={{ padding: "10px", borderRadius: "12px", background: "#ffffff", border: "1px solid #ead8cc", display: "grid", gap: "8px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+                <label className="toggle-field" style={{ minHeight: "24px", fontWeight: 800 }}>
+                  <input
+                    type="checkbox"
+                    checked={ci.enabled !== false}
+                    onChange={e => {
+                      const next = [...((values.socialLinksConfig as any).customIcons ?? [])];
+                      next[idx] = { ...ci, enabled: e.target.checked };
+                      update("socialLinksConfig", { ...values.socialLinksConfig, customIcons: next } as any);
+                    }}
+                  />
+                  إظهار الأيقونة في المتجر
+                </label>
+                <button
+                  type="button"
+                  className="small-button danger-soft"
+                  onClick={() => {
+                    const next = ((values.socialLinksConfig as any).customIcons ?? []).filter((_: any, i: number) => i !== idx);
+                    update("socialLinksConfig", { ...values.socialLinksConfig, customIcons: next } as any);
+                  }}
+                >
+                  <Trash2 size={13} /> حذف
+                </button>
+              </div>
+              <div className="form-fields-grid">
+                <label>الكلمة الظاهرة بجانب الأيقونة
+                  <input
+                    value={ci.label || ""}
+                    onChange={e => {
+                      const next = [...((values.socialLinksConfig as any).customIcons ?? [])];
+                      next[idx] = { ...ci, label: e.target.value };
+                      update("socialLinksConfig", { ...values.socialLinksConfig, customIcons: next } as any);
+                    }}
+                    placeholder="مثال: تيليجرام، موقعنا، يوتيوب..."
+                  />
+                </label>
+                <label>الرابط عند الضغط عليها
+                  <input
+                    dir="ltr"
+                    value={ci.url || ""}
+                    onChange={e => {
+                      const next = [...((values.socialLinksConfig as any).customIcons ?? [])];
+                      next[idx] = { ...ci, url: e.target.value };
+                      update("socialLinksConfig", { ...values.socialLinksConfig, customIcons: next } as any);
+                    }}
+                    placeholder="https://..."
+                  />
+                </label>
+                <div className="field-wide">
+                  <ImageField
+                    title="صورة الأيقونة المصغرة"
+                    value={ci.imageUrl || ""}
+                    kind="icon"
+                    aspect={1}
+                    onChange={val => {
+                      const next = [...((values.socialLinksConfig as any).customIcons ?? [])];
+                      next[idx] = { ...ci, imageUrl: val };
+                      update("socialLinksConfig", { ...values.socialLinksConfig, customIcons: next } as any);
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </section>

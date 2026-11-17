@@ -1550,3 +1550,102 @@ button, a, input, select, textarea, summary, [role="button"] { touch-action: man
   color: #ffffff;
 }
 /* === SHAHEZO_UX_ANIMATIONS_V10_END === */
+
+/* === SHAHEZO_ACC_SUBVIEWS_V14_START === */
+.shahezo-sub-banner {
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #870210 0%, #5b010b 70%, #3c0007 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 8px 22px rgba(135, 2, 16, 0.16);
+}
+.shahezo-sub-back-btn {
+  padding: 7px 14px;
+  border-radius: 11px;
+  border: 1.5px solid rgba(241, 216, 151, 0.75);
+  background: rgba(255, 255, 255, 0.12);
+  color: #f1d897;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.shahezo-sub-back-btn:active {
+  transform: scale(0.96);
+}
+.shahezo-wa-num-circle {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #870210;
+  color: #ffffff;
+  display: inline-grid;
+  place-items: center;
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: transform 0.14s;
+}
+.shahezo-wa-num-circle:active {
+  transform: scale(0.92);
+}
+.shahezo-wa-num-tag {
+  position: absolute;
+  bottom: -2px;
+  left: -3px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #f1d897;
+  color: #5b010b;
+  font-size: 9.5px;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid #ffffff;
+  line-height: 1;
+}
+.shahezo-custom-social-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 10px 0 6px;
+  border-radius: 99px;
+  background: #fdf9f4;
+  border: 1.5px solid #ead8cc;
+  color: #870210;
+  font-size: 11px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.shahezo-custom-social-chip img {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.shahezo-pill-input {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 14px;
+  border: 1.5px solid #e2cfc0;
+  background: #ffffff;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #2b120f;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.shahezo-pill-input:focus {
+  border-color: #870210;
+  box-shadow: 0 0 0 3px rgba(135, 2, 16, 0.08);
+}
+/* === SHAHEZO_ACC_SUBVIEWS_V14_END === */
