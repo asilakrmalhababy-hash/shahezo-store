@@ -4293,17 +4293,99 @@ function OwnerNotificationControl() {
 
 function UsersPanel() {
   const query = trpc.commerce.admin.customers.list.useQuery(undefined, { retry: 1 });
-  return <div className="admin-content">
-    <AdminHeading eyebrow="قاعدة عملاء بوفية شهيزو" title="سجل العملاء الدائمين" text="قائمة تلقائية بجميع العملاء الذين طلبوا من المتجر مع إجمالي مشترياتهم وعدد طلباتهم وتاريخ آخر طلب." icon={Users} />
-    <div className="privacy-note"><ShieldCheck size={17} /><span>تُحفظ بيانات وأرقام العملاء تلقائياً مع كل طلب جديد لتسهيل التواصل السريع ومتابعة العملاء الدائمين.</span></div>
-    {query.isLoading ? <AdminLoading /> : query.error ? <AdminError message={query.error.message} retry={() => void query.refetch()} /> : !query.data?.length ? <AdminEmpty title="لا يوجد عملاء بعد" text="ستظهر أرقام العملاء هنا بعد استلام أول طلب." /> : <div className="user-list">{query.data.map(customer => <article className="user-row" key={customer.phone}>
-      <span className="user-avatar"><CircleUserRound size={20} /></span>
-      <div className="user-main"><strong dir="ltr">{customer.phone}</strong><small>آخر طلب: {new Date(customer.lastOrderAt).toLocaleString("ar-YE")}</small></div>
-      <span className="visibility-tag visible">{customer.orderCount} {customer.orderCount === 1 ? "طلب" : "طلبات"}</span>
-      <a className="small-button" href={`tel:${customer.phone}`}>اتصال بالعميل</a>
-      <details className="user-details"><summary>ملخص مشتريات العميل</summary><div className="user-detail-grid"><span>عدد الطلبات: <strong>{customer.orderCount}</strong></span><span>قيمة الطلبات غير الملغاة: <strong>{money(customer.totalSpent)}</strong></span><span>آخر طلب: <strong>{new Date(customer.lastOrderAt).toLocaleString("ar-YE")}</strong></span></div><small className="subtle-note">لعرض الاسم والعنوان وتفاصيل التحقق، افتح الطلب الأخير من قائمة الطلبات.</small></details>
-    </article>)}</div>}
-  </div>;
+  const [search, setSearch] = useState("");
+  const customers = (query.data ?? []) as Array<{
+    phone: string;
+    name?: string;
+    city?: string;
+    district?: string;
+    orderCount: number;
+    totalSpent: number;
+    lastOrderAt: string | Date;
+  }>;
+
+  const filtered = customers.filter(c => {
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    return (
+      String(c.name || "").toLowerCase().includes(q) ||
+      String(c.phone || "").toLowerCase().includes(q) ||
+      String(c.district || "").toLowerCase().includes(q)
+    );
+  });
+
+  return (
+    <div className="admin-content">
+      <AdminHeading
+        eyebrow="قاعدة عملاء بوفية شهيزو الدائمة"
+        title={`سجل العملاء (${customers.length})`}
+        text="تُحفظ أسماء وأرقام وعناوين العملاء هنا بشكل دائم ومستقل حتى لو قمت بتصفير الطلبات، لتتمكن من التواصل معهم في أي وقت."
+        icon={Users}
+      />
+
+      <div className="filter-bar" style={{ marginBottom: "12px" }}>
+        <label className="filter-search" style={{ gridColumn: "1 / -1" }}>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="ابحث باسم العميل، رقم الهاتف، أو المنطقة..."
+          />
+        </label>
+      </div>
+
+      {query.isLoading ? (
+        <AdminLoading />
+      ) : query.error ? (
+        <AdminError message={query.error.message} retry={() => void query.refetch()} />
+      ) : !filtered.length ? (
+        <AdminEmpty title="لا يوجد عملاء مطابقون" text="ستظهر أسماء وأرقام العملاء هنا تلقائياً مع أول طلب." />
+      ) : (
+        <div className="user-list">
+          {filtered.map(customer => {
+            const custName = (customer.name || "").trim() || "عميل شهيزو";
+            const areaText = [customer.city, customer.district].filter(Boolean).join(" — ");
+            return (
+              <article className="user-row" key={customer.phone} style={{ alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1 }}>
+                  <span className="user-avatar"><CircleUserRound size={20} /></span>
+                  <div className="user-main" style={{ minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <strong style={{ fontSize: "13.5px", color: "#2b120f", fontWeight: 900 }}>{custName}</strong>
+                      <span dir="ltr" style={{ fontSize: "12px", fontWeight: 800, color: "#870210", background: "#fceee9", padding: "2px 8px", borderRadius: "99px" }}>
+                        {customer.phone}
+                      </span>
+                    </div>
+                    <small style={{ color: "#6e5a53", fontSize: "11px" }}>
+                      {areaText ? `📍 ${areaText} · ` : ""}
+                      إجمالي المشتريات: <b>{money(customer.totalSpent)}</b> · آخر طلب: {new Date(customer.lastOrderAt).toLocaleDateString("ar-YE")}
+                    </small>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                  <span className="visibility-tag visible">
+                    {customer.orderCount} {customer.orderCount === 1 ? "طلب" : "طلبات"}
+                  </span>
+                  <a className="small-button" href={`tel:${customer.phone}`}>
+                    📞 اتصال
+                  </a>
+                  <a
+                    className="small-button selected"
+                    href={buildWhatsAppUrl(customer.phone, `مرحباً ${custName} 🥙
+معك بوفية شهيزو – SHAHEZO، نسعد بخدمتك دائماً!`)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    💬 واتساب
+                  </a>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 type AdminRewardCfg = {

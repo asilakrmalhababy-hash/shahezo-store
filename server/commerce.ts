@@ -270,6 +270,118 @@ async function getAllAdminPushTargets(db: any) {
 }
 
 const __recentAdminPushLocks = new Map<string, number>();
+
+type PersistentCustomerEntry = {
+  phone: string;
+  name: string;
+  city: string;
+  district: string;
+  orderCount: number;
+  totalSpent: number;
+  lastOrderAt: string;
+};
+
+async function syncAndReadPersistentCustomers(db: any, mergeFromOrders = true): Promise<PersistentCustomerEntry[]> {
+  let savedMap = new Map<string, PersistentCustomerEntry>();
+  try {
+    const row = (await db.select({ value: storeSettings.value }).from(storeSettings).where(eq(storeSettings.key, "store_customers_v1")).limit(1))[0];
+    if (row?.value) {
+      const parsed = JSON.parse(row.value);
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          if (item && typeof item.phone === "string" && item.phone.trim()) {
+            savedMap.set(item.phone.trim(), {
+              phone: item.phone.trim(),
+              name: String(item.name || "عميل شهيزو").trim(),
+              city: String(item.city || "صنعاء").trim(),
+              district: String(item.district || "").trim(),
+              orderCount: Number(item.orderCount || 0),
+              totalSpent: Number(item.totalSpent || 0),
+              lastOrderAt: String(item.lastOrderAt || new Date().toISOString()),
+            });
+          }
+        }
+      }
+    }
+  } catch {}
+
+  if (mergeFromOrders) {
+    try {
+      const ordRows = await db.select().from(orders).orderBy(desc(orders.createdAt)).limit(1000);
+      let changed = false;
+      const liveStats = new Map<string, { name: string; city: string; district: string; count: number; spent: number; lastAt: string }>();
+      for (const o of ordRows) {
+        if (o.city === "طلب توفير خاص" || String(o.orderNumber || "").startsWith("REQ-")) continue;
+        const p = String(o.phone || "").trim();
+        if (!p) continue;
+        const cur = liveStats.get(p) || {
+          name: String(o.recipientName || "عميل شهيزو").trim(),
+          city: String(o.city || "صنعاء").trim(),
+          district: String(o.district || "").trim(),
+          count: 0,
+          spent: 0,
+          lastAt: o.createdAt ? new Date(o.createdAt).toISOString() : new Date().toISOString(),
+        };
+        if (o.status !== "cancelled") {
+          cur.count += 1;
+          cur.spent += Number(o.total || 0);
+        }
+        liveStats.set(p, cur);
+      }
+
+      for (const [phone, st] of liveStats.entries()) {
+        const existing = savedMap.get(phone);
+        if (!existing) {
+          savedMap.set(phone, {
+            phone,
+            name: st.name,
+            city: st.city,
+            district: st.district,
+            orderCount: st.count,
+            totalSpent: st.spent,
+            lastOrderAt: st.lastAt,
+          });
+          changed = true;
+        } else {
+          const nextName = st.name && st.name !== "عميل شهيزو" ? st.name : existing.name;
+          const nextCity = st.city || existing.city;
+          const nextDist = st.district || existing.district;
+          const nextCount = Math.max(existing.orderCount, st.count);
+          const nextSpent = Math.max(existing.totalSpent, st.spent);
+          const nextLast = st.lastAt > existing.lastOrderAt ? st.lastAt : existing.lastOrderAt;
+          if (
+            nextName !== existing.name ||
+            nextCity !== existing.city ||
+            nextDist !== existing.district ||
+            nextCount !== existing.orderCount ||
+            nextSpent !== existing.totalSpent ||
+            nextLast !== existing.lastOrderAt
+          ) {
+            savedMap.set(phone, {
+              phone,
+              name: nextName,
+              city: nextCity,
+              district: nextDist,
+              orderCount: nextCount,
+              totalSpent: nextSpent,
+              lastOrderAt: nextLast,
+            });
+            changed = true;
+          }
+        }
+      }
+
+      if (changed && savedMap.size > 0) {
+        const arr = Array.from(savedMap.values()).sort((a, b) => (b.lastOrderAt || "").localeCompare(a.lastOrderAt || "")).slice(0, 1000);
+        const jsonStr = JSON.stringify(arr);
+        await db.insert(storeSettings).values({ key: "store_customers_v1", value: jsonStr }).onDuplicateKeyUpdate({ set: { value: jsonStr } }).catch(() => {});
+      }
+    } catch {}
+  }
+
+  return Array.from(savedMap.values()).sort((a, b) => (b.lastOrderAt || "").localeCompare(a.lastOrderAt || ""));
+}
+
 async function notifyOwnerNewOrder(orderId: number, orderNumber: string, total: number, recipientName?: string, area?: string) {
   const lockKey = "admin-order-" + orderId;
   const now = Date.now();
@@ -1400,6 +1512,7 @@ export const commerceRouter = router({
         return { id: concurrent.id, orderNumber: concurrent.orderNumber, total: concurrent.total, duplicate: true };
       });
       if (!result.duplicate) {
+        void syncAndReadPersistentCustomers(db, true).catch(() => {});
         void notifyOwnerNewOrder(result.id, result.orderNumber, result.total, input.recipientName, input.city + " - " + input.district)
           .catch(() => console.warn("[Push] Could not notify owner of a new order"));
       }
@@ -2012,6 +2125,8 @@ export const commerceRouter = router({
         };
       });
 
+      const persistentCusts = await syncAndReadPersistentCustomers(db, true);
+      for (const pc of persistentCusts) { if (pc.phone) phoneSet.add(pc.phone); }
       const recentOrders = realOrders.slice(0, 6);
       return {
         products: Number(productRows[0]?.count ?? 0),
@@ -2448,6 +2563,7 @@ export const commerceRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "هذه العملية الحساسة مخصصة لمالك المتجر فقط." });
         }
         const db = await database();
+        await syncAndReadPersistentCustomers(db, true);
         await db.transaction(async tx => {
           await tx.delete(orderEvents);
           await tx.delete(orderItems);
@@ -2574,12 +2690,7 @@ export const commerceRouter = router({
     customers: router({
       list: requirePermission("customers.view").query(async () => {
         const db = await database();
-        return db.select({
-          phone: orders.phone,
-          orderCount: sql<number>`count(*)`,
-          totalSpent: sql<number>`coalesce(sum(case when ${orders.status} <> 'cancelled' then ${orders.total} else 0 end), 0)`,
-          lastOrderAt: sql<Date>`max(${orders.createdAt})`,
-        }).from(orders).where(sql`${orders.phone} <> ''`).groupBy(orders.phone).orderBy(desc(sql`max(${orders.createdAt})`)).limit(500);
+        return syncAndReadPersistentCustomers(db, true);
       }),
     }),
     users: router({
