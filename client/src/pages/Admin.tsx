@@ -1927,6 +1927,8 @@ function CategoriesPanel() {
 </label>
               <label className="field-wide">وصف (اختياري)<textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></label>
               <label>ترتيب العرض<input type="number" value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: e.target.value })} /></label>
+              <label>⏳ موعد بدء ظهور الإعلان (اختياري)<input type="datetime-local" value={cfg.startsAt || ""} onChange={e => setCfg({ ...cfg, startsAt: e.target.value })} /></label>
+              <label>⌛ موعد انتهاء وإخفاء الإعلان (اختياري)<input type="datetime-local" value={cfg.endsAt || ""} onChange={e => setCfg({ ...cfg, endsAt: e.target.value })} /></label>
               <label className="toggle-field"><input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} /> القسم مفعّل في الواجهة</label>
             </div>
             <ImageField title="قص وتجهيز صورة القسم" value={form.imageUrl} onChange={imageUrl => setForm(curr => ({ ...curr, imageUrl }))} kind="category" aspect={4 / 5} />
@@ -2005,6 +2007,8 @@ type AdminBannerCfg = {
   showTitle: boolean;
   showBtn: boolean;
   popupOnce: boolean;
+  startsAt?: string;
+  endsAt?: string;
 };
 
 const blankBannerCfg: AdminBannerCfg = {
@@ -2019,6 +2023,8 @@ const blankBannerCfg: AdminBannerCfg = {
   showTitle: false,
   showBtn: false,
   popupOnce: true,
+  startsAt: "",
+  endsAt: "",
 };
 
 function unpackAdminBannerUrl(rawActionUrl?: string | null): { targetUrl: string; cfg: AdminBannerCfg } {
@@ -2045,6 +2051,8 @@ function unpackAdminBannerUrl(rawActionUrl?: string | null): { targetUrl: string
         showTitle: Boolean(parsed.showTitle),
         showBtn: Boolean(parsed.showBtn),
         popupOnce: parsed.popupOnce !== false,
+        startsAt: typeof parsed.startsAt === "string" ? parsed.startsAt : "",
+        endsAt: typeof parsed.endsAt === "string" ? parsed.endsAt : "",
       },
     };
   } catch {
@@ -3159,6 +3167,8 @@ function BannersPanel() {
                   <strong>{item.title}</strong>
                   <small>
                     {placementLabels[meta.cfg.placement]} · {sizeLabels[meta.cfg.size]} · {meta.cfg.clickMode === "hotspot" ? "زر محدد داخل الصورة" : meta.cfg.clickMode === "full" ? "كامل الصورة قابلة للضغط" : "عرض فقط"}
+                    {meta.cfg.startsAt ? ` · يبدأ: ${new Date(meta.cfg.startsAt).toLocaleString("ar-YE")}` : ""}
+                    {meta.cfg.endsAt ? ` · ينتهي: ${new Date(meta.cfg.endsAt).toLocaleString("ar-YE")}` : ""}
                   </small>
                 </div>
                 <label className="toggle-field compact-toggle">
@@ -4457,6 +4467,7 @@ function SettingsPanel() {
     rewardValue: "0",
     rewardsMessage: "",
     aiInstructions: "",
+    workingHoursConfig: { enabled: false, openTime: "07:00", closeTime: "23:30", closedMessage: "نعتذر، بوفية شهيزو مغلق حالياً خارج أوقات العمل الرسمية. نسعد بخدمتكم يومياً!" },
     socialLinksConfig: {
   aboutTitle: "بوفية شهيزو – شهي ولذيذ",
   aboutText: "في بوفية شهيزو نحضّر لكم يومياً أشهى الشاورما، الفلافل الساخنة المقرمشة، والعصائر الطبيعية الطازجة بأجود المكونات وبأعلى معايير النظافة والطعم الأصيل مع توصيل سريع لباب منزلك.",
@@ -4500,6 +4511,14 @@ function SettingsPanel() {
       rewardValue: raw.rewardValue || "0",
       rewardsMessage: unpacked.cleanMessage,
       aiInstructions: (raw as any).aiInstructions || "",
+      workingHoursConfig: (() => {
+        try {
+          const p = JSON.parse((raw as any).workingHoursConfig || "{}");
+          return { enabled: Boolean(p.enabled), openTime: p.openTime || "07:00", closeTime: p.closeTime || "23:30", closedMessage: p.closedMessage || "نعتذر، بوفية شهيزو مغلق حالياً خارج أوقات العمل الرسمية. نسعد بخدمتكم يومياً!" };
+        } catch {
+          return { enabled: false, openTime: "07:00", closeTime: "23:30", closedMessage: "نعتذر، بوفية شهيزو مغلق حالياً خارج أوقات العمل الرسمية. نسعد بخدمتكم يومياً!" };
+        }
+      })(),
       socialLinksConfig: (() => {
         try {
           const parsed = JSON.parse((raw as any).socialLinksConfig || "{}");
@@ -4558,6 +4577,7 @@ function SettingsPanel() {
     if (values.deliveryZones.some(zone => !zone.name.trim() || !Number.isInteger(zone.fee) || zone.fee < 0)) { toast.error("أكمل اسم كل منطقة وتأكد أن رسومها رقم صحيح غير سالب."); return; }
     if (values.deliveryEnabled && values.deliveryFee === "" && !values.deliveryZones.some(zone => zone.enabled)) { toast.error("حدد رسومًا أساسية أو فعّل منطقة توصيل واحدة على الأقل قبل استقبال الطلبات."); return; }
     if (values.deliveryFee !== "" && (!Number.isInteger(Number(values.deliveryFee)) || Number(values.deliveryFee) < 0)) { toast.error("الرسوم الأساسية يجب أن تكون عددًا صحيحًا غير سالب."); return; }
+    if (values.orderPaused && values.pausedMessage.trim().length < 4) { toast.error("⚠️ لا يمكن إيقاف المتجر وقت الذروة بدون كتابة رسالة إشعار للعملاء توضح سبب الإيقاف!"); return; }
     const mappedRewardType = rcfg.rewardMode === "discount_percent" ? "discount_percent" : "free_delivery";
     const packedMessage = packAdminRewardCfg(values.rewardsMessage, rcfg);
     save.mutate({
@@ -4577,6 +4597,7 @@ function SettingsPanel() {
       rewardValue: Math.min(100, Math.max(0, Number(values.rewardValue) || 0)),
       rewardsMessage: packedMessage,
       socialLinksConfig: JSON.stringify(values.socialLinksConfig),
+      workingHoursConfig: JSON.stringify(values.workingHoursConfig),
     });
   };
 
@@ -4588,7 +4609,44 @@ function SettingsPanel() {
 
   return <div className="admin-content"><AdminHeading eyebrow="مركز التحكم" title="إعدادات المتجر وشريط الهدايا الحماسي" text="اضبط هوية المتجر ومناطق التوصيل وشريط المكافآت التفاعلي لرفع حماس ومشتريات الزبائن." icon={Settings2} />{query.isLoading ? <AdminLoading /> : query.error ? <AdminError message={query.error.message} retry={() => void query.refetch()} /> : <form className="settings-form" onSubmit={submit}>
     <section className="admin-form-card"><div className="form-card-heading"><span className="form-card-number">01</span><div><h2>بيانات البوفية والهوية الرسمية</h2><p>اسم المتجر، رقم التواصل الرئيسي، العملة، الوصف التعريفي، والشعار الرسمي.</p></div></div><div className="settings-brand-layout"><div className="form-fields-grid"><label>اسم المتجر<input required maxLength={100} value={values.storeName} onChange={e => update("storeName", e.target.value)} /></label><label>هاتف التواصل<input type="tel" value={values.contactPhone} onChange={e => update("contactPhone", e.target.value)} placeholder="أضف رقم المتجر" /></label><label>رمز العملة<input maxLength={20} value={values.currency} onChange={e => update("currency", e.target.value)} /></label><label className="field-wide">وصف المتجر<textarea rows={2} value={values.storeDescription} onChange={e => update("storeDescription", e.target.value)} /></label></div><ImageField title="قص شعار وأيقونة شهيزو" value={values.storeIconUrl} onChange={value => update("storeIconUrl", value)} kind="icon" aspect={1} /></div></section>
-    <section className="admin-form-card"><div className="form-card-heading"><span className="form-card-number">02</span><div><h2>إعدادات التوصيل واستقبال الطلبات</h2><p>تفعيل التوصيل، الرسوم الافتراضية، أو إيقاف استقبال الطلبات مؤقتاً مع رسالة توضيحية للزبائن.</p></div></div><div className="form-fields-grid"><label className="toggle-field"><input type="checkbox" checked={values.deliveryEnabled} onChange={e => update("deliveryEnabled", e.target.checked)} /> تفعيل استقبال طلبات التوصيل</label><label>رسوم أساسية (ر.ي)<input type="number" min="0" step="1" value={values.deliveryFee} onChange={e => update("deliveryFee", e.target.value)} placeholder="غير محدد" /></label><div className="field-wide settings-zone-editor"><div className="admin-section-heading"><div><h3>مناطق التوصيل</h3><p>يمكن وضع رسوم مختلفة لكل مدينة أو منطقة.</p></div><button type="button" className="small-button" onClick={addZone}><Plus size={14} /> إضافة منطقة</button></div>{!values.deliveryZones.length ? <p className="subtle-note">لم تُضف مناطق بعد؛ سيُستخدم الرسم الأساسي إذا حُدد.</p> : values.deliveryZones.map((zone, index) => <div className="delivery-zone-row" key={index}><label>الاسم<input value={zone.name} onChange={e => patchZone(index, { name: e.target.value })} placeholder="اسم المنطقة" /></label><label>الرسم (ر.ي)<input type="number" min="0" step="1" value={zone.fee} onChange={e => patchZone(index, { fee: Number(e.target.value) })} /></label><label className="toggle-field"><input type="checkbox" checked={zone.enabled} onChange={e => patchZone(index, { enabled: e.target.checked })} /> مفعّلة</label><button type="button" className="small-button danger-soft" onClick={() => update("deliveryZones", values.deliveryZones.filter((_, i) => i !== index))}>حذف</button></div>)}</div><label className="toggle-field"><input type="checkbox" checked={values.orderPaused} onChange={e => update("orderPaused", e.target.checked)} /> إيقاف استقبال الطلبات مؤقتًا</label><label className="field-wide">رسالة الإيقاف<textarea value={values.pausedMessage} onChange={e => update("pausedMessage", e.target.value)} placeholder="اكتب الرسالة التي يراها العميل" /></label></div></section>
+    <section className="admin-form-card"><div className="form-card-heading"><span className="form-card-number">02</span><div><h2>إعدادات التوصيل واستقبال الطلبات</h2><p>تفعيل التوصيل، الرسوم الافتراضية، أو إيقاف استقبال الطلبات مؤقتاً مع رسالة توضيحية للزبائن.</p></div></div><div className="form-fields-grid"><label className="toggle-field"><input type="checkbox" checked={values.deliveryEnabled} onChange={e => update("deliveryEnabled", e.target.checked)} /> تفعيل استقبال طلبات التوصيل</label><label>رسوم أساسية (ر.ي)<input type="number" min="0" step="1" value={values.deliveryFee} onChange={e => update("deliveryFee", e.target.value)} placeholder="غير محدد" /></label><div className="field-wide settings-zone-editor"><div className="admin-section-heading"><div><h3>مناطق التوصيل</h3><p>يمكن وضع رسوم مختلفة لكل مدينة أو منطقة.</p></div><button type="button" className="small-button" onClick={addZone}><Plus size={14} /> إضافة منطقة</button></div>{!values.deliveryZones.length ? <p className="subtle-note">لم تُضف مناطق بعد؛ سيُستخدم الرسم الأساسي إذا حُدد.</p> : values.deliveryZones.map((zone, index) => <div className="delivery-zone-row" key={index}><label>الاسم<input value={zone.name} onChange={e => patchZone(index, { name: e.target.value })} placeholder="اسم المنطقة" /></label><label>الرسم (ر.ي)<input type="number" min="0" step="1" value={zone.fee} onChange={e => patchZone(index, { fee: Number(e.target.value) })} /></label><label className="toggle-field"><input type="checkbox" checked={zone.enabled} onChange={e => patchZone(index, { enabled: e.target.checked })} /> مفعّلة</label><button type="button" className="small-button danger-soft" onClick={() => update("deliveryZones", values.deliveryZones.filter((_, i) => i !== index))}>حذف</button></div>)}</div><div className="field-wide" style={{ padding: "12px", borderRadius: "12px", background: "#fcfaf8", border: "1px solid #e8ddd4", display: "grid", gap: "10px" }}>
+      <strong style={{ fontSize: "12.5px", color: "#870210" }}>⏰ مواعيد عمل البوفية (الفتح والإغلاق اليومي التلقائي)</strong>
+      <label className="toggle-field">
+        <input type="checkbox" checked={values.workingHoursConfig.enabled} onChange={e => update("workingHoursConfig", { ...values.workingHoursConfig, enabled: e.target.checked })} />
+        تفعيل جدول مواعيد الفتح والإغلاق اليومي تلقائياً
+      </label>
+      <div className="form-fields-grid">
+        <label>وقت الفتح صباحاً<input type="time" value={values.workingHoursConfig.openTime} onChange={e => update("workingHoursConfig", { ...values.workingHoursConfig, openTime: e.target.value })} /></label>
+        <label>وقت الإغلاق ليلاً<input type="time" value={values.workingHoursConfig.closeTime} onChange={e => update("workingHoursConfig", { ...values.workingHoursConfig, closeTime: e.target.value })} /></label>
+        <label className="field-wide">رسالة خارج أوقات العمل<input value={values.workingHoursConfig.closedMessage} onChange={e => update("workingHoursConfig", { ...values.workingHoursConfig, closedMessage: e.target.value })} placeholder="نعتذر، بوفية شهيزو مغلق حالياً خارج أوقات العمل..." /></label>
+      </div>
+    </div>
+
+    <div className="field-wide" style={{ padding: "12px", borderRadius: "12px", background: values.orderPaused ? "#fff5f5" : "#fcfaf8", border: values.orderPaused ? "1.5px solid #e5a3a3" : "1px solid #e8ddd4", display: "grid", gap: "9px" }}>
+      <label className="toggle-field">
+        <input type="checkbox" checked={values.orderPaused} onChange={e => update("orderPaused", e.target.checked)} />
+        ⏸️ إيقاف المتجر مؤقتاً (وقت الذروة) — يتطلب كتابة إشعار للجميع
+      </label>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
+        {[
+          "نعتذر لزبائننا الكرام، المتجر متوقف مؤقتاً الآن بسبب ضغط الذروة وسنعود قريباً!",
+          "نعتذر، استقبال الطلبات متوقف مؤقتاً للتجهيز والصيانة وسنفتح خلال دقائق.",
+        ].map(pr => (
+          <button key={pr} type="button" className="small-button" onClick={() => update("pausedMessage", pr)}>
+            + {pr.slice(0, 42)}...
+          </button>
+        ))}
+      </div>
+      <label className="field-wide">
+        رسالة الإيقاف والإشعار المرسل لجميع العملاء {values.orderPaused ? "*" : "(اختياري)"}
+        <textarea
+          required={values.orderPaused}
+          value={values.pausedMessage}
+          onChange={e => update("pausedMessage", e.target.value)}
+          placeholder="اكتب سبب الإيقاف (مثلاً: نعتذر أن المتجر متوقف مؤقتاً بسبب الذروة) — سيصل كإشعار للجميع فور الحفظ"
+        />
+      </label>
+    </div></div></section>
 
     <section className="admin-form-card" style={{ border: "2px solid #e3c472", background: "linear-gradient(180deg, #fffdf7 0%, #ffffff 100%)" }}>
       <div className="form-card-heading">

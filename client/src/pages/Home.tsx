@@ -70,7 +70,7 @@ function Header({ data, onSearch }: { data?: HomeData; onSearch: (text: string) 
       <nav className="desktop-links" aria-label="القائمة الرئيسية"><Link href="/">الرئيسية</Link><Link href="/categories">الأقسام</Link><Link href="/products">المنتجات</Link><Link href="/assistant" className="assistant-link"><Sparkles size={15} /> مساعد شهيزو</Link></nav>
       <div className="header-promise"><ShieldCheck size={15} /><span></span></div><PWAInstall />
     </div>
-    {data?.settings.orderPaused === "true" && <div className="service-notice"><Clock3 size={15} />{data.settings.pausedMessage || "استقبال الطلبات متوقف مؤقتًا"}</div>}
+    {(() => { const paused = data?.settings.orderPaused === "true"; const wh = getPublicWorkingHoursStatus((data?.settings as any)?.workingHoursConfig); if (!paused && wh.isOpen) return null; return <div className="service-notice"><Clock3 size={15} />{paused ? (data?.settings.pausedMessage || "استقبال الطلبات متوقف مؤقتًا بسبب الذروة") : wh.message}</div>; })()}
   </header>;
 }
 
@@ -163,6 +163,8 @@ type BannerConfig = {
   showTitle: boolean;
   showBtn: boolean;
   popupOnce: boolean;
+  startsAt?: string;
+  endsAt?: string;
 };
 
 const defaultBannerCfg: BannerConfig = {
@@ -178,6 +180,44 @@ const defaultBannerCfg: BannerConfig = {
   showBtn: false,
   popupOnce: true,
 };
+
+
+function getPublicWorkingHoursStatus(raw?: string | null): { isOpen: boolean; message: string } {
+  try {
+    if (!raw) return { isOpen: true, message: "" };
+    const cfg = JSON.parse(raw);
+    if (!cfg || !cfg.enabled) return { isOpen: true, message: "" };
+    const openStr = String(cfg.openTime || "07:00").trim();
+    const closeStr = String(cfg.closeTime || "23:30").trim();
+    const [oh, om] = openStr.split(":").map(Number);
+    const [ch, cm] = closeStr.split(":").map(Number);
+    if (!Number.isFinite(oh) || !Number.isFinite(om) || !Number.isFinite(ch) || !Number.isFinite(cm)) return { isOpen: true, message: "" };
+    const nowYemen = new Date(Date.now() + 3 * 60 * 60 * 1000);
+    const curMin = nowYemen.getUTCHours() * 60 + nowYemen.getUTCMinutes();
+    const openMin = oh * 60 + om;
+    const closeMin = ch * 60 + cm;
+    const isOpen = openMin <= closeMin ? (curMin >= openMin && curMin < closeMin) : (curMin >= openMin || curMin < closeMin);
+    const defaultMsg = `نعتذر، بوفية شهيزو مغلق حالياً. مواعيد العمل يومياً من ${openStr} إلى ${closeStr}`;
+    return { isOpen, message: String(cfg.closedMessage || "").trim() || defaultMsg };
+  } catch {
+    return { isOpen: true, message: "" };
+  }
+}
+
+
+function isBannerWithinSchedule(rawActionUrl?: string | null): boolean {
+  const { cfg } = parseBannerMeta(rawActionUrl);
+  const now = Date.now();
+  if (cfg.startsAt) {
+    const s = new Date(cfg.startsAt).getTime();
+    if (Number.isFinite(s) && now < s) return false;
+  }
+  if (cfg.endsAt) {
+    const e = new Date(cfg.endsAt).getTime();
+    if (Number.isFinite(e) && now > e) return false;
+  }
+  return true;
+}
 
 function parseBannerMeta(rawActionUrl?: string | null): { targetUrl: string; cfg: BannerConfig } {
   const raw = String(rawActionUrl || "").trim();
@@ -203,6 +243,8 @@ function parseBannerMeta(rawActionUrl?: string | null): { targetUrl: string; cfg
         showTitle: Boolean(parsed.showTitle),
         showBtn: Boolean(parsed.showBtn),
         popupOnce: parsed.popupOnce !== false,
+        startsAt: typeof parsed.startsAt === "string" ? parsed.startsAt : "",
+        endsAt: typeof parsed.endsAt === "string" ? parsed.endsAt : "",
       },
     };
   } catch {

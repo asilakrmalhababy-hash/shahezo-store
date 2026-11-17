@@ -469,6 +469,7 @@ const settingSchema = z.object({
   aiInstructions: z.string().trim().max(3000).optional(),
   deliveryTreeConfig: z.string().max(600000).optional(),
   socialLinksConfig: z.string().max(60000).optional(),
+  workingHoursConfig: z.string().max(4000).optional(),
 });
 
 function slugify(value: string) {
@@ -480,7 +481,7 @@ const PUBLIC_STORE_SETTING_KEYS = new Set([
   "storeName", "storeDescription", "contactPhone", "currency", "storeIconUrl",
   "deliveryEnabled", "deliveryFee", "deliveryZones", "orderPaused", "pausedMessage",
   "rewardEnabled", "rewardsThreshold", "rewardType", "rewardValue", "rewardsMessage",
-  "aiInstructions", "deliveryTreeConfig", "socialLinksConfig", "store_broadcasts_v1",
+  "aiInstructions", "deliveryTreeConfig", "socialLinksConfig", "workingHoursConfig", "store_broadcasts_v1",
 ]);
 
 const __orderRateBuckets = new Map<string, { count: number; resetAt: number }>();
@@ -706,6 +707,37 @@ function unpackServerRewardConfig(rawMsg?: string | null, fallbackType?: string)
     };
   } catch {
     return { cleanMessage: raw.trim(), cfg: defaultCfg };
+  }
+}
+
+
+function checkStoreWorkingHours(settings: Record<string, string | undefined>): { isOpen: boolean; message: string } {
+  try {
+    const raw = settings?.workingHoursConfig;
+    if (!raw) return { isOpen: true, message: "" };
+    const cfg = JSON.parse(raw);
+    if (!cfg || !cfg.enabled) return { isOpen: true, message: "" };
+    const openStr = String(cfg.openTime || "07:00").trim();
+    const closeStr = String(cfg.closeTime || "23:30").trim();
+    const [oh, om] = openStr.split(":").map(Number);
+    const [ch, cm] = closeStr.split(":").map(Number);
+    if (!Number.isFinite(oh) || !Number.isFinite(om) || !Number.isFinite(ch) || !Number.isFinite(cm)) {
+      return { isOpen: true, message: "" };
+    }
+    const nowYemen = new Date(Date.now() + 3 * 60 * 60 * 1000);
+    const curMin = nowYemen.getUTCHours() * 60 + nowYemen.getUTCMinutes();
+    const openMin = oh * 60 + om;
+    const closeMin = ch * 60 + cm;
+    let isOpen = true;
+    if (openMin <= closeMin) {
+      isOpen = curMin >= openMin && curMin < closeMin;
+    } else {
+      isOpen = curMin >= openMin || curMin < closeMin;
+    }
+    const defaultMsg = `نعتذر، بوفية شهيزو مغلق حالياً خارج أوقات العمل. مواعيدنا يومياً من ${openStr} إلى ${closeStr}.`;
+    return { isOpen, message: String(cfg.closedMessage || "").trim() || defaultMsg };
+  } catch {
+    return { isOpen: true, message: "" };
   }
 }
 
@@ -1245,6 +1277,8 @@ export const commerceRouter = router({
       const db = await database();
       const settings = await readSettings(db);
       if (settings.orderPaused === "true") throw new TRPCError({ code: "PRECONDITION_FAILED", message: settings.pausedMessage || "استقبال الطلبات متوقف مؤقتًا." });
+      const whStatus = checkStoreWorkingHours(settings);
+      if (!whStatus.isOpen) throw new TRPCError({ code: "PRECONDITION_FAILED", message: whStatus.message });
       const prelimFee = deliveryFeeForCity(settings, input.city, input.district, input.phone, 0);
       if (prelimFee === null) throw new TRPCError({ code: "PRECONDITION_FAILED", message: settings.deliveryEnabled === "true" ? "منطقة التوصيل أو رسومها غير محددة بعد." : "لم يفعّل المتجر التوصيل بعد." });
       const requested = aggregateItems(input.items);
@@ -1397,6 +1431,8 @@ export const commerceRouter = router({
       if (typeof enforceOrderCreateRateLimit === "function") enforceOrderCreateRateLimit(getClientIp(ctx.req));
       const settings = await readSettings(db);
       if (settings.orderPaused === "true") throw new TRPCError({ code: "PRECONDITION_FAILED", message: settings.pausedMessage || "استقبال الطلبات متوقف مؤقتًا." });
+      const whStatus = checkStoreWorkingHours(settings);
+      if (!whStatus.isOpen) throw new TRPCError({ code: "PRECONDITION_FAILED", message: whStatus.message });
       const prelimDeliveryFee = deliveryFeeForCity(settings, input.city, input.district, input.phone, 0);
       if (prelimDeliveryFee === null) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "منطقة التوصيل أو رسومها غير محددة بعد." });
 
