@@ -794,6 +794,27 @@ async function ensureOrderItemsFastSchema(dbInstance?: any) {
     __orderItemsSchemaFixed = true;
     try { await db.execute(sql.raw("ALTER TABLE order_items MODIFY COLUMN productImage LONGTEXT NULL")); } catch {}
     try { await db.execute(sql.raw("UPDATE order_items SET productImage = CONCAT('/api/fast-img/product/', productId) WHERE productId IS NOT NULL AND productImage LIKE 'data:image/%'")); } catch {}
+    try {
+      const existingOrders = await db.select({ id: orders.id, orderNumber: orders.orderNumber, city: orders.city })
+        .from(orders)
+        .orderBy(asc(orders.createdAt), asc(orders.id));
+      const realOrders = existingOrders.filter((o: any) => o.city !== "طلب توفير خاص" && !String(o.orderNumber || "").startsWith("REQ-"));
+      const needsRenumber = realOrders.some((o: any, idx: number) => String(o.orderNumber) !== String(idx + 1));
+      if (needsRenumber) {
+        for (let i = 0; i < realOrders.length; i++) {
+          const targetNo = String(i + 1);
+          if (String(realOrders[i].orderNumber) !== targetNo) {
+            await db.update(orders).set({ orderNumber: "TMP-" + realOrders[i].id }).where(eq(orders.id, realOrders[i].id));
+          }
+        }
+        for (let i = 0; i < realOrders.length; i++) {
+          const targetNo = String(i + 1);
+          await db.update(orders).set({ orderNumber: targetNo }).where(eq(orders.id, realOrders[i].id));
+        }
+      }
+    } catch (e) {
+      console.warn("[Orders] Sequential renumber check skipped:", e);
+    }
   } catch {}
 }
 function normalizeOrderItemImage<T extends { productId?: number | null; productImage?: string | null }>(item: T): T {
@@ -1035,17 +1056,21 @@ export const commerceRouter = router({
     }),
     trackMany: publicProcedure.input(z.object({
       refs: z.array(z.object({
-        orderNumber: z.string().trim().min(6).max(40).regex(/^(?:SH|OR)-[A-Z0-9]+-[A-Z0-9]{5}$/i),
+        orderNumber: z.string().trim().min(1).max(40).regex(/^(?:\d+|(?:SH|OR)-[A-Z0-9]+-[A-Z0-9]{5})$/i),
         idempotencyKey: z.string().uuid(),
       })).min(1).max(50),
     })).query(async ({ input }) => {
       const db = await database();
+      await ensureOrderItemsFastSchema(db);
       const referenceByNumber = new Map(input.refs.map(reference => [reference.orderNumber, reference.idempotencyKey]));
+      const allLookupKeys = [...new Set([...input.refs.map(r => r.idempotencyKey), ...input.refs.map(r => hashGuestOrderKey(r.idempotencyKey))])];
       const candidates = await db.select().from(orders)
-        .where(inArray(orders.orderNumber, [...referenceByNumber.keys()])).orderBy(desc(orders.createdAt), desc(orders.id)).limit(50);
+        .where(or(inArray(orders.orderNumber, [...referenceByNumber.keys()]), inArray(orders.idempotencyKey, allLookupKeys)))
+        .orderBy(desc(orders.createdAt), desc(orders.id)).limit(50);
       const authorized = candidates.filter(order => {
-        const key = referenceByNumber.get(order.orderNumber);
-        return key ? matchesGuestOrderKey(key, order.idempotencyKey) : false;
+        const keyByNum = referenceByNumber.get(order.orderNumber);
+        if (keyByNum && matchesGuestOrderKey(keyByNum, order.idempotencyKey)) return true;
+        return input.refs.some(ref => matchesGuestOrderKey(ref.idempotencyKey, order.idempotencyKey));
       });
       if (!authorized.length) return [];
       const orderIds = authorized.map(order => order.id);
@@ -1073,7 +1098,7 @@ export const commerceRouter = router({
     }),
     subscribeToStatus: publicProcedure.input(z.object({
       refs: z.array(z.object({
-        orderNumber: z.string().trim().min(6).max(40).regex(/^(?:SH|OR)-[A-Z0-9]+-[A-Z0-9]{5}$/i),
+        orderNumber: z.string().trim().min(1).max(40).regex(/^(?:\d+|(?:SH|OR)-[A-Z0-9]+-[A-Z0-9]{5})$/i),
         idempotencyKey: z.string().uuid(),
       })).min(1).max(50),
       subscription: pushSubscriptionSchema,
@@ -1082,12 +1107,17 @@ export const commerceRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "خدمة الإشعارات في هذا المتصفح غير مدعومة." });
       }
       const db = await database();
+      await ensureOrderItemsFastSchema(db);
       const referenceByNumber = new Map(input.refs.map(reference => [reference.orderNumber, reference.idempotencyKey]));
+      const allLookupKeys = [...new Set([...input.refs.map(r => r.idempotencyKey), ...input.refs.map(r => hashGuestOrderKey(r.idempotencyKey))])];
       const candidates = await db.select({ id: orders.id, orderNumber: orders.orderNumber, idempotencyKey: orders.idempotencyKey })
-        .from(orders).where(inArray(orders.orderNumber, [...referenceByNumber.keys()])).limit(50);
+        .from(orders)
+        .where(or(inArray(orders.orderNumber, [...referenceByNumber.keys()]), inArray(orders.idempotencyKey, allLookupKeys)))
+        .limit(50);
       const authorized = candidates.filter(order => {
-        const key = referenceByNumber.get(order.orderNumber);
-        return key ? matchesGuestOrderKey(key, order.idempotencyKey) : false;
+        const keyByNum = referenceByNumber.get(order.orderNumber);
+        if (keyByNum && matchesGuestOrderKey(keyByNum, order.idempotencyKey)) return true;
+        return input.refs.some(ref => matchesGuestOrderKey(ref.idempotencyKey, order.idempotencyKey));
       });
       if (!authorized.length) return { subscribed: 0 };
       const protectedSubscription = protectPushSubscription(input.subscription);
@@ -1189,7 +1219,20 @@ export const commerceRouter = router({
         const currentLines = orderLines.map(line => ({ productId: line.product.id, name: line.product.name, quantity: line.quantity, unit: line.effectiveUnit, price: line.effectivePrice, lineTotal: line.effectiveLineTotal }));
         const currentQuoteHash = quoteFingerprint(currentLines, totals, currency, appliedOffer?.id ?? null);
         if (totals.total !== input.expectedTotal || currentQuoteHash !== input.expectedQuoteHash) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "تغيّر السعر أو التوفر أو رسوم التوصيل بعد المعاينة. اعرض الملخص المحدّث قبل تأكيد الطلب." });
-        const orderNumber = "SH-" + Date.now().toString(36).toUpperCase() + "-" + nanoid(5).toUpperCase();
+        const existingOrderNums = await tx.select({ orderNumber: orders.orderNumber, city: orders.city }).from(orders).for("update");
+        let maxOrderSeq = 0;
+        let realOrdersCount = 0;
+        for (const r of existingOrderNums) {
+          const numStr = String(r.orderNumber || "").trim();
+          if (r.city !== "طلب توفير خاص" && !numStr.startsWith("REQ-")) {
+            realOrdersCount += 1;
+          }
+          if (/^\d+$/.test(numStr)) {
+            const val = parseInt(numStr, 10);
+            if (Number.isFinite(val) && val > maxOrderSeq) maxOrderSeq = val;
+          }
+        }
+        const orderNumber = String(Math.max(maxOrderSeq, realOrdersCount) + 1);
         const inserted = await tx.insert(orders).values({
           orderNumber, idempotencyKey: storedIdempotencyKey, userId: null, offerId: appliedOffer?.id ?? null,
           recipientName: input.recipientName, phone: normalizeYemeniPhone(input.phone), city: input.city, district: input.district,

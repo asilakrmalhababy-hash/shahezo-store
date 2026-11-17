@@ -1,4 +1,4 @@
-const CACHE = "shahezo-shell-v10";
+const CACHE = "shahezo-shell-v11";
 const PRECACHE = ["/", "/offline.html", "/manifest-v9.webmanifest", "/app-icon-192-v8.png", "/chef-hat.png", "/notif-icon-v8.png", "/notif-badge-v8.png"];
 
 self.addEventListener("install", event => {
@@ -21,7 +21,6 @@ self.addEventListener("fetch", event => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/admin")) return;
 
-  // Cache-first for hashed static assets (/assets/*, icons, fonts) for instant load on weak phones
   if (url.pathname.startsWith("/assets/") || url.pathname.endsWith(".png") || url.pathname.endsWith(".webp") || url.pathname.endsWith(".webmanifest")) {
     event.respondWith(
       caches.match(request).then(cached => {
@@ -38,7 +37,6 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // Instant Stale-While-Revalidate for PWA app shell navigation
   if (request.mode === "navigate") {
     event.respondWith(
       caches.open(CACHE).then(async cache => {

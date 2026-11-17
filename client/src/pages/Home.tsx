@@ -74,71 +74,6 @@ function Header({ data, onSearch }: { data?: HomeData; onSearch: (text: string) 
   </header>;
 }
 
-// === SHAHEZO_WA_BAR_START ===
-function ShahezoWhatsAppBar() {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const onToggle = () => setOpen(prev => !prev);
-    const onScroll = () => setOpen(false);
-    window.addEventListener("toggle-shahezo-wa", onToggle);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("toggle-shahezo-wa", onToggle);
-      window.removeEventListener("scroll", onScroll);
-    };
-  }, []);
-
-  const WhatsAppIcon = () => (
-    <svg viewBox="0 0 32 32" width="27" height="27"
-      xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path fill="currentColor" d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3zm0 23.5h-.01a10.6 10.6 0 0 1-5.4-1.48l-.39-.23-3.98 1.04 1.06-3.88-.25-.4A10.5 10.5 0 1 1 16 26.5zm5.8-7.9c-.32-.16-1.87-.92-2.16-1.02-.29-.1-.5-.16-.71.16-.21.31-.82 1.01-1 1.22-.19.21-.37.24-.69.08-.32-.16-1.34-.49-2.55-1.54-.94-.83-1.58-1.86-1.77-2.18-.18-.32-.02-.49.14-.64.14-.14.31-.37.47-.54.16-.18.21-.31.31-.53.11-.21.06-.4-.02-.56-.08-.16-.72-1.71-.98-2.34-.26-.61-.52-.53-.72-.54h-.61c-.21 0-.55.08-.84.39-.29.32-1.11 1.08-1.11 2.63 0 1.55 1.14 3.05 1.3 3.26.16.21 2.24 3.4 5.43 4.77.76.33 1.35.53 1.81.67.76.24 1.44.21 1.98.13.61-.09 1.87-.77 2.13-1.5.26-.74.26-1.37.18-1.5-.08-.13-.29-.21-.61-.37z"/>
-    </svg>
-  );
-
-  return (
-    <div className="shahezo-wa-widget" aria-label="التواصل مع بوفية شهيزو">
-      <div className={`shahezo-wa-strip ${open ? "is-open" : "is-closed"}`}>
-        <div className="shahezo-wa-strip-head">
-          <strong>🥙 تواصل مع بوفية شهيزو</strong>
-          <button type="button" className="shahezo-wa-close"
-            onClick={() => setOpen(false)} aria-label="إغلاق">×</button>
-        </div>
-        <div className="shahezo-wa-row">
-          <div className="shahezo-wa-label">
-            <span>للطلب والاستفسار</span>
-            <b dir="ltr">779 542 219</b>
-          </div>
-          <div className="shahezo-wa-actions">
-            <a className="shahezo-wa-btn" href="https://wa.me/967779542219"
-              target="_blank" rel="noreferrer">واتساب</a>
-            <a className="shahezo-call-btn" href="tel:779542219">اتصال</a>
-          </div>
-        </div>
-        <div className="shahezo-wa-row">
-          <div className="shahezo-wa-label">
-            <span>خدمة العملاء</span>
-            <b dir="ltr">772 206 455</b>
-          </div>
-          <div className="shahezo-wa-actions">
-            <a className="shahezo-wa-btn" href="https://wa.me/967772206455"
-              target="_blank" rel="noreferrer">واتساب</a>
-            <a className="shahezo-call-btn" href="tel:772206455">اتصال</a>
-          </div>
-        </div>
-      </div>
-      <button type="button"
-        className={`shahezo-wa-fab ${open ? "is-open" : ""}`}
-        onClick={() => setOpen(prev => !prev)}
-        aria-label="افتح التواصل عبر واتساب"
-        aria-expanded={open}>
-        <WhatsAppIcon />
-      </button>
-    </div>
-  );
-}
-// === SHAHEZO_WA_BAR_END ===
-
 function BottomNav({ active }: { active: string }) {
   const links = [
     { href: "/", label: "الرئيسية", icon: HomeIcon },
@@ -1536,7 +1471,7 @@ function CartPage({ minOrder = 0 }: { minOrder?: number }) {
           borderRadius: "18px",
           background: "#ffffff",
           border: "1.5px solid #ead8cc",
-          boxShadow: "0 6px 18px rgba(135, 2, 16, 0.05)",
+          boxShadow: "0 6px 18px rgba(43, 18, 15, 0.04)",
           marginBottom: "14px",
         }}
       >
@@ -1545,7 +1480,7 @@ function CartPage({ minOrder = 0 }: { minOrder?: number }) {
             <ShoppingCart size={20} />
           </span>
           <div>
-            <h1 style={{ margin: 0, fontSize: "18px", fontWeight: 900, color: "#2b120f" }}>سلة التسوق</h1>
+            <h1 style={{ margin: 0, fontSize: "17px", fontWeight: 900, color: "#2b120f" }}>سلة التسوق</h1>
             <small style={{ fontSize: "11px", color: "#7a5e54", fontWeight: 700 }}>
               {cart.length > 0 ? `${cart.length} أصناف (${totalItemsCount} وحدة) جاهزة للطلب` : "سلتك فارغة حالياً"}
             </small>
@@ -1579,11 +1514,11 @@ function CartPage({ minOrder = 0 }: { minOrder?: number }) {
       {!cart.length ? (
         <div className="shahezo-empty-hero">
           <div className="shahezo-empty-icon-ring">
-            <ShoppingCart size={34} strokeWidth={1.8} />
+            <ShoppingCart size={32} strokeWidth={1.8} />
           </div>
           <div style={{ display: "grid", gap: "5px" }}>
-            <strong style={{ fontSize: "18px", color: "#2b120f", fontWeight: 900 }}>سلتك بانتظار أشهى الوجبات الساخنة! 🥙</strong>
-            <p style={{ margin: 0, fontSize: "12.5px", color: "#6e564d", lineHeight: 1.65, maxWidth: "340px" }}>
+            <strong style={{ fontSize: "17px", color: "#2b120f", fontWeight: 900 }}>سلتك بانتظار أشهى الوجبات الساخنة! 🥙</strong>
+            <p style={{ margin: 0, fontSize: "12px", color: "#6e564d", lineHeight: 1.65, maxWidth: "340px" }}>
               لم تضف أي طلبات للسلة بعد. استكشف تشكيلة الشاورما والفلافل المقرمشة والعصائر الطازجة أو تصفح عروض التوفير الآن.
             </p>
           </div>
@@ -1591,14 +1526,14 @@ function CartPage({ minOrder = 0 }: { minOrder?: number }) {
             <Link href="/products" className="button button-primary" style={{ flex: "1 1 160px", maxWidth: "220px", textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
               <ShoppingBag size={16} /> تسوق المتجر الآن
             </Link>
-            <Link href="/products?offers=1" className="button" style={{ flex: "1 1 150px", maxWidth: "200px", textDecoration: "none", background: "#fff8eb", color: "#870210", border: "1.5px solid #e86c12", fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+            <Link href="/products?offers=1" className="button" style={{ flex: "1 1 150px", maxWidth: "200px", textDecoration: "none", background: "#fdf9f4", color: "#870210", border: "1.5px solid #ead8cc", fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
               <BadgePercent size={16} /> قسم العروضات
             </Link>
           </div>
         </div>
       ) : (
         <div className="cart-layout shahezo-card-enter">
-          <div className="cart-list" style={{ borderRadius: "20px", border: "1.5px solid #ead8cc", background: "#ffffff", padding: "8px 14px", boxShadow: "0 8px 22px rgba(135, 2, 16, 0.05)" }}>
+          <div className="cart-list" style={{ borderRadius: "20px", border: "1.5px solid #ead8cc", background: "#ffffff", padding: "8px 14px", boxShadow: "0 6px 18px rgba(43, 18, 15, 0.04)" }}>
             {cart.map(line => (
               <CartRow
                 key={line.id}
@@ -1608,8 +1543,8 @@ function CartPage({ minOrder = 0 }: { minOrder?: number }) {
               />
             ))}
           </div>
-          <aside className="summary-card" style={{ borderRadius: "20px", border: "1.5px solid #ead8cc", background: "linear-gradient(180deg, #ffffff 0%, #fffaf5 100%)", boxShadow: "0 10px 26px rgba(135, 2, 16, 0.07)" }}>
-            <span className="eyebrow" style={{ color: "#e86c12", fontWeight: 800 }}>فاتورة طلبك المبدئية</span>
+          <aside className="summary-card" style={{ borderRadius: "20px", border: "1.5px solid #ead8cc", background: "linear-gradient(180deg, #ffffff 0%, #fffaf5 100%)", boxShadow: "0 8px 22px rgba(43, 18, 15, 0.05)" }}>
+            <span className="eyebrow" style={{ color: "#870210", fontWeight: 800 }}>فاتورة طلبك المبدئية</span>
             <div className="summary-line">
               <span>عدد الأصناف</span>
               <strong>{cart.length} أصناف ({totalItemsCount} وحدة)</strong>
@@ -1626,7 +1561,7 @@ function CartPage({ minOrder = 0 }: { minOrder?: number }) {
             )}
             <div className="summary-line">
               <span>رسوم التوصيل</span>
-              <span style={{ fontSize: "11px", color: "#1f7a4c", fontWeight: 700 }}>تُحسب تلقائياً عند اختيار الحي</span>
+              <span style={{ fontSize: "11px", color: "#870210", fontWeight: 700 }}>تُحسب تلقائياً عند اختيار الحي</span>
             </div>
             <div className="summary-total" style={{ borderTop: "1.5px dashed #e5d2c3", marginTop: "6px", paddingTop: "12px" }}>
               <span style={{ fontWeight: 800, color: "#2b120f" }}>الإجمالي الحالي</span>
@@ -2488,11 +2423,19 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
     </div>
   );
 }
-function FavoritesPage() {
+function FavoritesPage({ allProducts = [] }: { allProducts?: PublicProduct[] }) {
   const { favoriteIds, add } = useStore();
   const [, navigate] = useLocation();
-  const query = trpc.commerce.catalog.productsForReorder.useQuery({ ids: favoriteIds }, { enabled: favoriteIds.length > 0, retry: 1, staleTime: 30_000 });
-  const products = (query.data ?? []) as PublicProduct[];
+  const localMatched = useMemo(
+    () => (allProducts.length > 0 ? allProducts.filter(p => favoriteIds.includes(p.id)) : []),
+    [allProducts, favoriteIds]
+  );
+  const needRemote = favoriteIds.length > 0 && allProducts.length === 0;
+  const query = trpc.commerce.catalog.productsForReorder.useQuery(
+    { ids: favoriteIds },
+    { enabled: needRemote, retry: 1, staleTime: 60_000 }
+  );
+  const products = (allProducts.length > 0 ? localMatched : (query.data ?? [])) as PublicProduct[];
 
   const addAllFavoritesToCart = () => {
     let count = 0;
@@ -2518,16 +2461,16 @@ function FavoritesPage() {
           borderRadius: "18px",
           background: "#ffffff",
           border: "1.5px solid #ead8cc",
-          boxShadow: "0 6px 18px rgba(135, 2, 16, 0.05)",
+          boxShadow: "0 6px 18px rgba(43, 18, 15, 0.04)",
           marginBottom: "14px",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ width: "42px", height: "42px", borderRadius: "13px", background: "#fceee9", color: "#d90429", display: "grid", placeItems: "center", flexShrink: 0 }}>
+          <span style={{ width: "42px", height: "42px", borderRadius: "13px", background: "linear-gradient(135deg, #870210 0%, #5e010b 100%)", color: "#f1d897", display: "grid", placeItems: "center", flexShrink: 0 }}>
             <Heart size={20} fill="currentColor" />
           </span>
           <div>
-            <h1 style={{ margin: 0, fontSize: "18px", fontWeight: 900, color: "#2b120f" }}>قائمتي المفضلة</h1>
+            <h1 style={{ margin: 0, fontSize: "17px", fontWeight: 900, color: "#2b120f" }}>قائمتي المفضلة</h1>
             <small style={{ fontSize: "11px", color: "#7a5e54", fontWeight: 700 }}>
               {favoriteIds.length > 0 ? `${favoriteIds.length} وجبات وأصناف محفوظة لطلبها سريعاً` : "احتفظ بوجباتك المفضلة هنا"}
             </small>
@@ -2545,18 +2488,18 @@ function FavoritesPage() {
         )}
       </div>
 
-      {query.isLoading ? (
+      {needRemote && query.isLoading ? (
         <Loading />
-      ) : query.error ? (
+      ) : needRemote && query.error ? (
         <LoadError onRetry={() => void query.refetch()} />
       ) : !favoriteIds.length ? (
         <div className="shahezo-empty-hero">
-          <div className="shahezo-empty-icon-ring" style={{ color: "#d90429" }}>
-            <Heart size={34} strokeWidth={1.8} />
+          <div className="shahezo-empty-icon-ring">
+            <Heart size={32} strokeWidth={1.8} />
           </div>
           <div style={{ display: "grid", gap: "5px" }}>
-            <strong style={{ fontSize: "18px", color: "#2b120f", fontWeight: 900 }}>قائمة المفضلة فارغة حالياً ❤️</strong>
-            <p style={{ margin: 0, fontSize: "12.5px", color: "#6e564d", lineHeight: 1.65, maxWidth: "340px" }}>
+            <strong style={{ fontSize: "17px", color: "#2b120f", fontWeight: 900 }}>قائمة المفضلة فارغة حالياً ❤️</strong>
+            <p style={{ margin: 0, fontSize: "12px", color: "#6e564d", lineHeight: 1.65, maxWidth: "340px" }}>
               اضغط على رمز القلب بأعلى أي وجبة أو عصير في المتجر لحفظه هنا والوصول إليه بنقرة واحدة متى ما اشتهيته!
             </p>
           </div>
@@ -2678,7 +2621,7 @@ function OrdersPage() {
           borderRadius: "18px",
           background: "#ffffff",
           border: "1.5px solid #ead8cc",
-          boxShadow: "0 6px 18px rgba(135, 2, 16, 0.05)",
+          boxShadow: "0 6px 18px rgba(43, 18, 15, 0.04)",
           marginBottom: "14px",
         }}
       >
@@ -2687,7 +2630,7 @@ function OrdersPage() {
             <Package size={20} />
           </span>
           <div>
-            <h1 style={{ margin: 0, fontSize: "18px", fontWeight: 900, color: "#2b120f" }}>طلباتي ومتابعة التوصيل</h1>
+            <h1 style={{ margin: 0, fontSize: "17px", fontWeight: 900, color: "#2b120f" }}>طلباتي ومتابعة التوصيل</h1>
             <small style={{ fontSize: "11px", color: "#7a5e54", fontWeight: 700 }}>
               {orders.length > 0 ? `إجمالي الطلبات: ${orders.length}` + (activeOrdersCount > 0 ? ` · (${activeOrdersCount} قيد التنفيذ الآن 🔥)` : "") : "تتبع حالة طلباتك خطوة بخطوة"}
             </small>
@@ -2712,12 +2655,12 @@ function OrdersPage() {
       ) : !orders.length ? (
         <div className="shahezo-empty-hero">
           <div className="shahezo-empty-icon-ring">
-            <Package size={34} strokeWidth={1.8} />
+            <Package size={32} strokeWidth={1.8} />
           </div>
           <div style={{ display: "grid", gap: "5px" }}>
-            <strong style={{ fontSize: "18px", color: "#2b120f", fontWeight: 900 }}>لا توجد طلبات مسجلة بعد 📦</strong>
-            <p style={{ margin: 0, fontSize: "12.5px", color: "#6e564d", lineHeight: 1.65, maxWidth: "340px" }}>
-              بمجرد إرسال أول طلب لك من بوفية شهيزو، ستظهر فاتورته ومراحل تجهيزه وتوصيله هنا لحظة بلحظة!
+            <strong style={{ fontSize: "17px", color: "#2b120f", fontWeight: 900 }}>لا توجد طلبات مسجلة بعد 📦</strong>
+            <p style={{ margin: 0, fontSize: "12px", color: "#6e564d", lineHeight: 1.65, maxWidth: "340px" }}>
+              بمجرد إرسال أول طلب لك من بوفية شهيزو، ستظهر فاتورته ورقمه التسلسلي ومراحل تجهيزه وتوصيله هنا لحظة بلحظة!
             </p>
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "9px", width: "100%", marginTop: "4px" }}>
@@ -2736,7 +2679,7 @@ function OrdersPage() {
             const regularNotes = (order.events || []).filter(ev => ev.note && ev.note.trim() && ev.note !== "تم استلام الطلب" && !String(ev.note).startsWith("❌"));
             const latestStoreNote = regularNotes.at(-1);
             const ordAny = order as any;
-            const shortOrderNo = order.orderNumber.split("-").pop() || order.orderNumber;
+            const displayOrderNo = /^\d+$/.test(String(order.orderNumber)) ? order.orderNumber : String(orders.length - idx);
 
             return (
               <article
@@ -2745,9 +2688,9 @@ function OrdersPage() {
                   borderRadius: "20px",
                   background: "#ffffff",
                   border: isExpanded ? "2px solid #870210" : "1.5px solid #ead8cc",
-                  boxShadow: isExpanded ? "0 12px 26px rgba(135, 2, 16, 0.08)" : "0 4px 12px rgba(43, 18, 15, 0.04)",
+                  boxShadow: isExpanded ? "0 10px 24px rgba(135, 2, 16, 0.07)" : "0 4px 12px rgba(43, 18, 15, 0.04)",
                   overflow: "hidden",
-                  transition: "border-color 0.2s, box-shadow 0.2s",
+                  transition: "border-color 0.18s, box-shadow 0.18s",
                 }}
               >
                 <div
@@ -2768,7 +2711,7 @@ function OrdersPage() {
                 >
                   <div style={{ display: "grid", gap: "3px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "7px", flexWrap: "wrap" }}>
-                      <strong style={{ fontSize: "15px", color: "#2b120f" }}>طلب #{shortOrderNo}</strong>
+                      <strong style={{ fontSize: "15px", color: "#2b120f" }}>طلب #{displayOrderNo}</strong>
                       {isLatest && (
                         <span style={{ fontSize: "10px", fontWeight: 900, padding: "2px 8px", borderRadius: "99px", background: "#870210", color: "#f1d897" }}>
                           ✨ الأحدث
@@ -2918,10 +2861,11 @@ function useGuestPushSubscriptionSync() {
   }, [refs.length]);
 }
 
-function AccountPage() {
+function AccountPage({ settings = {} }: { settings?: Record<string, string | undefined> }) {
   const customer = useCustomer();
-  const homeCatalog = trpc.commerce.catalog.home.useQuery(undefined, { staleTime: 60_000 });
-  const deliveryTree = useMemo(() => readPublicDeliveryTree((homeCatalog.data?.settings as any)?.deliveryTreeConfig), [homeCatalog.data?.settings]);
+  const { cart, favoriteIds } = useStore();
+  const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
+  const deliveryTree = useMemo(() => readPublicDeliveryTree(settings?.deliveryTreeConfig), [settings?.deliveryTreeConfig]);
   const cleanedCustomerPhone = cleanYemeniPhone(customer.phone);
   const hasSavedProfile = Boolean(customer.name.trim().length >= 2 && isValidYemeniPhone(cleanedCustomerPhone));
   const [isEditingProfile, setIsEditingProfile] = useState(!hasSavedProfile);
@@ -3045,7 +2989,7 @@ function AccountPage() {
       phoneEnabled: true,
     };
     try {
-      const raw = (homeCatalog.data?.settings as any)?.socialLinksConfig;
+      const raw = settings?.socialLinksConfig;
       if (!raw) return defaults;
       const p = JSON.parse(raw);
       return {
@@ -3065,7 +3009,7 @@ function AccountPage() {
     } catch {
       return defaults;
     }
-  }, [homeCatalog.data?.settings]);
+  }, [settings?.socialLinksConfig]);
 
   const normalizeWaHref = (val: string) => {
     const clean = val.trim();
@@ -3076,56 +3020,24 @@ function AccountPage() {
   };
 
   return (
-    <main className="page-shell inner-page" style={{ paddingTop: "10px", paddingBottom: "24px" }}>
-      <div style={{ display: "grid", gap: "12px", maxWidth: "680px", margin: "0 auto" }}>
-        <section
-          style={{
-            borderRadius: "20px",
-            overflow: "hidden",
-            border: "1.5px solid #ead8cc",
-            background: "#ffffff",
-            boxShadow: "0 8px 22px rgba(135, 2, 16, 0.06)",
-          }}
-        >
-          <div
-            style={{
-              padding: "14px 16px",
-              background: "linear-gradient(135deg, #870210 0%, #5e010b 100%)",
-              color: "#ffffff",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: "10px",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "11px", minWidth: 0 }}>
-              <span
-                style={{
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "14px",
-                  background: "rgba(241, 216, 151, 0.16)",
-                  border: "1.5px solid #f1d897",
-                  color: "#f1d897",
-                  display: "grid",
-                  placeItems: "center",
-                  fontWeight: 900,
-                  fontSize: "18px",
-                  flexShrink: 0,
-                }}
-              >
+    <main className="page-shell inner-page" style={{ paddingTop: "10px", paddingBottom: "28px" }}>
+      <div className="shahezo-acc-wrap shahezo-card-enter">
+        <section className="shahezo-acc-card">
+          <div className="shahezo-acc-hero">
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
+              <span className="shahezo-acc-avatar">
                 {(customer.name || name || "ش").trim().slice(0, 1)}
               </span>
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0, display: "grid", gap: "2px" }}>
                 <strong style={{ display: "block", fontSize: "16px", color: "#ffffff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {hasSavedProfile ? customer.name : "مرحباً بك في شهيزو"}
+                  {hasSavedProfile ? customer.name : "مرحباً بك في بوفية شهيزو"}
                 </strong>
-                <div style={{ display: "flex", alignItems: "center", gap: "7px", flexWrap: "wrap", marginTop: "2px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "7px", flexWrap: "wrap" }}>
                   <span dir="ltr" style={{ fontSize: "12.5px", color: "#fde8d7", fontWeight: 700, letterSpacing: "0.4px" }}>
-                    {hasSavedProfile ? cleanedCustomerPhone : "أكمل بياناتك للطلب السريع"}
+                    {hasSavedProfile ? cleanedCustomerPhone : "أكمل بياناتك للطلب السريع بنقرة واحدة"}
                   </span>
                   {hasSavedProfile && carrierName && (
-                    <span style={{ fontSize: "10px", fontWeight: 800, padding: "1px 8px", borderRadius: "99px", background: "rgba(255,255,255,0.16)", color: "#f1d897" }}>
+                    <span style={{ fontSize: "10px", fontWeight: 800, padding: "1px 8px", borderRadius: "99px", background: "rgba(241, 216, 151, 0.2)", color: "#f1d897", border: "1px solid rgba(241, 216, 151, 0.4)" }}>
                       {carrierName}
                     </span>
                   )}
@@ -3135,18 +3047,8 @@ function AccountPage() {
             {!isEditingProfile && (
               <button
                 type="button"
+                className="shahezo-acc-edit-btn"
                 onClick={() => setIsEditingProfile(true)}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: "10px",
-                  border: "1px solid rgba(241, 216, 151, 0.7)",
-                  background: "rgba(255,255,255,0.12)",
-                  color: "#f1d897",
-                  fontWeight: 800,
-                  fontSize: "11.5px",
-                  cursor: "pointer",
-                  flexShrink: 0,
-                }}
               >
                 ✏️ تعديل
               </button>
@@ -3154,7 +3056,7 @@ function AccountPage() {
           </div>
 
           {isEditingProfile && (
-            <div style={{ padding: "14px 16px", borderTop: "1px solid #f0e4da" }}>
+            <div style={{ padding: "15px 16px", borderBottom: "1px solid #f3e8df", background: "#fffdf9" }}>
               <form className="form-stack" onSubmit={saveProfile} style={{ gap: "10px" }}>
                 <label>الاسم الكامل *
                   <input required minLength={2} maxLength={160} autoComplete="name" value={name} onChange={event => setName(event.target.value)} placeholder="أدخل اسمك الكامل..." />
@@ -3180,7 +3082,7 @@ function AccountPage() {
                 </label>
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                   <button type="submit" className="button button-primary" disabled={name.trim().length < 2 || !profilePhoneValid} style={{ flex: 1 }}>
-                    <Check size={16} /> حفظ البيانات
+                    <Check size={16} /> حفظ بياناتي
                   </button>
                   {hasSavedProfile && (
                     <button type="button" className="button button-quiet" onClick={() => { setName(customer.name); setPhone(cleanedCustomerPhone); setIsEditingProfile(false); }}>
@@ -3192,194 +3094,179 @@ function AccountPage() {
             </div>
           )}
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "8px", padding: "12px" }}>
-            <Link href="/orders" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "4px", padding: "10px 4px", borderRadius: "14px", background: "#fdf9f4", border: "1px solid #eedfd3", color: "#2b120f", textDecoration: "none" }}>
-              <Package size={19} color="#870210" />
-              <strong style={{ fontSize: "11px", color: "#870210" }}>طلباتي ({customer.orders.length})</strong>
+          <div className="shahezo-acc-shortcuts">
+            <Link href="/orders" className="shahezo-acc-tile">
+              <span className="shahezo-acc-tile-icon"><Package size={18} /></span>
+              <strong>طلباتي</strong>
+              <small>{customer.orders.length > 0 ? `${customer.orders.length} طلب` : "تتبع"}</small>
             </Link>
-            <Link href="/favorites" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "4px", padding: "10px 4px", borderRadius: "14px", background: "#fdf9f4", border: "1px solid #eedfd3", color: "#2b120f", textDecoration: "none" }}>
-              <Heart size={19} color="#d90429" />
-              <strong style={{ fontSize: "11px", color: "#2b120f" }}>المفضلة</strong>
+            <Link href="/favorites" className="shahezo-acc-tile">
+              <span className="shahezo-acc-tile-icon"><Heart size={18} /></span>
+              <strong>المفضلة</strong>
+              <small>{favoriteIds.length > 0 ? `${favoriteIds.length} محفوظ` : "وجباتي"}</small>
             </Link>
-            <Link href="/products?offers=1" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "4px", padding: "10px 4px", borderRadius: "14px", background: "#fff8eb", border: "1px solid #f0cfa0", color: "#2b120f", textDecoration: "none" }}>
-              <BadgePercent size={19} color="#e86c12" />
-              <strong style={{ fontSize: "11px", color: "#870210" }}>العروضات</strong>
+            <Link href="/products?offers=1" className="shahezo-acc-tile">
+              <span className="shahezo-acc-tile-icon"><BadgePercent size={18} /></span>
+              <strong>العروضات</strong>
+              <small>توفير اليوم</small>
             </Link>
-            <Link href="/cart" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "4px", padding: "10px 4px", borderRadius: "14px", background: "#fdf9f4", border: "1px solid #eedfd3", color: "#2b120f", textDecoration: "none" }}>
-              <ShoppingCart size={19} color="#870210" />
-              <strong style={{ fontSize: "11px", color: "#2b120f" }}>السلة</strong>
+            <Link href="/cart" className="shahezo-acc-tile">
+              <span className="shahezo-acc-tile-icon"><ShoppingCart size={18} /></span>
+              <strong>السلة</strong>
+              <small>{cartCount > 0 ? `${cartCount} بالطلب` : "فارغة"}</small>
             </Link>
           </div>
         </section>
 
-        <section
-          style={{
-            padding: "14px 16px",
-            borderRadius: "20px",
-            border: "1.5px solid #ead8cc",
-            boxShadow: "0 8px 22px rgba(135, 2, 16, 0.05)",
-            background: "#ffffff",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", paddingBottom: "10px", borderBottom: "1px solid #f3e8df", marginBottom: "12px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ width: "34px", height: "34px", borderRadius: "11px", background: "#fceee9", color: "#870210", display: "grid", placeItems: "center" }}>
-                <MapPin size={17} />
+        <section className="shahezo-acc-card">
+          <div className="shahezo-acc-sec-head">
+            <div className="shahezo-acc-sec-title">
+              <span className="shahezo-acc-sec-icon">
+                <MapPin size={18} />
               </span>
               <div>
-                <h2 style={{ margin: 0, fontSize: "15px", color: "#2b120f" }}>عناويني المحفوظة ({customer.addresses.length})</h2>
-                <small style={{ color: "#7a5e54", fontSize: "10.5px" }}>تُختار تلقائياً عند تأكيد طلبك</small>
+                <h2 style={{ margin: 0, fontSize: "15px", fontWeight: 900, color: "#2b120f" }}>عناويني المحفوظة ({customer.addresses.length})</h2>
+                <small style={{ color: "#7a5e54", fontSize: "11px", fontWeight: 600 }}>تُختار تلقائياً عند تأكيد طلبك لسرعة التوصيل</small>
               </div>
             </div>
             {!showAddressForm && (
               <button
                 type="button"
                 className="small-button selected"
+                style={{ background: "#870210", color: "#ffffff", border: "none", borderRadius: "11px", padding: "7px 12px", fontWeight: 800, fontSize: "11.5px" }}
                 onClick={() => {
                   setEditingAddressId(null);
                   setAddress({ label: "المنزل", recipientName: customer.name || name, phone: cleanedCustomerPhone || phone, city: "صنعاء", district: "", details: "", isDefault: customer.addresses.length === 0 });
                   setShowAddressForm(true);
                 }}
               >
-                <Plus size={14} /> إضافة عنوان
+                <Plus size={14} /> عنوان جديد
               </button>
             )}
           </div>
 
-          {!customer.addresses.length && !showAddressForm ? (
-            <div style={{ textAlign: "center", padding: "16px 12px", borderRadius: "14px", background: "#fdf9f4", border: "1px dashed #dfcbbd" }}>
-              <p style={{ margin: "0 0 10px", fontSize: "12px", color: "#6e564d" }}>لا توجد عناوين محفوظة بعد. أضف عنوانك مرة واحدة للطلب السريع.</p>
-              <button type="button" className="small-button selected" onClick={() => setShowAddressForm(true)}><Plus size={14} /> إضافة أول عنوان</button>
-            </div>
-          ) : (
-            <div style={{ display: "grid", gap: "8px" }}>
-              {customer.addresses.map(item => (
-                <div
-                  key={item.id}
-                  style={{
-                    padding: "11px 13px",
-                    borderRadius: "14px",
-                    background: item.isDefault ? "#fffaf5" : "#ffffff",
-                    border: item.isDefault ? "1.5px solid #870210" : "1px solid #ead8cc",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                    gap: "8px",
-                  }}
-                >
-                  <div style={{ display: "grid", gap: "3px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "7px", flexWrap: "wrap" }}>
-                      <strong style={{ fontSize: "13.5px", color: "#2b120f" }}>📍 {item.label}</strong>
-                      {item.isDefault && <span style={{ fontSize: "10px", fontWeight: 800, padding: "2px 8px", borderRadius: "99px", background: "#edf6eb", color: "#1f7a4c" }}>الافتراضي ✓</span>}
+          <div style={{ padding: "14px 16px" }}>
+            {!customer.addresses.length && !showAddressForm ? (
+              <div style={{ textAlign: "center", padding: "18px 12px", borderRadius: "15px", background: "#fdf9f4", border: "1px dashed #dfcbbd" }}>
+                <p style={{ margin: "0 0 10px", fontSize: "12px", color: "#6e564d", fontWeight: 600 }}>لا توجد عناوين محفوظة بعد. أضف عنوانك مرة واحدة للطلب السريع بدون إعادة كتابته.</p>
+                <button type="button" className="small-button selected" style={{ background: "#870210", color: "#ffffff", border: "none", borderRadius: "10px", padding: "7px 14px", fontWeight: 800 }} onClick={() => setShowAddressForm(true)}>
+                  <Plus size={14} /> إضافة أول عنوان
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: "9px" }}>
+                {customer.addresses.map(item => (
+                  <div
+                    key={item.id}
+                    className={"shahezo-acc-addr-item" + (item.isDefault ? " is-default" : "")}
+                  >
+                    <div style={{ display: "grid", gap: "3px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "7px", flexWrap: "wrap" }}>
+                        <strong style={{ fontSize: "13.5px", color: "#2b120f", fontWeight: 900 }}>📍 {item.label}</strong>
+                        {item.isDefault && <span className="shahezo-acc-badge">الافتراضي ✓</span>}
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#5c433b", fontWeight: 700 }}>
+                        {item.recipientName} · <span dir="ltr" style={{ color: "#870210" }}>{cleanYemeniPhone(item.phone)}</span>
+                      </div>
+                      <div style={{ fontSize: "11.5px", color: "#785f56" }}>
+                        {item.city} — {item.district}{item.details ? (" · " + item.details) : ""}
+                      </div>
                     </div>
-                    <div style={{ fontSize: "12px", color: "#5c433b", fontWeight: 700 }}>
-                      {item.recipientName} · <span dir="ltr" style={{ color: "#870210" }}>{cleanYemeniPhone(item.phone)}</span>
-                    </div>
-                    <div style={{ fontSize: "11.5px", color: "#785f56" }}>
-                      {item.city} — {item.district}{item.details ? (" · " + item.details) : ""}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                    {!item.isDefault && (
-                      <button type="button" className="small-button" onClick={() => { customer.setDefaultAddress(item.id); toast.success("تم تعيينه كعنوان افتراضي ✓"); }}>
-                        تعيين افتراضي
+                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                      {!item.isDefault && (
+                        <button type="button" className="small-button" style={{ fontSize: "11px", fontWeight: 700 }} onClick={() => { customer.setDefaultAddress(item.id); toast.success("تم تعيينه كعنوان افتراضي ✓"); }}>
+                          تعيين افتراضي
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="small-button"
+                        style={{ fontSize: "11px", fontWeight: 700 }}
+                        onClick={() => {
+                          setEditingAddressId(item.id);
+                          setAddress({
+                            label: item.label,
+                            recipientName: item.recipientName,
+                            phone: cleanYemeniPhone(item.phone),
+                            city: item.city,
+                            district: item.district,
+                            details: item.details,
+                            isDefault: item.isDefault,
+                          });
+                          setShowAddressForm(true);
+                        }}
+                      >
+                        تعديل
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      className="small-button"
-                      onClick={() => {
-                        setEditingAddressId(item.id);
-                        setAddress({
-                          label: item.label,
-                          recipientName: item.recipientName,
-                          phone: cleanYemeniPhone(item.phone),
-                          city: item.city,
-                          district: item.district,
-                          details: item.details,
-                          isDefault: item.isDefault,
-                        });
-                        setShowAddressForm(true);
-                      }}
-                    >
-                      تعديل
-                    </button>
-                    <button
-                      type="button"
-                      className="icon-button"
-                      aria-label="حذف العنوان"
-                      onClick={() => {
-                        customer.removeAddress(item.id);
-                        toast.success("حُذف العنوان من هذا الجهاز.");
-                        if (editingAddressId === item.id) resetAddressForm();
-                      }}
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                      <button
+                        type="button"
+                        className="icon-button"
+                        aria-label="حذف العنوان"
+                        onClick={() => {
+                          customer.removeAddress(item.id);
+                          toast.success("حُذف العنوان من هذا الجهاز.");
+                          if (editingAddressId === item.id) resetAddressForm();
+                        }}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {showAddressForm && (
-            <form className="form-stack" onSubmit={submitAddress} style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1.5px dashed #e5d2c3", gap: "10px" }}>
-              <strong style={{ fontSize: "13px", color: "#870210" }}>{editingAddressId ? "✏️ تعديل العنوان المحفوظ" : "➕ إضافة عنوان توصيل جديد"}</strong>
-              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                {["المنزل", "العمل", "منزل العائلة", "استراحة"].map(preset => (
-                  <button key={preset} type="button" className={"small-button" + (address.label === preset ? " selected" : "")} style={{ minHeight: "28px", padding: "2px 10px", fontSize: "11px" }} onClick={() => setAddress({ ...address, label: preset })}>{preset}</button>
                 ))}
               </div>
-              <div className="form-grid">
-                <label>تسمية العنوان *<input required maxLength={80} value={address.label} onChange={event => setAddress({ ...address, label: event.target.value })} placeholder="المنزل، العمل..." /></label>
-                <label>اسم المستلم *<input required minLength={2} maxLength={160} autoComplete="name" value={address.recipientName} onChange={event => setAddress({ ...address, recipientName: event.target.value })} /></label>
-                <label className="form-wide">
-                  <span style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>رقم الجوال اليمني (9 أرقام) *</span>
-                    <small style={{ fontSize: "10px", fontWeight: 800, color: addressPhoneValid ? "#870210" : "#b43c2f" }}>{address.phone.length}/9</small>
-                  </span>
-                  <input required type="tel" inputMode="numeric" maxLength={9} dir="ltr" value={address.phone} onChange={event => setAddress({ ...address, phone: cleanYemeniPhone(event.target.value) })} placeholder="77XXXXXXX" style={{ textAlign: "left", fontWeight: 800 }} />
-                </label>
-                {deliveryTree ? (
-                  <div className="form-wide">
-                    <ThreeStepLocationPicker
-                      tree={deliveryTree}
-                      city={address.city}
-                      district={address.district}
-                      phone={address.phone}
-                      subtotal={0}
-                      onChangeLocation={(nextCity, nextDist) => setAddress(curr => ({ ...curr, city: nextCity, district: nextDist }))}
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <label>المدينة / المنطقة *<input required maxLength={100} value={address.city} onChange={event => setAddress({ ...address, city: event.target.value })} placeholder="صنعاء" /></label>
-                    <label className="form-wide">الحي / الشارع *<input required maxLength={120} value={address.district} onChange={event => setAddress({ ...address, district: event.target.value })} placeholder="مثلاً: الرقاص، حدة، الأصبحي..." /></label>
-                  </>
-                )}
-                <label className="form-wide">أقرب معلم للعنوان<textarea required rows={2} maxLength={1000} value={address.details} onChange={event => setAddress({ ...address, details: event.target.value })} placeholder="مثال: بجوار بنك الكريمي، أمام جامع..." /></label>
-                <label className="toggle-field form-wide"><input type="checkbox" checked={address.isDefault} onChange={event => setAddress({ ...address, isDefault: event.target.checked })} /> اجعل هذا العنوان هو الافتراضي عند الطلب</label>
-              </div>
-              <div className="address-form-actions" style={{ display: "flex", gap: "8px" }}>
-                <button type="submit" className="button button-primary" disabled={!addressPhoneValid}><Check size={16} /> {editingAddressId ? "حفظ تعديل العنوان" : "حفظ العنوان"}</button>
-                <button type="button" className="button button-quiet" onClick={resetAddressForm}>إلغاء</button>
-              </div>
-            </form>
-          )}
+            )}
+
+            {showAddressForm && (
+              <form className="form-stack" onSubmit={submitAddress} style={{ marginTop: customer.addresses.length ? "14px" : "0", paddingTop: customer.addresses.length ? "14px" : "0", borderTop: customer.addresses.length ? "1.5px dashed #e5d2c3" : "none", gap: "10px" }}>
+                <strong style={{ fontSize: "13px", color: "#870210" }}>{editingAddressId ? "✏️ تعديل العنوان المحفوظ" : "➕ إضافة عنوان توصيل جديد"}</strong>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                  {["المنزل", "العمل", "منزل العائلة", "استراحة"].map(preset => (
+                    <button key={preset} type="button" className={"small-button" + (address.label === preset ? " selected" : "")} style={{ minHeight: "28px", padding: "2px 10px", fontSize: "11px" }} onClick={() => setAddress({ ...address, label: preset })}>{preset}</button>
+                  ))}
+                </div>
+                <div className="form-grid">
+                  <label>تسمية العنوان *<input required maxLength={80} value={address.label} onChange={event => setAddress({ ...address, label: event.target.value })} placeholder="المنزل، العمل..." /></label>
+                  <label>اسم المستلم *<input required minLength={2} maxLength={160} autoComplete="name" value={address.recipientName} onChange={event => setAddress({ ...address, recipientName: event.target.value })} /></label>
+                  <label className="form-wide">
+                    <span style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>رقم الجوال اليمني (9 أرقام) *</span>
+                      <small style={{ fontSize: "10px", fontWeight: 800, color: addressPhoneValid ? "#870210" : "#b43c2f" }}>{address.phone.length}/9</small>
+                    </span>
+                    <input required type="tel" inputMode="numeric" maxLength={9} dir="ltr" value={address.phone} onChange={event => setAddress({ ...address, phone: cleanYemeniPhone(event.target.value) })} placeholder="77XXXXXXX" style={{ textAlign: "left", fontWeight: 800 }} />
+                  </label>
+                  {deliveryTree ? (
+                    <div className="form-wide">
+                      <ThreeStepLocationPicker
+                        tree={deliveryTree}
+                        city={address.city}
+                        district={address.district}
+                        phone={address.phone}
+                        subtotal={0}
+                        onChangeLocation={(nextCity, nextDist) => setAddress(curr => ({ ...curr, city: nextCity, district: nextDist }))}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <label>المدينة / المنطقة *<input required maxLength={100} value={address.city} onChange={event => setAddress({ ...address, city: event.target.value })} placeholder="صنعاء" /></label>
+                      <label className="form-wide">الحي / الشارع *<input required maxLength={120} value={address.district} onChange={event => setAddress({ ...address, district: event.target.value })} placeholder="مثلاً: الرقاص، حدة، الأصبحي..." /></label>
+                    </>
+                  )}
+                  <label className="form-wide">أقرب معلم للعنوان<textarea required rows={2} maxLength={1000} value={address.details} onChange={event => setAddress({ ...address, details: event.target.value })} placeholder="مثال: بجوار بنك الكريمي، أمام جامع..." /></label>
+                  <label className="toggle-field form-wide"><input type="checkbox" checked={address.isDefault} onChange={event => setAddress({ ...address, isDefault: event.target.checked })} /> اجعل هذا العنوان هو الافتراضي عند الطلب</label>
+                </div>
+                <div className="address-form-actions" style={{ display: "flex", gap: "8px" }}>
+                  <button type="submit" className="button button-primary" disabled={!addressPhoneValid}><Check size={16} /> {editingAddressId ? "حفظ تعديل العنوان" : "حفظ العنوان"}</button>
+                  <button type="button" className="button button-quiet" onClick={resetAddressForm}>إلغاء</button>
+                </div>
+              </form>
+            )}
+          </div>
         </section>
 
-        <section
-          style={{
-            borderRadius: "18px",
-            border: "1px solid #ead8cc",
-            background: "#ffffff",
-            overflow: "hidden",
-            display: "grid",
-          }}
-        >
+        <section className="shahezo-acc-card">
           <button
             type="button"
+            className="shahezo-acc-row-btn"
             onClick={async () => {
               const perm = getPushPermissionState();
               if (perm === "unsupported") { toast.info("متصفحك لا يدعم إشعارات الويب الفورية"); return; }
@@ -3390,13 +3277,19 @@ function AccountPage() {
                 toast.success("🔔 إشعارات الطلبات الفورية مفعّلة بنجاح!");
               }
             }}
-            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 15px", background: "transparent", border: 0, borderBottom: "1px solid #f5ebe3", cursor: "pointer", color: "#2b120f", width: "100%", textAlign: "right" }}
           >
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "9px", fontSize: "13px", fontWeight: 700 }}>
-              <BellRing size={17} color="#870210" /> تفعيل إشعارات الطلبات الفورية
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "10px", fontSize: "13px", fontWeight: 800 }}>
+              <span className="shahezo-acc-sec-icon" style={{ width: "32px", height: "32px", borderRadius: "10px" }}>
+                <BellRing size={16} />
+              </span>
+              تفعيل إشعارات الطلبات الفورية
             </span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-              {pushPerm === "granted" && <small style={{ fontSize: "10px", fontWeight: 800, color: "#1f7a4c", background: "#edf6eb", padding: "2px 8px", borderRadius: "99px" }}>مفعّلة ✓</small>}
+              {pushPerm === "granted" ? (
+                <span className="shahezo-acc-badge">مفعّلة ✓</span>
+              ) : (
+                <small style={{ fontSize: "11px", color: "#870210", fontWeight: 800 }}>تفعيل</small>
+              )}
               <ChevronLeft size={16} color="#8c766e" />
             </span>
           </button>
@@ -3404,6 +3297,7 @@ function AccountPage() {
           {!isStandaloneApp && (
             <button
               type="button"
+              className="shahezo-acc-row-btn"
               onClick={async () => {
                 const activePrompt = pwaInstallPrompt || (window as any).__deferredPwaPrompt;
                 if (activePrompt) {
@@ -3421,63 +3315,78 @@ function AccountPage() {
                 }
                 toast.info("اضغط على قائمة المتصفح (⋮) بالأعلى ثم اختر «إضافة إلى الشاشة الرئيسية» لتثبيت تطبيق شهيزو");
               }}
-              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 15px", background: "transparent", border: 0, borderBottom: "1px solid #f5ebe3", cursor: "pointer", color: "#2b120f", width: "100%", textAlign: "right" }}
             >
-              <span style={{ display: "inline-flex", alignItems: "center", gap: "9px", fontSize: "13px", fontWeight: 700 }}>
-                <ShoppingBag size={17} color="#e86c12" /> تثبيت تطبيق شهيزو على هاتفك
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "10px", fontSize: "13px", fontWeight: 800 }}>
+                <span className="shahezo-acc-sec-icon" style={{ width: "32px", height: "32px", borderRadius: "10px" }}>
+                  <ShoppingBag size={16} />
+                </span>
+                تثبيت تطبيق شهيزو على هاتفك
               </span>
-              <ChevronLeft size={16} color="#8c766e" />
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                <small style={{ fontSize: "11px", color: "#870210", fontWeight: 800 }}>تثبيت سريع</small>
+                <ChevronLeft size={16} color="#8c766e" />
+              </span>
             </button>
           )}
 
           <div>
             <button
               type="button"
+              className="shahezo-acc-row-btn"
               onClick={() => setAboutOpen(v => !v)}
-              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 15px", background: aboutOpen ? "#fffaf5" : "transparent", border: 0, cursor: "pointer", color: "#2b120f", width: "100%", textAlign: "right" }}
+              style={{ background: aboutOpen ? "#fffaf5" : "#ffffff", borderBottom: 0 }}
             >
-              <span style={{ display: "inline-flex", alignItems: "center", gap: "9px", fontSize: "13px", fontWeight: 700 }}>
-                <Sparkles size={17} color="#870210" /> من نحن وحساباتنا الرسمية
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "10px", fontSize: "13px", fontWeight: 800 }}>
+                <span className="shahezo-acc-sec-icon" style={{ width: "32px", height: "32px", borderRadius: "10px" }}>
+                  <Sparkles size={16} />
+                </span>
+                من نحن وحساباتنا الرسمية
               </span>
               <ChevronDown size={16} color="#8c766e" style={{ transform: aboutOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
             </button>
 
             {aboutOpen && (
-              <div style={{ padding: "14px 15px", background: "linear-gradient(180deg, #fffaf5 0%, #ffffff 100%)", borderTop: "1px solid #f3e4d7", display: "grid", gap: "12px" }}>
-                <div style={{ display: "grid", gap: "4px" }}>
-                  <strong style={{ fontSize: "14px", color: "#870210" }}>🥙 {socialCfg.aboutTitle}</strong>
+              <div style={{ padding: "14px 16px", background: "linear-gradient(180deg, #fffaf5 0%, #ffffff 100%)", borderTop: "1px solid #f3e4d7", display: "grid", gap: "12px" }}>
+                <div style={{ display: "grid", gap: "5px" }}>
+                  <strong style={{ fontSize: "14px", color: "#870210", fontWeight: 900 }}>🥙 {socialCfg.aboutTitle}</strong>
                   <p style={{ margin: 0, fontSize: "12px", lineHeight: 1.7, color: "#5c433b" }}>{socialCfg.aboutText}</p>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(56px, 1fr))", gap: "8px", paddingTop: "4px" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                  <span className="shahezo-acc-badge">🥙 تحضير طازج يومياً</span>
+                  <span className="shahezo-acc-badge">🛵 توصيل سريع لباب منزلك</span>
+                  <span className="shahezo-acc-badge">💵 الدفع عند الاستلام</span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(56px, 1fr))", gap: "8px", paddingTop: "2px" }}>
                   {socialCfg.whatsappEnabled && socialCfg.whatsapp.trim() !== "" && (
-                    <a href={normalizeWaHref(socialCfg.whatsapp)} target="_blank" rel="noreferrer" aria-label="واتساب" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#eafaf0", border: "1px solid #bfead0", textDecoration: "none", color: "#128C7E" }}>
+                    <a href={normalizeWaHref(socialCfg.whatsapp)} target="_blank" rel="noreferrer" aria-label="واتساب" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "9px 4px", borderRadius: "13px", background: "#fdf9f4", border: "1px solid #ead8cc", textDecoration: "none", color: "#128C7E" }}>
                       <MessageCircle size={19} />
-                      <span style={{ fontSize: "10px", fontWeight: 800 }}>واتساب</span>
+                      <span style={{ fontSize: "10px", fontWeight: 800, color: "#2b120f" }}>واتساب</span>
                     </a>
                   )}
                   {socialCfg.facebookEnabled && socialCfg.facebook.trim() !== "" && (
-                    <a href={socialCfg.facebook} target="_blank" rel="noreferrer" aria-label="فيسبوك" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#eef4ff", border: "1px solid #c9dcff", textDecoration: "none", color: "#1877F2" }}>
+                    <a href={socialCfg.facebook} target="_blank" rel="noreferrer" aria-label="فيسبوك" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "9px 4px", borderRadius: "13px", background: "#fdf9f4", border: "1px solid #ead8cc", textDecoration: "none", color: "#1877F2" }}>
                       <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.99 3.66 9.13 8.44 9.88v-6.99H7.9V12h2.54V9.8c0-2.51 1.49-3.89 3.78-3.89 1.09 0 2.23.19 2.23.19v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99C18.34 21.13 22 16.99 22 12z"/></svg>
-                      <span style={{ fontSize: "10px", fontWeight: 800 }}>فيسبوك</span>
+                      <span style={{ fontSize: "10px", fontWeight: 800, color: "#2b120f" }}>فيسبوك</span>
                     </a>
                   )}
                   {socialCfg.instagramEnabled && socialCfg.instagram.trim() !== "" && (
-                    <a href={socialCfg.instagram} target="_blank" rel="noreferrer" aria-label="إنستغرام" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#fdf0f6", border: "1px solid #f7cde0", textDecoration: "none", color: "#E1306C" }}>
+                    <a href={socialCfg.instagram} target="_blank" rel="noreferrer" aria-label="إنستغرام" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "9px 4px", borderRadius: "13px", background: "#fdf9f4", border: "1px solid #ead8cc", textDecoration: "none", color: "#E1306C" }}>
                       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
-                      <span style={{ fontSize: "10px", fontWeight: 800 }}>إنستغرام</span>
+                      <span style={{ fontSize: "10px", fontWeight: 800, color: "#2b120f" }}>إنستغرام</span>
                     </a>
                   )}
                   {socialCfg.tiktokEnabled && socialCfg.tiktok.trim() !== "" && (
-                    <a href={socialCfg.tiktok} target="_blank" rel="noreferrer" aria-label="تيك توك" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#f4f4f5", border: "1px solid #d4d4d8", textDecoration: "none", color: "#18181b" }}>
+                    <a href={socialCfg.tiktok} target="_blank" rel="noreferrer" aria-label="تيك توك" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "9px 4px", borderRadius: "13px", background: "#fdf9f4", border: "1px solid #ead8cc", textDecoration: "none", color: "#18181b" }}>
                       <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.87a8.16 8.16 0 0 0 4.76 1.52v-3.4a4.85 4.85 0 0 1-1-.3z"/></svg>
-                      <span style={{ fontSize: "10px", fontWeight: 800 }}>تيك توك</span>
+                      <span style={{ fontSize: "10px", fontWeight: 800, color: "#2b120f" }}>تيك توك</span>
                     </a>
                   )}
                   {socialCfg.phoneEnabled && socialCfg.phone.trim() !== "" && (
-                    <a href={"tel:" + socialCfg.phone.replace(/\s+/g, "")} aria-label="اتصال" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "8px 4px", borderRadius: "12px", background: "#fceee9", border: "1px solid #f2cfc6", textDecoration: "none", color: "#870210" }}>
+                    <a href={"tel:" + socialCfg.phone.replace(/\s+/g, "")} aria-label="اتصال" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "9px 4px", borderRadius: "13px", background: "#fdf9f4", border: "1px solid #ead8cc", textDecoration: "none", color: "#870210" }}>
                       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                      <span style={{ fontSize: "10px", fontWeight: 800 }}>اتصال</span>
+                      <span style={{ fontSize: "10px", fontWeight: 800, color: "#2b120f" }}>اتصال</span>
                     </a>
                   )}
                 </div>
@@ -4365,9 +4274,9 @@ export default function Home() {
     if (location === "/products" || location.startsWith("/products?")) return <ProductListPage data={data} onOpen={openProduct} />;
     if (location === "/categories") return <CategoriesPage data={data} />;
     if (location === "/cart") return <CartPage minOrder={Number(data.settings?.minOrderAmount || 0)} />;
-    if (location === "/favorites") return <FavoritesPage />;
+    if (location === "/favorites") return <FavoritesPage allProducts={data.products} />;
     if (location === "/orders") return <OrdersPage />;
-    if (location === "/account") return <AccountPage />;
+    if (location === "/account") return <AccountPage settings={data.settings} />;
     if (location === "/assistant") return <AssistantPage />;
     return <HomePage data={data} onOpen={openProduct} onAiRecipe={setActiveAiProduct} />;
   }, [location, productId, productPath, data]);

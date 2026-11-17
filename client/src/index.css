@@ -1251,22 +1251,22 @@ button, a, input, select, textarea, summary, [role="button"] { touch-action: man
 /* === SHAHEZO_UX_ANIMATIONS_V10_START === */
 @keyframes shahezoFloat {
   0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-5px); }
+  50% { transform: translateY(-4px); }
 }
 @keyframes shahezoPulseDot {
-  0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(135, 2, 16, 0.45); }
-  50% { transform: scale(1.12); opacity: 0.9; box-shadow: 0 0 0 7px rgba(135, 2, 16, 0); }
+  0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(135, 2, 16, 0.42); }
+  50% { transform: scale(1.1); opacity: 0.92; box-shadow: 0 0 0 6px rgba(135, 2, 16, 0); }
 }
 @keyframes shahezoSlideUp {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .shahezo-empty-hero {
   padding: 28px 18px;
-  border-radius: 24px;
-  background: linear-gradient(145deg, #ffffff 0%, #fff9f2 100%);
+  border-radius: 22px;
+  background: linear-gradient(145deg, #ffffff 0%, #fffaf4 100%);
   border: 1.5px solid #ead8cc;
-  box-shadow: 0 12px 30px rgba(135, 2, 16, 0.06);
+  box-shadow: 0 10px 26px rgba(43, 18, 15, 0.05);
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -1274,24 +1274,185 @@ button, a, input, select, textarea, summary, [role="button"] { touch-action: man
   gap: 12px;
   max-width: 480px;
   margin: 14px auto;
-  animation: shahezoSlideUp 0.22s ease-out;
 }
 .shahezo-empty-icon-ring {
-  width: 74px;
-  height: 74px;
-  border-radius: 24px;
-  background: linear-gradient(135deg, #fceee9 0%, #fff4e4 100%);
-  border: 1.5px solid #f0cfa0;
+  width: 70px;
+  height: 70px;
+  border-radius: 22px;
+  background: #fceee9;
+  border: 1.5px solid #f2cfc6;
   color: #870210;
   display: grid;
   place-items: center;
-  box-shadow: 0 8px 20px rgba(135, 2, 16, 0.1);
-  animation: shahezoFloat 3s ease-in-out infinite;
+  animation: shahezoFloat 3.2s ease-in-out infinite;
 }
 .shahezo-step-dot-active {
   animation: shahezoPulseDot 1.8s infinite;
 }
 .shahezo-card-enter {
-  animation: shahezoSlideUp 0.2s ease-out;
+  animation: shahezoSlideUp 0.16s ease-out;
+}
+
+/* Unified AccountPage Design System */
+.shahezo-acc-wrap {
+  display: grid;
+  gap: 12px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+.shahezo-acc-card {
+  border-radius: 20px;
+  border: 1.5px solid #ead8cc;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(43, 18, 15, 0.04);
+  overflow: hidden;
+}
+.shahezo-acc-hero {
+  padding: 16px;
+  background: linear-gradient(135deg, #870210 0%, #5e010b 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.shahezo-acc-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 15px;
+  background: rgba(241, 216, 151, 0.15);
+  border: 1.5px solid #f1d897;
+  color: #f1d897;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 19px;
+  flex-shrink: 0;
+}
+.shahezo-acc-edit-btn {
+  padding: 7px 13px;
+  border-radius: 11px;
+  border: 1px solid rgba(241, 216, 151, 0.65);
+  background: rgba(255, 255, 255, 0.12);
+  color: #f1d897;
+  font-weight: 800;
+  font-size: 11.5px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.shahezo-acc-edit-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.shahezo-acc-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px;
+  background: #ffffff;
+}
+.shahezo-acc-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 4px;
+  border-radius: 15px;
+  background: #fdf9f4;
+  border: 1px solid #ead8cc;
+  color: #2b120f;
+  text-decoration: none;
+  transition: transform 0.14s, border-color 0.14s, background 0.14s;
+}
+.shahezo-acc-tile:active {
+  transform: scale(0.97);
+}
+.shahezo-acc-tile-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: #fceee9;
+  color: #870210;
+  display: grid;
+  place-items: center;
+}
+.shahezo-acc-tile strong {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #2b120f;
+  line-height: 1.2;
+}
+.shahezo-acc-tile small {
+  font-size: 10px;
+  font-weight: 700;
+  color: #870210;
+}
+.shahezo-acc-sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f3e8df;
+}
+.shahezo-acc-sec-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.shahezo-acc-sec-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #fceee9;
+  color: #870210;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.shahezo-acc-addr-item {
+  padding: 12px 14px;
+  border-radius: 15px;
+  background: #fdf9f4;
+  border: 1px solid #ead8cc;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.shahezo-acc-addr-item.is-default {
+  background: #fffaf5;
+  border: 1.5px solid #870210;
+}
+.shahezo-acc-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: #fceee9;
+  color: #870210;
+  border: 1px solid #f2cfc6;
+}
+.shahezo-acc-row-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 13px 16px;
+  background: #ffffff;
+  border: 0;
+  border-bottom: 1px solid #f3e8df;
+  color: #2b120f;
+  text-align: right;
+  cursor: pointer;
+  transition: background 0.14s;
+}
+.shahezo-acc-row-btn:last-child {
+  border-bottom: 0;
+}
+.shahezo-acc-row-btn:active {
+  background: #fdf9f4;
 }
 /* === SHAHEZO_UX_ANIMATIONS_V10_END === */

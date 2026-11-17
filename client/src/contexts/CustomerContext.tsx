@@ -27,7 +27,7 @@ export type GuestCustomerData = {
 const STORAGE_KEY = "shahezo-customer-browser-v1";
 const PENDING_ORDER_KEY = "shahezo-pending-order-idempotency-v1";
 const EMPTY_DATA: GuestCustomerData = { name: "", phone: "", addresses: [], orders: [] };
-const ORDER_NUMBER_PATTERN = /^(?:SH|OR)-[A-Z0-9]+-[A-Z0-9]{5}$/;
+const ORDER_NUMBER_PATTERN = /^(?:\d+|(?:SH|OR)-[A-Z0-9]+-[A-Z0-9]{5})$/i;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const memoryPendingOrderKeys = new Map<string, string>();
 
