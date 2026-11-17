@@ -74,6 +74,65 @@ function Header({ data, onSearch }: { data?: HomeData; onSearch: (text: string) 
   </header>;
 }
 
+// === SHAHEZO_WA_BAR_START ===
+function ShahezoWhatsAppBar() {
+  const [location] = useLocation();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setOpen(false);
+    const onToggle = () => setOpen(prev => !prev);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("toggle-shahezo-wa", onToggle);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("toggle-shahezo-wa", onToggle);
+    };
+  }, []);
+  if (location.startsWith("/account") || location.startsWith("/cart") || location.startsWith("/assistant")) {
+    return null;
+  }
+  return (
+    <div className="shahezo-wa-widget" aria-label="تواصل مباشر مع بوفية شهيزو">
+      <button
+        type="button"
+        className={`shahezo-wa-fab ${open ? "is-open" : ""}`}
+        onClick={() => setOpen(prev => !prev)}
+        aria-label="تواصل واتساب مع بوفية شهيزو"
+        title="تواصل معنا عبر واتساب"
+      >
+        <MessageCircle size={24} />
+      </button>
+      <div className={`shahezo-wa-strip ${open ? "is-open" : "is-closed"}`}>
+        <div className="shahezo-wa-strip-head">
+          <strong>🥙 تواصل مباشر · بوفية شهيزو</strong>
+          <button type="button" className="shahezo-wa-close" onClick={() => setOpen(false)} aria-label="إغلاق">×</button>
+        </div>
+        <div className="shahezo-wa-row">
+          <div className="shahezo-wa-label">
+            <span>للطلب والاستفسار</span>
+            <b dir="ltr">779 542 219</b>
+          </div>
+          <div className="shahezo-wa-actions">
+            <a className="shahezo-wa-btn" href="https://wa.me/967779542219?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A8%D9%88%D9%81%D9%8A%D8%A9%20%D8%B4%D9%87%D9%8A%D8%B2%D9%88%20%F0%9F%A5%99%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D8%B7%D9%84%D8%A8%20%D8%A3%D9%88%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1" target="_blank" rel="noreferrer">واتساب</a>
+            <a className="shahezo-call-btn" href="tel:779542219">اتصال</a>
+          </div>
+        </div>
+        <div className="shahezo-wa-row">
+          <div className="shahezo-wa-label">
+            <span>خدمة العملاء</span>
+            <b dir="ltr">772 206 455</b>
+          </div>
+          <div className="shahezo-wa-actions">
+            <a className="shahezo-wa-btn" href="https://wa.me/967772206455?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%AE%D8%AF%D9%85%D8%A9%20%D8%B9%D9%85%D9%84%D8%A7%D8%A1%20%D8%A8%D9%88%D9%81%D9%8A%D8%A9%20%D8%B4%D9%87%D9%8A%D8%B2%D9%88%20%F0%9F%A5%99" target="_blank" rel="noreferrer">واتساب</a>
+            <a className="shahezo-call-btn" href="tel:772206455">اتصال</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+// === SHAHEZO_WA_BAR_END ===
+
 function BottomNav({ active }: { active: string }) {
   const links = [
     { href: "/", label: "الرئيسية", icon: HomeIcon },
@@ -1633,12 +1692,7 @@ function CartRow({ line, onQuantity, onRemove }: { line: CartLine; onQuantity: (
 }
 
 
-function getYemenCarrierName(phone: string): string {
-  const clean = cleanYemeniPhone(phone);
-  if (clean.startsWith("77") || clean.startsWith("78")) return "يمن موبايل";
-  if (clean.startsWith("73")) return "YOU";
-  if (clean.startsWith("71")) return "سبأفون";
-  if (clean.startsWith("70")) return "واي";
+function getYemenCarrierName(_phone: string): string {
   return "";
 }
 
@@ -2259,8 +2313,14 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
     }
     try {
       const activeQuote = quote ?? await quoteMutation.mutateAsync({ items, city: form.city, district: form.district, phone: cleanYemeniPhone(form.phone), offerCode: form.offerCode || undefined } as any);
+      const savedPrefs = (() => { try { return (localStorage.getItem("shahezo-customer-food-prefs-v1") || "").trim(); } catch { return ""; } })();
+      const combinedNote = [
+        savedPrefs ? ("⭐ تفضيل العميل الدائم (" + form.recipientName.trim() + "): " + savedPrefs) : "",
+        form.customerNote.trim(),
+      ].filter(Boolean).join(" | ");
       mutation.mutate({
         ...form,
+        customerNote: combinedNote || undefined,
         phone: cleanYemeniPhone(form.phone),
         idempotencyKey: keyRef.current.key,
         expectedTotal: activeQuote.total,
@@ -2842,9 +2902,10 @@ function useGuestPushSubscriptionSync() {
   const customer = useCustomer();
   const refs = useMemo(() => customer.orders.slice(0, 50).map(({ orderNumber, idempotencyKey }) => ({ orderNumber, idempotencyKey })), [customer.orders]);
   const subscribe = trpc.commerce.orders.subscribeToStatus.useMutation();
+  const registerSub = trpc.commerce.notifications.registerSubscriber.useMutation();
   const publicKey = trpc.commerce.notifications.publicKey.useQuery(undefined, { enabled: false, retry: 1 });
   useEffect(() => {
-    if (!refs.length || getPushPermissionState() !== "granted") return;
+    if (getPushPermissionState() !== "granted") return;
     let active = true;
     void (async () => {
       try {
@@ -2854,26 +2915,53 @@ function useGuestPushSubscriptionSync() {
           if (key) subscription = await ensureBrowserPushSubscription(key);
         }
         if (!subscription || !active) return;
-        await subscribe.mutateAsync({ refs, subscription });
+        if (refs.length > 0) {
+          await subscribe.mutateAsync({ refs, subscription });
+        }
+        await registerSub.mutateAsync({
+          subscription,
+          phone: cleanYemeniPhone(customer.phone),
+          name: customer.name || "",
+          orderCount: customer.orders.length,
+          lastOrderAt: customer.orders[0]?.createdAt || "",
+        });
       } catch {}
     })();
     return () => { active = false; };
-  }, [refs.length]);
+  }, [refs.length, customer.phone, customer.name]);
 }
 
 function AccountPage({ settings = {} }: { settings?: Record<string, string | undefined> }) {
   const customer = useCustomer();
-  const { cart, favoriteIds } = useStore();
-  const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
+  const [, navigate] = useLocation();
+  const publicKey = trpc.commerce.notifications.publicKey.useQuery(undefined, { enabled: false, retry: 1 });
+  const registerSub = trpc.commerce.notifications.registerSubscriber.useMutation();
+
   const deliveryTree = useMemo(() => readPublicDeliveryTree(settings?.deliveryTreeConfig), [settings?.deliveryTreeConfig]);
   const cleanedCustomerPhone = cleanYemeniPhone(customer.phone);
   const hasSavedProfile = Boolean(customer.name.trim().length >= 2 && isValidYemeniPhone(cleanedCustomerPhone));
-  const [isEditingProfile, setIsEditingProfile] = useState(!hasSavedProfile);
+
+  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
   const [name, setName] = useState(customer.name);
   const [phone, setPhone] = useState(cleanedCustomerPhone);
+  const [foodPrefs, setFoodPrefs] = useState(() => {
+    try { return localStorage.getItem("shahezo-customer-food-prefs-v1") || ""; } catch { return ""; }
+  });
+
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [seenBroadcastIds, setSeenBroadcastIds] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("shahezo-seen-broadcasts-v1");
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
 
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const addressFormRef = useRef<HTMLFormElement | null>(null);
+  const accountSettingsRef = useRef<HTMLDivElement | null>(null);
+  const notificationsBoxRef = useRef<HTMLDivElement | null>(null);
+
   const [address, setAddress] = useState({
     label: "المنزل",
     recipientName: customer.name,
@@ -2888,28 +2976,76 @@ function AccountPage({ settings = {} }: { settings?: Record<string, string | und
     const cp = cleanYemeniPhone(customer.phone);
     setName(customer.name);
     setPhone(cp);
-    if (customer.name.trim().length >= 2 && isValidYemeniPhone(cp)) {
-      setIsEditingProfile(false);
-    }
   }, [customer.name, customer.phone]);
 
   const profilePhoneValid = isValidYemeniPhone(phone);
   const addressPhoneValid = isValidYemeniPhone(address.phone);
 
-  const saveProfile = (event: FormEvent) => {
+  const myBroadcasts = useMemo(() => {
+    try {
+      const raw = settings?.store_broadcasts_v1;
+      if (!raw) return [];
+      const list = JSON.parse(raw);
+      if (!Array.isArray(list)) return [];
+      const ordCount = customer.orders.length;
+      const lastAt = customer.orders[0]?.createdAt ? new Date(customer.orders[0].createdAt).getTime() : 0;
+      const isInactive = ordCount >= 1 && lastAt > 0 && (Date.now() - lastAt) >= 7 * 24 * 60 * 60 * 1000;
+      return list.filter((b: any) => {
+        if (!b || !b.id) return false;
+        if (b.segment === "all") return true;
+        if (b.segment === "new_visitors") return ordCount === 0;
+        if (b.segment === "returning") return ordCount >= 1;
+        if (b.segment === "vip") return ordCount >= 3;
+        if (b.segment === "inactive") return isInactive;
+        return true;
+      });
+    } catch {
+      return [];
+    }
+  }, [settings?.store_broadcasts_v1, customer.orders]);
+
+  const unreadBroadcastCount = useMemo(
+    () => myBroadcasts.filter((b: any) => !seenBroadcastIds.includes(b.id)).length,
+    [myBroadcasts, seenBroadcastIds]
+  );
+
+  const toggleNotificationsDrawer = () => {
+    const nextOpen = !notificationsOpen;
+    setNotificationsOpen(nextOpen);
+    if (nextOpen) {
+      const allIds = myBroadcasts.map((b: any) => b.id);
+      setSeenBroadcastIds(allIds);
+      try { localStorage.setItem("shahezo-seen-broadcasts-v1", JSON.stringify(allIds)); } catch {}
+      setTimeout(() => notificationsBoxRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 60);
+    }
+  };
+
+  const saveAccountSettings = (event: FormEvent) => {
     event.preventDefault();
     if (name.trim().length < 2) {
       toast.error("يرجى كتابة الاسم الكامل.");
       return;
     }
     if (!profilePhoneValid) {
-      toast.error("يرجى إدخال رقم جوال يمني صحيح مكون من 9 أرقام ويبدأ بـ 77 أو 73 أو 78 أو 71 أو 70.");
+      toast.error("يرجى إدخال رقم هاتف يمني صحيح مكون من 9 أرقام (يبدأ بـ 77 أو 73 أو 78 أو 71 أو 70).");
       return;
     }
     const cleanP = cleanYemeniPhone(phone);
     customer.saveProfile(name.trim(), cleanP);
-    setIsEditingProfile(false);
-    toast.success("تم حفظ معلومات حسابك بنجاح ✓");
+    try {
+      localStorage.setItem("shahezo-customer-food-prefs-v1", foodPrefs.trim());
+    } catch {}
+    setAccountSettingsOpen(false);
+    toast.success("تم حفظ إعدادات حسابك ومفضلاتك الدائمة بنجاح ✓");
+  };
+
+  const toggleFoodPrefChip = (chip: string) => {
+    const parts = foodPrefs.split("،").map(s => s.trim()).filter(Boolean);
+    if (parts.includes(chip)) {
+      setFoodPrefs(parts.filter(p => p !== chip).join("، "));
+    } else {
+      setFoodPrefs([...parts, chip].join("، "));
+    }
   };
 
   const resetAddressForm = () => {
@@ -2926,10 +3062,31 @@ function AccountPage({ settings = {} }: { settings?: Record<string, string | und
     });
   };
 
+  const openNewAddressForm = () => {
+    if (showAddressForm) {
+      resetAddressForm();
+      return;
+    }
+    setEditingAddressId(null);
+    setAddress({
+      label: "المنزل",
+      recipientName: customer.name || name,
+      phone: cleanedCustomerPhone || phone,
+      city: "صنعاء",
+      district: "",
+      details: "",
+      isDefault: customer.addresses.length === 0,
+    });
+    setShowAddressForm(true);
+    setTimeout(() => {
+      addressFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+  };
+
   const submitAddress = (event: FormEvent) => {
     event.preventDefault();
     if (!addressPhoneValid) {
-      toast.error("يرجى إدخال رقم جوال يمني صحيح مكون من 9 أرقام ويبدأ بـ 77 أو 73 أو 78 أو 71 أو 70.");
+      toast.error("يرجى إدخال رقم هاتف يمني صحيح مكون من 9 أرقام (يبدأ بـ 77 أو 73 أو 78 أو 71 أو 70).");
       return;
     }
     if (!address.city.trim() || !address.district.trim()) {
@@ -2941,11 +3098,13 @@ function AccountPage({ settings = {} }: { settings?: Record<string, string | und
       phone: cleanYemeniPhone(address.phone),
       id: editingAddressId ?? undefined,
     });
+    if (!hasSavedProfile && address.recipientName.trim().length >= 2) {
+      customer.saveProfile(address.recipientName.trim(), cleanYemeniPhone(address.phone));
+    }
     toast.success(editingAddressId ? "تم تحديث العنوان المحفوظ بنجاح ✓" : "تم حفظ العنوان الجديد بنجاح ✓");
     resetAddressForm();
   };
 
-  const carrierName = getYemenCarrierName(cleanedCustomerPhone);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [isStandaloneApp, setIsStandaloneApp] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -3019,169 +3178,180 @@ function AccountPage({ settings = {} }: { settings?: Record<string, string | und
     return "https://wa.me/" + (digits.startsWith("967") ? digits : ("967" + digits));
   };
 
+  const presetPrefChips = [
+    "بدون سكر",
+    "سكر خفيف",
+    "بدون توابل",
+    "مع البهارات",
+    "بدون شطة",
+    "شطة زيادة",
+    "بدون مايونيز",
+    "خبز محمص",
+    "عصير بدون ثلج",
+  ];
+
   return (
     <main className="page-shell inner-page" style={{ paddingTop: "10px", paddingBottom: "28px" }}>
       <div className="shahezo-acc-wrap shahezo-card-enter">
         <section className="shahezo-acc-card">
           <div className="shahezo-acc-hero">
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
-              <span className="shahezo-acc-avatar">
-                {(customer.name || name || "ش").trim().slice(0, 1)}
+            <div style={{ display: "flex", alignItems: "center", gap: "14px", minWidth: 0, width: "100%" }}>
+              <span className="shahezo-acc-user-badge" aria-hidden="true">
+                <UserRound size={26} strokeWidth={2} />
               </span>
-              <div style={{ minWidth: 0, display: "grid", gap: "2px" }}>
-                <strong style={{ display: "block", fontSize: "16px", color: "#ffffff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {hasSavedProfile ? customer.name : "مرحباً بك في بوفية شهيزو"}
+              <div style={{ minWidth: 0, display: "grid", gap: "4px", flex: 1 }}>
+                <strong style={{ display: "block", fontSize: "17px", fontWeight: 900, color: "#ffffff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {hasSavedProfile ? `أهلاً بك ${customer.name}` : "أهلاً بك في بوفية شهيزو"}
                 </strong>
-                <div style={{ display: "flex", alignItems: "center", gap: "7px", flexWrap: "wrap" }}>
-                  <span dir="ltr" style={{ fontSize: "12.5px", color: "#fde8d7", fontWeight: 700, letterSpacing: "0.4px" }}>
-                    {hasSavedProfile ? cleanedCustomerPhone : "أكمل بياناتك للطلب السريع بنقرة واحدة"}
-                  </span>
-                  {hasSavedProfile && carrierName && (
-                    <span style={{ fontSize: "10px", fontWeight: 800, padding: "1px 8px", borderRadius: "99px", background: "rgba(241, 216, 151, 0.2)", color: "#f1d897", border: "1px solid rgba(241, 216, 151, 0.4)" }}>
-                      {carrierName}
-                    </span>
-                  )}
-                </div>
+                <span dir="ltr" style={{ fontSize: "13.5px", color: "#f1d897", fontWeight: 800, letterSpacing: "0.6px", textAlign: "right" }}>
+                  {hasSavedProfile ? cleanedCustomerPhone : "أضف اسمك ورقمك من إعدادات الحساب بالأسفل"}
+                </span>
+                {foodPrefs.trim() !== "" && (
+                  <small style={{ fontSize: "11px", color: "#fde8d7", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    ⭐ مفضلاتي: {foodPrefs}
+                  </small>
+                )}
               </div>
             </div>
-            {!isEditingProfile && (
-              <button
-                type="button"
-                className="shahezo-acc-edit-btn"
-                onClick={() => setIsEditingProfile(true)}
-              >
-                ✏️ تعديل
-              </button>
-            )}
           </div>
 
-          {isEditingProfile && (
-            <div style={{ padding: "15px 16px", borderBottom: "1px solid #f3e8df", background: "#fffdf9" }}>
-              <form className="form-stack" onSubmit={saveProfile} style={{ gap: "10px" }}>
-                <label>الاسم الكامل *
-                  <input required minLength={2} maxLength={160} autoComplete="name" value={name} onChange={event => setName(event.target.value)} placeholder="أدخل اسمك الكامل..." />
-                </label>
-                <label>
-                  <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span>رقم الجوال اليمني (9 أرقام) *</span>
-                    <small style={{ fontSize: "10.5px", fontWeight: 800, color: profilePhoneValid ? "#870210" : "#b43c2f" }}>
-                      {profilePhoneValid ? ("✓ رقم صحيح (" + getYemenCarrierName(phone) + ")") : ("يبدأ بـ 77 أو 73 أو 78 أو 71 أو 70 (" + phone.length + "/9)")}
-                    </small>
-                  </span>
-                  <input
-                    required
-                    type="tel"
-                    inputMode="numeric"
-                    maxLength={9}
-                    dir="ltr"
-                    value={phone}
-                    onChange={event => setPhone(cleanYemeniPhone(event.target.value))}
-                    placeholder="مثال: 770731619"
-                    style={{ textAlign: "left", fontWeight: 800, fontSize: "15px", letterSpacing: "0.8px", borderColor: phone && !profilePhoneValid ? "#d9534f" : undefined }}
-                  />
-                </label>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  <button type="submit" className="button button-primary" disabled={name.trim().length < 2 || !profilePhoneValid} style={{ flex: 1 }}>
-                    <Check size={16} /> حفظ بياناتي
-                  </button>
-                  {hasSavedProfile && (
-                    <button type="button" className="button button-quiet" onClick={() => { setName(customer.name); setPhone(cleanedCustomerPhone); setIsEditingProfile(false); }}>
-                      إلغاء
-                    </button>
-                  )}
+          <div className="shahezo-acc-connected-tabs">
+            <Link href="/orders" className="shahezo-acc-connected-tab">
+              <span className="shahezo-acc-tab-icon-wrap">
+                <Package size={21} strokeWidth={1.9} />
+              </span>
+              <strong>طلباتي ({customer.orders.length})</strong>
+            </Link>
+            <Link href="/favorites" className="shahezo-acc-connected-tab">
+              <span className="shahezo-acc-tab-icon-wrap">
+                <Heart size={21} strokeWidth={1.9} />
+              </span>
+              <strong>المفضلة</strong>
+            </Link>
+            <Link href="/products?offers=1" className="shahezo-acc-connected-tab">
+              <span className="shahezo-acc-tab-icon-wrap" style={{ color: "#c95608" }}>
+                <BadgePercent size={21} strokeWidth={1.9} />
+              </span>
+              <strong>العروضات</strong>
+            </Link>
+            <button
+              type="button"
+              onClick={toggleNotificationsDrawer}
+              className={"shahezo-acc-connected-tab" + (notificationsOpen ? " is-active" : "")}
+            >
+              <span className="shahezo-acc-tab-icon-wrap">
+                <BellRing size={21} strokeWidth={1.9} />
+                {unreadBroadcastCount > 0 ? (
+                  <b className="shahezo-acc-tab-dot">{unreadBroadcastCount}</b>
+                ) : (
+                  <span style={{ position: "absolute", top: "-2px", left: "-3px", width: "7px", height: "7px", borderRadius: "50%", background: "#c95608" }} />
+                )}
+              </span>
+              <strong>الإشعارات</strong>
+            </button>
+          </div>
+
+          {notificationsOpen && (
+            <div ref={notificationsBoxRef} style={{ padding: "14px 16px", background: "#fffaf5", borderTop: "1.5px solid #ead8cc", display: "grid", gap: "10px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <strong style={{ fontSize: "13.5px", color: "#870210", fontWeight: 900 }}>🔔 إشعارات وعروض بوفية شهيزو</strong>
+                <button type="button" onClick={() => setNotificationsOpen(false)} style={{ background: "none", border: 0, color: "#7a5e54", fontSize: "11.5px", fontWeight: 800, cursor: "pointer" }}>
+                  إغلاق ✕
+                </button>
+              </div>
+              {!myBroadcasts.length ? (
+                <div style={{ padding: "14px", borderRadius: "14px", background: "#ffffff", border: "1px dashed #dfcbbd", textAlign: "center", fontSize: "12px", color: "#6e564d", fontWeight: 600 }}>
+                  لا توجد إشعارات جديدة حالياً. ستصلك هنا أحدث العروض والتنبيهات الخاصة بك من بوفية شهيزو!
                 </div>
-              </form>
+              ) : (
+                <div style={{ display: "grid", gap: "8px" }}>
+                  {myBroadcasts.map((b: any) => (
+                    <div
+                      key={b.id}
+                      onClick={() => { if (b.targetUrl) navigate(b.targetUrl); }}
+                      style={{ padding: "11px 13px", borderRadius: "14px", background: "#ffffff", border: "1px solid #ead8cc", cursor: b.targetUrl ? "pointer" : "default", display: "grid", gap: "4px" }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+                        <strong style={{ fontSize: "13px", color: "#2b120f", fontWeight: 900 }}>{b.title}</strong>
+                        <small style={{ fontSize: "10px", color: "#870210", fontWeight: 700 }}>{new Date(b.createdAt).toLocaleDateString("ar-YE")}</small>
+                      </div>
+                      <p style={{ margin: 0, fontSize: "12px", color: "#5c433b", lineHeight: 1.6 }}>{b.body}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
-
-          <div className="shahezo-acc-shortcuts">
-            <Link href="/orders" className="shahezo-acc-tile">
-              <span className="shahezo-acc-tile-icon"><Package size={18} /></span>
-              <strong>طلباتي</strong>
-              <small>{customer.orders.length > 0 ? `${customer.orders.length} طلب` : "تتبع"}</small>
-            </Link>
-            <Link href="/favorites" className="shahezo-acc-tile">
-              <span className="shahezo-acc-tile-icon"><Heart size={18} /></span>
-              <strong>المفضلة</strong>
-              <small>{favoriteIds.length > 0 ? `${favoriteIds.length} محفوظ` : "وجباتي"}</small>
-            </Link>
-            <Link href="/products?offers=1" className="shahezo-acc-tile">
-              <span className="shahezo-acc-tile-icon"><BadgePercent size={18} /></span>
-              <strong>العروضات</strong>
-              <small>توفير اليوم</small>
-            </Link>
-            <Link href="/cart" className="shahezo-acc-tile">
-              <span className="shahezo-acc-tile-icon"><ShoppingCart size={18} /></span>
-              <strong>السلة</strong>
-              <small>{cartCount > 0 ? `${cartCount} بالطلب` : "فارغة"}</small>
-            </Link>
-          </div>
         </section>
 
         <section className="shahezo-acc-card">
           <div className="shahezo-acc-sec-head">
             <div className="shahezo-acc-sec-title">
               <span className="shahezo-acc-sec-icon">
-                <MapPin size={18} />
+                <MapPin size={19} />
               </span>
               <div>
-                <h2 style={{ margin: 0, fontSize: "15px", fontWeight: 900, color: "#2b120f" }}>عناويني المحفوظة ({customer.addresses.length})</h2>
-                <small style={{ color: "#7a5e54", fontSize: "11px", fontWeight: 600 }}>تُختار تلقائياً عند تأكيد طلبك لسرعة التوصيل</small>
+                <h2 style={{ margin: 0, fontSize: "15.5px", fontWeight: 900, color: "#2b120f" }}>عناويني المحفوظة ({customer.addresses.length})</h2>
               </div>
             </div>
-            {!showAddressForm && (
-              <button
-                type="button"
-                className="small-button selected"
-                style={{ background: "#870210", color: "#ffffff", border: "none", borderRadius: "11px", padding: "7px 12px", fontWeight: 800, fontSize: "11.5px" }}
-                onClick={() => {
-                  setEditingAddressId(null);
-                  setAddress({ label: "المنزل", recipientName: customer.name || name, phone: cleanedCustomerPhone || phone, city: "صنعاء", district: "", details: "", isDefault: customer.addresses.length === 0 });
-                  setShowAddressForm(true);
-                }}
-              >
-                <Plus size={14} /> عنوان جديد
-              </button>
-            )}
+            <button
+              type="button"
+              className={"shahezo-acc-add-btn" + (showAddressForm ? " is-cancel" : "")}
+              onClick={openNewAddressForm}
+            >
+              {showAddressForm ? (
+                <><X size={14} /> {editingAddressId ? "إلغاء التعديل" : "إلغاء إضافة العنوان"}</>
+              ) : (
+                <><Plus size={14} /> إضافة عنوان</>
+              )}
+            </button>
           </div>
 
           <div style={{ padding: "14px 16px" }}>
             {!customer.addresses.length && !showAddressForm ? (
-              <div style={{ textAlign: "center", padding: "18px 12px", borderRadius: "15px", background: "#fdf9f4", border: "1px dashed #dfcbbd" }}>
-                <p style={{ margin: "0 0 10px", fontSize: "12px", color: "#6e564d", fontWeight: 600 }}>لا توجد عناوين محفوظة بعد. أضف عنوانك مرة واحدة للطلب السريع بدون إعادة كتابته.</p>
-                <button type="button" className="small-button selected" style={{ background: "#870210", color: "#ffffff", border: "none", borderRadius: "10px", padding: "7px 14px", fontWeight: 800 }} onClick={() => setShowAddressForm(true)}>
-                  <Plus size={14} /> إضافة أول عنوان
+              <div style={{ textAlign: "center", padding: "18px 14px", borderRadius: "16px", background: "#fdf9f4", border: "1.5px dashed #dfcbbd" }}>
+                <p style={{ margin: "0 0 10px", fontSize: "12px", color: "#6e564d", fontWeight: 700 }}>أضف عنوان توصيلك مرة واحدة ليتم اختياره تلقائياً عند كل طلب.</p>
+                <button type="button" className="shahezo-acc-add-btn" onClick={openNewAddressForm}>
+                  <Plus size={14} /> إضافة عنوان الآن
                 </button>
               </div>
             ) : (
-              <div style={{ display: "grid", gap: "9px" }}>
+              <div style={{ display: "grid", gap: "10px" }}>
                 {customer.addresses.map(item => (
                   <div
                     key={item.id}
-                    className={"shahezo-acc-addr-item" + (item.isDefault ? " is-default" : "")}
+                    className="shahezo-acc-addr-box"
+                    style={{ borderColor: item.isDefault ? "#870210" : "#ead8cc", background: item.isDefault ? "#fdfaf6" : "#ffffff" }}
                   >
-                    <div style={{ display: "grid", gap: "3px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "7px", flexWrap: "wrap" }}>
-                        <strong style={{ fontSize: "13.5px", color: "#2b120f", fontWeight: 900 }}>📍 {item.label}</strong>
-                        {item.isDefault && <span className="shahezo-acc-badge">الافتراضي ✓</span>}
+                    <div style={{ display: "grid", gap: "4px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                        <strong style={{ fontSize: "14.5px", color: "#2b120f", fontWeight: 900 }}>📍 {item.label}</strong>
+                        {item.isDefault ? (
+                          <span className="shahezo-acc-badge-ok">✓ الافتراضي</span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="small-button"
+                            style={{ fontSize: "10.5px", fontWeight: 800, padding: "2px 9px", minHeight: "24px", borderRadius: "99px", color: "#870210", borderColor: "#e6c7bc", background: "#fffaf6" }}
+                            onClick={() => { customer.setDefaultAddress(item.id); toast.success("تم تعيينه كعنوان افتراضي ✓"); }}
+                          >
+                            تعيين كافتراضي
+                          </button>
+                        )}
                       </div>
-                      <div style={{ fontSize: "12px", color: "#5c433b", fontWeight: 700 }}>
+                      <div style={{ fontSize: "12.5px", color: "#2b120f", fontWeight: 800 }}>
                         {item.recipientName} · <span dir="ltr" style={{ color: "#870210" }}>{cleanYemeniPhone(item.phone)}</span>
                       </div>
-                      <div style={{ fontSize: "11.5px", color: "#785f56" }}>
+                      <div style={{ fontSize: "12px", color: "#6e564d", fontWeight: 600 }}>
                         {item.city} — {item.district}{item.details ? (" · " + item.details) : ""}
                       </div>
                     </div>
-                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                      {!item.isDefault && (
-                        <button type="button" className="small-button" style={{ fontSize: "11px", fontWeight: 700 }} onClick={() => { customer.setDefaultAddress(item.id); toast.success("تم تعيينه كعنوان افتراضي ✓"); }}>
-                          تعيين افتراضي
-                        </button>
-                      )}
+
+                    <div style={{ display: "flex", gap: "7px", alignItems: "center" }}>
                       <button
                         type="button"
                         className="small-button"
-                        style={{ fontSize: "11px", fontWeight: 700 }}
+                        style={{ fontSize: "11.5px", fontWeight: 800, padding: "6px 13px", borderRadius: "10px", background: "#ffffff", border: "1px solid #d8cbc0" }}
                         onClick={() => {
                           setEditingAddressId(item.id);
                           setAddress({
@@ -3194,6 +3364,9 @@ function AccountPage({ settings = {} }: { settings?: Record<string, string | und
                             isDefault: item.isDefault,
                           });
                           setShowAddressForm(true);
+                          setTimeout(() => {
+                            addressFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                          }, 80);
                         }}
                       >
                         تعديل
@@ -3201,6 +3374,7 @@ function AccountPage({ settings = {} }: { settings?: Record<string, string | und
                       <button
                         type="button"
                         className="icon-button"
+                        style={{ width: "34px", height: "34px", borderRadius: "10px", background: "#ffffff", border: "1px solid #d8cbc0" }}
                         aria-label="حذف العنوان"
                         onClick={() => {
                           customer.removeAddress(item.id);
@@ -3217,23 +3391,44 @@ function AccountPage({ settings = {} }: { settings?: Record<string, string | und
             )}
 
             {showAddressForm && (
-              <form className="form-stack" onSubmit={submitAddress} style={{ marginTop: customer.addresses.length ? "14px" : "0", paddingTop: customer.addresses.length ? "14px" : "0", borderTop: customer.addresses.length ? "1.5px dashed #e5d2c3" : "none", gap: "10px" }}>
-                <strong style={{ fontSize: "13px", color: "#870210" }}>{editingAddressId ? "✏️ تعديل العنوان المحفوظ" : "➕ إضافة عنوان توصيل جديد"}</strong>
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                  {["المنزل", "العمل", "منزل العائلة", "استراحة"].map(preset => (
-                    <button key={preset} type="button" className={"small-button" + (address.label === preset ? " selected" : "")} style={{ minHeight: "28px", padding: "2px 10px", fontSize: "11px" }} onClick={() => setAddress({ ...address, label: preset })}>{preset}</button>
-                  ))}
+              <form ref={addressFormRef} className="shahezo-clean-form" onSubmit={submitAddress} style={{ marginTop: customer.addresses.length ? "14px" : "0", borderRadius: "16px", border: "1.5px solid #ead8cc" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <strong style={{ fontSize: "13.5px", color: "#870210", fontWeight: 900 }}>
+                    {editingAddressId ? "✏️ تعديل بيانات العنوان" : "➕ إضافة عنوان توصيل جديد"}
+                  </strong>
+                  <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
+                    {["المنزل", "العمل", "منزل العائلة", "استراحة"].map(preset => (
+                      <button
+                        key={preset}
+                        type="button"
+                        className={"shahezo-pref-chip" + (address.label === preset ? " is-selected" : "")}
+                        onClick={() => setAddress({ ...address, label: preset })}
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="form-grid">
-                  <label>تسمية العنوان *<input required maxLength={80} value={address.label} onChange={event => setAddress({ ...address, label: event.target.value })} placeholder="المنزل، العمل..." /></label>
-                  <label>اسم المستلم *<input required minLength={2} maxLength={160} autoComplete="name" value={address.recipientName} onChange={event => setAddress({ ...address, recipientName: event.target.value })} /></label>
-                  <label className="form-wide">
-                    <span style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>رقم الجوال اليمني (9 أرقام) *</span>
-                      <small style={{ fontSize: "10px", fontWeight: 800, color: addressPhoneValid ? "#870210" : "#b43c2f" }}>{address.phone.length}/9</small>
-                    </span>
-                    <input required type="tel" inputMode="numeric" maxLength={9} dir="ltr" value={address.phone} onChange={event => setAddress({ ...address, phone: cleanYemeniPhone(event.target.value) })} placeholder="77XXXXXXX" style={{ textAlign: "left", fontWeight: 800 }} />
+
+                <div className="form-grid" style={{ gap: "10px" }}>
+                  <label className="shahezo-clean-field">
+                    <span>تسمية العنوان *</span>
+                    <input required maxLength={80} value={address.label} onChange={event => setAddress({ ...address, label: event.target.value })} placeholder="مثال: الرقاص، المنزل، العمل..." />
                   </label>
+                  <label className="shahezo-clean-field">
+                    <span>اسم المستلم *</span>
+                    <input required minLength={2} maxLength={160} autoComplete="name" value={address.recipientName} onChange={event => setAddress({ ...address, recipientName: event.target.value })} placeholder="الاسم الكامل للمستلم" />
+                  </label>
+                  <label className="shahezo-clean-field form-wide">
+                    <span style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>رقم الهاتف *</span>
+                      <small style={{ fontSize: "10.5px", fontWeight: 800, color: addressPhoneValid ? "#1e7e34" : "#b43c2f" }}>
+                        {addressPhoneValid ? "✓ رقم صحيح" : `${address.phone.length}/9 أرقام`}
+                      </small>
+                    </span>
+                    <input required type="tel" inputMode="numeric" maxLength={9} dir="ltr" value={address.phone} onChange={event => setAddress({ ...address, phone: cleanYemeniPhone(event.target.value) })} placeholder="77XXXXXXX" style={{ textAlign: "left" }} />
+                  </label>
+
                   {deliveryTree ? (
                     <div className="form-wide">
                       <ThreeStepLocationPicker
@@ -3247,16 +3442,34 @@ function AccountPage({ settings = {} }: { settings?: Record<string, string | und
                     </div>
                   ) : (
                     <>
-                      <label>المدينة / المنطقة *<input required maxLength={100} value={address.city} onChange={event => setAddress({ ...address, city: event.target.value })} placeholder="صنعاء" /></label>
-                      <label className="form-wide">الحي / الشارع *<input required maxLength={120} value={address.district} onChange={event => setAddress({ ...address, district: event.target.value })} placeholder="مثلاً: الرقاص، حدة، الأصبحي..." /></label>
+                      <label className="shahezo-clean-field">
+                        <span>المدينة *</span>
+                        <input required maxLength={100} value={address.city} onChange={event => setAddress({ ...address, city: event.target.value })} placeholder="صنعاء" />
+                      </label>
+                      <label className="shahezo-clean-field form-wide">
+                        <span>المنطقة والشارع *</span>
+                        <input required maxLength={120} value={address.district} onChange={event => setAddress({ ...address, district: event.target.value })} placeholder="مثلاً: معين — الرقاص" />
+                      </label>
                     </>
                   )}
-                  <label className="form-wide">أقرب معلم للعنوان<textarea required rows={2} maxLength={1000} value={address.details} onChange={event => setAddress({ ...address, details: event.target.value })} placeholder="مثال: بجوار بنك الكريمي، أمام جامع..." /></label>
-                  <label className="toggle-field form-wide"><input type="checkbox" checked={address.isDefault} onChange={event => setAddress({ ...address, isDefault: event.target.checked })} /> اجعل هذا العنوان هو الافتراضي عند الطلب</label>
+
+                  <label className="shahezo-clean-field form-wide">
+                    <span>أقرب معلم للعنوان *</span>
+                    <textarea required rows={2} maxLength={1000} value={address.details} onChange={event => setAddress({ ...address, details: event.target.value })} placeholder="مثال: جوار بنك الكريمي، أمام جامع..." />
+                  </label>
+                  <label className="toggle-field form-wide" style={{ fontSize: "12px", fontWeight: 700 }}>
+                    <input type="checkbox" checked={address.isDefault} onChange={event => setAddress({ ...address, isDefault: event.target.checked })} />
+                    اعتماد هذا العنوان كعنوان افتراضي للتوصيل
+                  </label>
                 </div>
-                <div className="address-form-actions" style={{ display: "flex", gap: "8px" }}>
-                  <button type="submit" className="button button-primary" disabled={!addressPhoneValid}><Check size={16} /> {editingAddressId ? "حفظ تعديل العنوان" : "حفظ العنوان"}</button>
-                  <button type="button" className="button button-quiet" onClick={resetAddressForm}>إلغاء</button>
+
+                <div style={{ display: "flex", gap: "8px", paddingTop: "4px" }}>
+                  <button type="submit" className="button button-primary" disabled={!addressPhoneValid} style={{ flex: 1, borderRadius: "12px" }}>
+                    <Check size={16} /> {editingAddressId ? "حفظ التعديل" : "حفظ العنوان"}
+                  </button>
+                  <button type="button" className="button button-quiet" onClick={resetAddressForm} style={{ borderRadius: "12px" }}>
+                    إلغاء
+                  </button>
                 </div>
               </form>
             )}
@@ -3264,6 +3477,97 @@ function AccountPage({ settings = {} }: { settings?: Record<string, string | und
         </section>
 
         <section className="shahezo-acc-card">
+          <div>
+            <button
+              type="button"
+              className="shahezo-acc-row-btn"
+              onClick={() => {
+                const next = !accountSettingsOpen;
+                setAccountSettingsOpen(next);
+                if (next) {
+                  setTimeout(() => accountSettingsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 70);
+                }
+              }}
+              style={{ background: accountSettingsOpen ? "#fffaf5" : "#ffffff" }}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <span className="shahezo-acc-sec-icon">
+                  <SlidersHorizontal size={18} />
+                </span>
+                <span style={{ display: "grid", gap: "2px" }}>
+                  <strong style={{ fontSize: "14px", fontWeight: 900, color: "#2b120f" }}>إعدادات الحساب</strong>
+                  <small style={{ fontSize: "11.5px", color: "#7a5e54", fontWeight: 600 }}>تعديل الاسم، رقم الهاتف، ومفضلاتي الدائمة مع كل طلب</small>
+                </span>
+              </span>
+              <ChevronLeft size={17} color="#8c766e" style={{ transform: accountSettingsOpen ? "rotate(-90deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
+            </button>
+
+            {accountSettingsOpen && (
+              <div ref={accountSettingsRef} className="shahezo-clean-form">
+                <form onSubmit={saveAccountSettings} style={{ display: "grid", gap: "11px" }}>
+                  <label className="shahezo-clean-field">
+                    <span>اسم المستخدم الكامل *</span>
+                    <input required minLength={2} maxLength={160} autoComplete="name" value={name} onChange={event => setName(event.target.value)} placeholder="أدخل اسمك الكامل..." />
+                  </label>
+
+                  <label className="shahezo-clean-field">
+                    <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span>رقم الهاتف *</span>
+                      <small style={{ fontSize: "10.5px", fontWeight: 800, color: profilePhoneValid ? "#1e7e34" : "#b43c2f" }}>
+                        {profilePhoneValid ? "✓ رقم صحيح" : `${phone.length}/9 أرقام`}
+                      </small>
+                    </span>
+                    <input
+                      required
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={9}
+                      dir="ltr"
+                      value={phone}
+                      onChange={event => setPhone(cleanYemeniPhone(event.target.value))}
+                      placeholder="77XXXXXXX"
+                      style={{ textAlign: "left" }}
+                    />
+                  </label>
+
+                  <div className="shahezo-clean-field">
+                    <span>⭐ مفضلاتي الدائمة (تُحفظ مع اسمك وتصل للمطعم تلقائياً مع كل طلب)</span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "4px" }}>
+                      {presetPrefChips.map(chip => {
+                        const selected = foodPrefs.split("،").map(s => s.trim()).includes(chip);
+                        return (
+                          <button
+                            key={chip}
+                            type="button"
+                            className={"shahezo-pref-chip" + (selected ? " is-selected" : "")}
+                            onClick={() => toggleFoodPrefChip(chip)}
+                          >
+                            {selected ? `✓ ${chip}` : `+ ${chip}`}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <input
+                      maxLength={300}
+                      value={foodPrefs}
+                      onChange={e => setFoodPrefs(e.target.value)}
+                      placeholder="مثال: بدون سكر، بدون توابل، مع البهارات، شطة خفيفة..."
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", gap: "8px", paddingTop: "2px" }}>
+                    <button type="submit" className="button button-primary" disabled={name.trim().length < 2 || !profilePhoneValid} style={{ flex: 1, borderRadius: "12px" }}>
+                      <Check size={16} /> حفظ إعدادات الحساب
+                    </button>
+                    <button type="button" className="button button-quiet" onClick={() => setAccountSettingsOpen(false)} style={{ borderRadius: "12px" }}>
+                      إغلاق
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </div>
+
           <button
             type="button"
             className="shahezo-acc-row-btn"
@@ -3274,23 +3578,35 @@ function AccountPage({ settings = {} }: { settings?: Record<string, string | und
               const granted = perm === "granted" ? "granted" : await requestPushPermission();
               setPushPerm(granted);
               if (granted === "granted") {
-                toast.success("🔔 إشعارات الطلبات الفورية مفعّلة بنجاح!");
+                toast.success("🔔 إشعارات الطلبات والعروض الفورية مفعّلة بنجاح!");
+                try {
+                  let sub = await getExistingBrowserPushSubscription();
+                  if (!sub) {
+                    const key = publicKey.data ?? (await publicKey.refetch()).data;
+                    if (key) sub = await ensureBrowserPushSubscription(key);
+                  }
+                  if (sub) {
+                    await registerSub.mutateAsync({
+                      subscription: sub,
+                      phone: cleanedCustomerPhone,
+                      name: customer.name || name,
+                      orderCount: customer.orders.length,
+                      lastOrderAt: customer.orders[0]?.createdAt || "",
+                    });
+                  }
+                } catch {}
               }
             }}
           >
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "10px", fontSize: "13px", fontWeight: 800 }}>
-              <span className="shahezo-acc-sec-icon" style={{ width: "32px", height: "32px", borderRadius: "10px" }}>
-                <BellRing size={16} />
+            <span style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <span className="shahezo-acc-sec-icon">
+                <BellRing size={18} />
               </span>
-              تفعيل إشعارات الطلبات الفورية
+              <strong style={{ fontSize: "14px", fontWeight: 900, color: "#2b120f" }}>تفعيل إشعارات الطلبات الفورية</strong>
             </span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-              {pushPerm === "granted" ? (
-                <span className="shahezo-acc-badge">مفعّلة ✓</span>
-              ) : (
-                <small style={{ fontSize: "11px", color: "#870210", fontWeight: 800 }}>تفعيل</small>
-              )}
-              <ChevronLeft size={16} color="#8c766e" />
+              {pushPerm === "granted" && <span className="shahezo-acc-badge-ok">مفعّلة ✓</span>}
+              <ChevronLeft size={17} color="#8c766e" />
             </span>
           </button>
 
@@ -3316,80 +3632,66 @@ function AccountPage({ settings = {} }: { settings?: Record<string, string | und
                 toast.info("اضغط على قائمة المتصفح (⋮) بالأعلى ثم اختر «إضافة إلى الشاشة الرئيسية» لتثبيت تطبيق شهيزو");
               }}
             >
-              <span style={{ display: "inline-flex", alignItems: "center", gap: "10px", fontSize: "13px", fontWeight: 800 }}>
-                <span className="shahezo-acc-sec-icon" style={{ width: "32px", height: "32px", borderRadius: "10px" }}>
-                  <ShoppingBag size={16} />
+              <span style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <span className="shahezo-acc-sec-icon">
+                  <ShoppingBag size={18} />
                 </span>
-                تثبيت تطبيق شهيزو على هاتفك
+                <strong style={{ fontSize: "14px", fontWeight: 900, color: "#2b120f" }}>تثبيت تطبيق شهيزو على هاتفك</strong>
               </span>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                <small style={{ fontSize: "11px", color: "#870210", fontWeight: 800 }}>تثبيت سريع</small>
-                <ChevronLeft size={16} color="#8c766e" />
-              </span>
+              <ChevronLeft size={17} color="#8c766e" />
             </button>
           )}
 
           <div>
-            <button
-              type="button"
-              className="shahezo-acc-row-btn"
+            <div
               onClick={() => setAboutOpen(v => !v)}
-              style={{ background: aboutOpen ? "#fffaf5" : "#ffffff", borderBottom: 0 }}
+              role="button"
+              tabIndex={0}
+              onKeyDown={e => { if (e.key === "Enter") setAboutOpen(v => !v); }}
+              className="shahezo-acc-row-btn"
+              style={{ borderBottom: 0, flexWrap: "wrap", gap: "10px" }}
             >
-              <span style={{ display: "inline-flex", alignItems: "center", gap: "10px", fontSize: "13px", fontWeight: 800 }}>
-                <span className="shahezo-acc-sec-icon" style={{ width: "32px", height: "32px", borderRadius: "10px" }}>
-                  <Sparkles size={16} />
+              <span style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <span className="shahezo-acc-sec-icon">
+                  <Sparkles size={18} />
                 </span>
-                من نحن وحساباتنا الرسمية
+                <strong style={{ fontSize: "14px", fontWeight: 900, color: "#2b120f" }}>من نحن وحساباتنا الرسمية</strong>
               </span>
-              <ChevronDown size={16} color="#8c766e" style={{ transform: aboutOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-            </button>
+
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "7px" }} onClick={e => e.stopPropagation()}>
+                {socialCfg.phoneEnabled && socialCfg.phone.trim() !== "" && (
+                  <a href={"tel:" + socialCfg.phone.replace(/\s+/g, "")} aria-label="اتصال" className="shahezo-social-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  </a>
+                )}
+                {socialCfg.tiktokEnabled && socialCfg.tiktok.trim() !== "" && (
+                  <a href={socialCfg.tiktok} target="_blank" rel="noreferrer" aria-label="تيك توك" className="shahezo-social-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.87a8.16 8.16 0 0 0 4.76 1.52v-3.4a4.85 4.85 0 0 1-1-.3z"/></svg>
+                  </a>
+                )}
+                {socialCfg.instagramEnabled && socialCfg.instagram.trim() !== "" && (
+                  <a href={socialCfg.instagram} target="_blank" rel="noreferrer" aria-label="إنستغرام" className="shahezo-social-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                  </a>
+                )}
+                {socialCfg.facebookEnabled && socialCfg.facebook.trim() !== "" && (
+                  <a href={socialCfg.facebook} target="_blank" rel="noreferrer" aria-label="فيسبوك" className="shahezo-social-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.99 3.66 9.13 8.44 9.88v-6.99H7.9V12h2.54V9.8c0-2.51 1.49-3.89 3.78-3.89 1.09 0 2.23.19 2.23.19v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99C18.34 21.13 22 16.99 22 12z"/></svg>
+                  </a>
+                )}
+                {socialCfg.whatsappEnabled && socialCfg.whatsapp.trim() !== "" && (
+                  <a href={normalizeWaHref(socialCfg.whatsapp)} target="_blank" rel="noreferrer" aria-label="واتساب" className="shahezo-social-circle">
+                    <MessageCircle size={15} />
+                  </a>
+                )}
+                <ChevronLeft size={17} color="#8c766e" onClick={() => setAboutOpen(v => !v)} />
+              </span>
+            </div>
 
             {aboutOpen && (
-              <div style={{ padding: "14px 16px", background: "linear-gradient(180deg, #fffaf5 0%, #ffffff 100%)", borderTop: "1px solid #f3e4d7", display: "grid", gap: "12px" }}>
-                <div style={{ display: "grid", gap: "5px" }}>
-                  <strong style={{ fontSize: "14px", color: "#870210", fontWeight: 900 }}>🥙 {socialCfg.aboutTitle}</strong>
-                  <p style={{ margin: 0, fontSize: "12px", lineHeight: 1.7, color: "#5c433b" }}>{socialCfg.aboutText}</p>
-                </div>
-
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                  <span className="shahezo-acc-badge">🥙 تحضير طازج يومياً</span>
-                  <span className="shahezo-acc-badge">🛵 توصيل سريع لباب منزلك</span>
-                  <span className="shahezo-acc-badge">💵 الدفع عند الاستلام</span>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(56px, 1fr))", gap: "8px", paddingTop: "2px" }}>
-                  {socialCfg.whatsappEnabled && socialCfg.whatsapp.trim() !== "" && (
-                    <a href={normalizeWaHref(socialCfg.whatsapp)} target="_blank" rel="noreferrer" aria-label="واتساب" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "9px 4px", borderRadius: "13px", background: "#fdf9f4", border: "1px solid #ead8cc", textDecoration: "none", color: "#128C7E" }}>
-                      <MessageCircle size={19} />
-                      <span style={{ fontSize: "10px", fontWeight: 800, color: "#2b120f" }}>واتساب</span>
-                    </a>
-                  )}
-                  {socialCfg.facebookEnabled && socialCfg.facebook.trim() !== "" && (
-                    <a href={socialCfg.facebook} target="_blank" rel="noreferrer" aria-label="فيسبوك" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "9px 4px", borderRadius: "13px", background: "#fdf9f4", border: "1px solid #ead8cc", textDecoration: "none", color: "#1877F2" }}>
-                      <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.99 3.66 9.13 8.44 9.88v-6.99H7.9V12h2.54V9.8c0-2.51 1.49-3.89 3.78-3.89 1.09 0 2.23.19 2.23.19v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99C18.34 21.13 22 16.99 22 12z"/></svg>
-                      <span style={{ fontSize: "10px", fontWeight: 800, color: "#2b120f" }}>فيسبوك</span>
-                    </a>
-                  )}
-                  {socialCfg.instagramEnabled && socialCfg.instagram.trim() !== "" && (
-                    <a href={socialCfg.instagram} target="_blank" rel="noreferrer" aria-label="إنستغرام" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "9px 4px", borderRadius: "13px", background: "#fdf9f4", border: "1px solid #ead8cc", textDecoration: "none", color: "#E1306C" }}>
-                      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
-                      <span style={{ fontSize: "10px", fontWeight: 800, color: "#2b120f" }}>إنستغرام</span>
-                    </a>
-                  )}
-                  {socialCfg.tiktokEnabled && socialCfg.tiktok.trim() !== "" && (
-                    <a href={socialCfg.tiktok} target="_blank" rel="noreferrer" aria-label="تيك توك" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "9px 4px", borderRadius: "13px", background: "#fdf9f4", border: "1px solid #ead8cc", textDecoration: "none", color: "#18181b" }}>
-                      <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.87a8.16 8.16 0 0 0 4.76 1.52v-3.4a4.85 4.85 0 0 1-1-.3z"/></svg>
-                      <span style={{ fontSize: "10px", fontWeight: 800, color: "#2b120f" }}>تيك توك</span>
-                    </a>
-                  )}
-                  {socialCfg.phoneEnabled && socialCfg.phone.trim() !== "" && (
-                    <a href={"tel:" + socialCfg.phone.replace(/\s+/g, "")} aria-label="اتصال" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "9px 4px", borderRadius: "13px", background: "#fdf9f4", border: "1px solid #ead8cc", textDecoration: "none", color: "#870210" }}>
-                      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                      <span style={{ fontSize: "10px", fontWeight: 800, color: "#2b120f" }}>اتصال</span>
-                    </a>
-                  )}
-                </div>
+              <div style={{ padding: "14px 16px", background: "#fffaf5", borderTop: "1px solid #f2e5da", display: "grid", gap: "8px" }}>
+                <strong style={{ fontSize: "13.5px", color: "#870210", fontWeight: 900 }}>🥙 {socialCfg.aboutTitle}</strong>
+                <p style={{ margin: 0, fontSize: "12px", lineHeight: 1.75, color: "#4e3830", fontWeight: 600 }}>{socialCfg.aboutText}</p>
               </div>
             )}
           </div>
@@ -4243,8 +4545,6 @@ function GamifiedRewardBar({ settings, location }: { settings: Record<string, st
     </>
   );
 }
-
-function ShahezoWhatsAppBar(_props: any) { return null; }
 
 export default function Home() {
   const storeCtx = useStore();
