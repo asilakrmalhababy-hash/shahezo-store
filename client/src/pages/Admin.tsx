@@ -1467,7 +1467,7 @@ function ProductsPanel({ isOwner = true, permissions = [], allowedCategoryIds = 
       <section className="admin-form-card">
         <div className="form-card-heading">
           <span className="form-card-number">{editing ? "✳" : "01"}</span>
-          <div><h2>{editing ? "تعديل المنتج: " + form.name : "إضافة منتج جديد"}</h2><p>أدخل الاسم والسعر والقسم والصورة فقط، واستخدم الأزرار السفلية عند الحاجة لإضافة خيارات أو بيع بالوزن.</p></div>
+          <div><h2>{editing ? "تعديل الصنف: " + form.name : "إضافة وجبة أو صنف جديد"}</h2><p>أدخل اسم الوجبة والسعر والقسم والصورة، مع إمكانية إضافة الأحجام والخيارات أو البيع بالمبلغ والوزن.</p></div>
           {editing && <button type="button" className="small-button" onClick={() => { setEditing(null); setForm(blankProduct); }}>إلغاء التعديل<X size={14} /></button>}
         </div>
         <form onSubmit={submit} className="admin-form">
@@ -4239,8 +4239,8 @@ function OwnerNotificationControl() {
 function UsersPanel() {
   const query = trpc.commerce.admin.customers.list.useQuery(undefined, { retry: 1 });
   return <div className="admin-content">
-    <AdminHeading eyebrow="مجتمع المتجر" title="سجل العملاء" text="تُجمع أرقام العملاء من الطلبات التي أتموها. لا يحتاج العميل إلى إنشاء حساب؛ اتصل به لتأكيد الطلب والتوصيل." icon={Users} />
-    <div className="privacy-note"><ShieldCheck size={17} /><span></span></div>
+    <AdminHeading eyebrow="قاعدة عملاء بوفية شهيزو" title="سجل العملاء الدائمين" text="قائمة تلقائية بجميع العملاء الذين طلبوا من المتجر مع إجمالي مشترياتهم وعدد طلباتهم وتاريخ آخر طلب." icon={Users} />
+    <div className="privacy-note"><ShieldCheck size={17} /><span>تُحفظ بيانات وأرقام العملاء تلقائياً مع كل طلب جديد لتسهيل التواصل السريع ومتابعة العملاء الدائمين.</span></div>
     {query.isLoading ? <AdminLoading /> : query.error ? <AdminError message={query.error.message} retry={() => void query.refetch()} /> : !query.data?.length ? <AdminEmpty title="لا يوجد عملاء بعد" text="ستظهر أرقام العملاء هنا بعد استلام أول طلب." /> : <div className="user-list">{query.data.map(customer => <article className="user-row" key={customer.phone}>
       <span className="user-avatar"><CircleUserRound size={20} /></span>
       <div className="user-main"><strong dir="ltr">{customer.phone}</strong><small>آخر طلب: {new Date(customer.lastOrderAt).toLocaleString("ar-YE")}</small></div>
@@ -4450,8 +4450,8 @@ function SettingsPanel() {
   const previewGiftLabel = rcfg.giftName.trim() || (rcfg.rewardMode === "free_delivery" ? "توصيل مجاني بالكامل 🛵" : rcfg.rewardMode === "discount_percent" ? ("خصم فوري " + (values.rewardValue || 10) + "% 🏷️") : rcfg.rewardMode === "discount_fixed" ? ("خصم نقدي " + rcfg.fixedDiscount + " ر.ي 💸") : "هدية مجانية من شهيزو 🎁");
 
   return <div className="admin-content"><AdminHeading eyebrow="مركز التحكم" title="إعدادات المتجر وشريط الهدايا الحماسي" text="اضبط هوية المتجر ومناطق التوصيل وشريط المكافآت التفاعلي لرفع حماس ومشتريات الزبائن." icon={Settings2} />{query.isLoading ? <AdminLoading /> : query.error ? <AdminError message={query.error.message} retry={() => void query.refetch()} /> : <form className="settings-form" onSubmit={submit}>
-    <section className="admin-form-card"><div className="form-card-heading"><span className="form-card-number">01</span><div><h2>بيانات المتجر وهويته</h2><p>المعلومات والشعار الذي تختاره بنفسك.</p></div></div><div className="settings-brand-layout"><div className="form-fields-grid"><label>اسم المتجر<input required maxLength={100} value={values.storeName} onChange={e => update("storeName", e.target.value)} /></label><label>هاتف التواصل<input type="tel" value={values.contactPhone} onChange={e => update("contactPhone", e.target.value)} placeholder="أضف رقم المتجر" /></label><label>رمز العملة<input maxLength={20} value={values.currency} onChange={e => update("currency", e.target.value)} /></label><label className="field-wide">وصف المتجر<textarea rows={2} value={values.storeDescription} onChange={e => update("storeDescription", e.target.value)} /></label></div><ImageField title="قص شعار وأيقونة شهيزو" value={values.storeIconUrl} onChange={value => update("storeIconUrl", value)} kind="icon" aspect={1} /></div></section>
-    <section className="admin-form-card"><div className="form-card-heading"><span className="form-card-number">02</span><div><h2>التوصيل واستقبال الطلبات</h2><p>لا يُفتح الشراء حتى تحدد منطقة أو رسومًا قابلة للتطبيق.</p></div></div><div className="form-fields-grid"><label className="toggle-field"><input type="checkbox" checked={values.deliveryEnabled} onChange={e => update("deliveryEnabled", e.target.checked)} /> تفعيل استقبال طلبات التوصيل</label><label>رسوم أساسية (ر.ي)<input type="number" min="0" step="1" value={values.deliveryFee} onChange={e => update("deliveryFee", e.target.value)} placeholder="غير محدد" /></label><div className="field-wide settings-zone-editor"><div className="admin-section-heading"><div><h3>مناطق التوصيل</h3><p>يمكن وضع رسوم مختلفة لكل مدينة أو منطقة.</p></div><button type="button" className="small-button" onClick={addZone}><Plus size={14} /> إضافة منطقة</button></div>{!values.deliveryZones.length ? <p className="subtle-note">لم تُضف مناطق بعد؛ سيُستخدم الرسم الأساسي إذا حُدد.</p> : values.deliveryZones.map((zone, index) => <div className="delivery-zone-row" key={index}><label>الاسم<input value={zone.name} onChange={e => patchZone(index, { name: e.target.value })} placeholder="اسم المنطقة" /></label><label>الرسم (ر.ي)<input type="number" min="0" step="1" value={zone.fee} onChange={e => patchZone(index, { fee: Number(e.target.value) })} /></label><label className="toggle-field"><input type="checkbox" checked={zone.enabled} onChange={e => patchZone(index, { enabled: e.target.checked })} /> مفعّلة</label><button type="button" className="small-button danger-soft" onClick={() => update("deliveryZones", values.deliveryZones.filter((_, i) => i !== index))}>حذف</button></div>)}</div><label className="toggle-field"><input type="checkbox" checked={values.orderPaused} onChange={e => update("orderPaused", e.target.checked)} /> إيقاف استقبال الطلبات مؤقتًا</label><label className="field-wide">رسالة الإيقاف<textarea value={values.pausedMessage} onChange={e => update("pausedMessage", e.target.value)} placeholder="اكتب الرسالة التي يراها العميل" /></label></div></section>
+    <section className="admin-form-card"><div className="form-card-heading"><span className="form-card-number">01</span><div><h2>بيانات البوفية والهوية الرسمية</h2><p>اسم المتجر، رقم التواصل الرئيسي، العملة، الوصف التعريفي، والشعار الرسمي.</p></div></div><div className="settings-brand-layout"><div className="form-fields-grid"><label>اسم المتجر<input required maxLength={100} value={values.storeName} onChange={e => update("storeName", e.target.value)} /></label><label>هاتف التواصل<input type="tel" value={values.contactPhone} onChange={e => update("contactPhone", e.target.value)} placeholder="أضف رقم المتجر" /></label><label>رمز العملة<input maxLength={20} value={values.currency} onChange={e => update("currency", e.target.value)} /></label><label className="field-wide">وصف المتجر<textarea rows={2} value={values.storeDescription} onChange={e => update("storeDescription", e.target.value)} /></label></div><ImageField title="قص شعار وأيقونة شهيزو" value={values.storeIconUrl} onChange={value => update("storeIconUrl", value)} kind="icon" aspect={1} /></div></section>
+    <section className="admin-form-card"><div className="form-card-heading"><span className="form-card-number">02</span><div><h2>إعدادات التوصيل واستقبال الطلبات</h2><p>تفعيل التوصيل، الرسوم الافتراضية، أو إيقاف استقبال الطلبات مؤقتاً مع رسالة توضيحية للزبائن.</p></div></div><div className="form-fields-grid"><label className="toggle-field"><input type="checkbox" checked={values.deliveryEnabled} onChange={e => update("deliveryEnabled", e.target.checked)} /> تفعيل استقبال طلبات التوصيل</label><label>رسوم أساسية (ر.ي)<input type="number" min="0" step="1" value={values.deliveryFee} onChange={e => update("deliveryFee", e.target.value)} placeholder="غير محدد" /></label><div className="field-wide settings-zone-editor"><div className="admin-section-heading"><div><h3>مناطق التوصيل</h3><p>يمكن وضع رسوم مختلفة لكل مدينة أو منطقة.</p></div><button type="button" className="small-button" onClick={addZone}><Plus size={14} /> إضافة منطقة</button></div>{!values.deliveryZones.length ? <p className="subtle-note">لم تُضف مناطق بعد؛ سيُستخدم الرسم الأساسي إذا حُدد.</p> : values.deliveryZones.map((zone, index) => <div className="delivery-zone-row" key={index}><label>الاسم<input value={zone.name} onChange={e => patchZone(index, { name: e.target.value })} placeholder="اسم المنطقة" /></label><label>الرسم (ر.ي)<input type="number" min="0" step="1" value={zone.fee} onChange={e => patchZone(index, { fee: Number(e.target.value) })} /></label><label className="toggle-field"><input type="checkbox" checked={zone.enabled} onChange={e => patchZone(index, { enabled: e.target.checked })} /> مفعّلة</label><button type="button" className="small-button danger-soft" onClick={() => update("deliveryZones", values.deliveryZones.filter((_, i) => i !== index))}>حذف</button></div>)}</div><label className="toggle-field"><input type="checkbox" checked={values.orderPaused} onChange={e => update("orderPaused", e.target.checked)} /> إيقاف استقبال الطلبات مؤقتًا</label><label className="field-wide">رسالة الإيقاف<textarea value={values.pausedMessage} onChange={e => update("pausedMessage", e.target.value)} placeholder="اكتب الرسالة التي يراها العميل" /></label></div></section>
 
     <section className="admin-form-card" style={{ border: "2px solid #e3c472", background: "linear-gradient(180deg, #fffdf7 0%, #ffffff 100%)" }}>
       <div className="form-card-heading">
@@ -4557,7 +4557,7 @@ function SettingsPanel() {
           <input maxLength={220} value={values.rewardsMessage} onChange={e => update("rewardsMessage", e.target.value)} placeholder="مثلاً: اطلب الآن واستمتع بهدايا وعروض شهيزو اليومية!" />
         </label>
 
-        <div className="field-wide" style={{ padding: "14px", borderRadius: "16px", background: "linear-gradient(135deg, #0f3826 0%, #1d5c41 100%)", color: "#ffffff", boxShadow: "0 10px 24px rgba(15, 56, 38, 0.2)" }}>
+        <div className="field-wide" style={{ padding: "14px", borderRadius: "16px", background: "linear-gradient(135deg, #870210 0%, #5b010b 100%)", color: "#ffffff", boxShadow: "0 10px 24px rgba(135, 2, 16, 0.2)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", fontSize: "12px" }}>
             <strong style={{ color: "#f5dc98" }}>👀 معاينة حية لشكل الشريط أمام الزبون:</strong>
             <span style={{ background: "rgba(241, 216, 151, 0.2)", color: "#f5dc98", padding: "2px 8px", borderRadius: "99px", fontSize: "10px", fontWeight: 800 }}>65% مكتمل</span>
@@ -4573,7 +4573,7 @@ function SettingsPanel() {
     </section>
     <section className="admin-form-card">
         <div className="form-card-heading">
-          <span className="form-card-number">🤖</span>
+          <span className="form-card-number" style={{ background: "#fceee9", color: "#870210" }}>04</span>
           <div><h2>توجيهات وشخصية المساعد الذكي</h2><p>اكتب أي توجيهات تريد من الذكاء الاصطناعي الالتزام بها أثناء محادثة الزبائن (مثلاً: اقترح العصائر الطبيعية مع وجبات الشاورما والفلافل، ركز على البوكسات العائلية، إلخ).</p></div>
         </div>
         <div className="form-stack">
@@ -4585,7 +4585,7 @@ function SettingsPanel() {
       
     <section className="admin-form-card" style={{ border: "1.5px solid #ead8cc", background: "#ffffff" }}>
       <div className="form-card-heading">
-        <span className="form-card-number" style={{ background: "#fceee9", color: "#870210" }}>04</span>
+        <span className="form-card-number" style={{ background: "#fceee9", color: "#870210" }}>05</span>
         <div>
           <h2>🏪 نبذة «من نحن» وروابط حساباتنا الرسمية (واتساب 1 و 2 + أيقونات مخصصة بصورة)</h2>
           <p>تحكم في إظهار أو إخفاء أي أيقونة، عدّل رقمي الواتساب 1 و 2، أو أضف أيقونة جديدة بصورة وكلمة مخصصة.</p>
@@ -4801,8 +4801,8 @@ function ChatsPanel() {
                       textAlign: "right",
                       padding: "12px",
                       borderRadius: "12px",
-                      border: isSel ? "2px solid #0f5c3a" : "1px solid #e2ebe5",
-                      background: isSel ? "#f1f8f4" : "#ffffff",
+                      border: isSel ? "2px solid #870210" : "1px solid #ead8cc",
+                      background: isSel ? "#fff6f2" : "#ffffff",
                       cursor: "pointer",
                       display: "flex",
                       flexDirection: "column",
@@ -4839,7 +4839,7 @@ function ChatsPanel() {
                     type="button"
                     className="small-button"
                     onClick={() => toggleAiMutation.mutate({ sessionId: activeSession.sessionId, aiPaused: !activeSession.aiPaused })}
-                    style={{ background: activeSession.aiPaused ? "#0f5c3a" : "#fff3cd", color: activeSession.aiPaused ? "#fff" : "#856404" }}
+                    style={{ background: activeSession.aiPaused ? "#870210" : "#fff3cd", color: activeSession.aiPaused ? "#fff" : "#856404" }}
                   >
                     {activeSession.aiPaused ? "🤖 إعادة تفعيل الذكاء" : "✋ إيقاف الذكاء والرد بنفسي"}
                   </button>
@@ -4865,7 +4865,7 @@ function ChatsPanel() {
                         maxWidth: "85%",
                         padding: "10px 14px",
                         borderRadius: "14px",
-                        background: isUser ? "#0f5c3a" : isOwner ? "#fff8e6" : "#f3f7f4",
+                        background: isUser ? "#870210" : isOwner ? "#fff8e6" : "#fdf9f4",
                         color: isUser ? "#ffffff" : "#12261c",
                         border: isOwner ? "1.5px solid #e0a800" : isUser ? "none" : "1px solid #d5e6dc",
                       }}
