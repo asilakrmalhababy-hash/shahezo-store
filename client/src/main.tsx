@@ -15,6 +15,68 @@ if (typeof window !== "undefined") {
     (window as any).__deferredPwaPrompt = event;
     window.dispatchEvent(new Event("pwa-prompt-ready"));
   });
+
+  // Global Kiosk / Native App Protection:
+  // Disable long-press context menu (save image / copy text) & pinch/ctrl zoom, while keeping vertical pull-to-refresh
+  const isEditableTarget = (el: EventTarget | null): boolean => {
+    if (!el || !(el instanceof HTMLElement)) return false;
+    const tag = el.tagName;
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable || Boolean(el.closest("input, textarea, select, [contenteditable='true']"));
+  };
+
+  window.addEventListener("contextmenu", e => {
+    if (!isEditableTarget(e.target)) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  window.addEventListener("dragstart", e => {
+    e.preventDefault();
+  }, { passive: false });
+
+  window.addEventListener("copy", e => {
+    if (!isEditableTarget(e.target)) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  // Prevent multi-touch pinch zoom
+  window.addEventListener("touchmove", e => {
+    if (e.touches && e.touches.length > 1) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  // Prevent iOS Safari gesture zoom
+  window.addEventListener("gesturestart", e => e.preventDefault(), { passive: false });
+  window.addEventListener("gesturechange", e => e.preventDefault(), { passive: false });
+  window.addEventListener("gestureend", e => e.preventDefault(), { passive: false });
+
+  // Prevent double-tap to zoom
+  let lastTouchEnd = 0;
+  window.addEventListener("touchend", e => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 280 && (!e.touches || e.touches.length === 0)) {
+      if (!isEditableTarget(e.target)) {
+        e.preventDefault();
+      }
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
+
+  // Prevent Ctrl/Cmd + Wheel or +/- zoom
+  window.addEventListener("wheel", e => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  window.addEventListener("keydown", e => {
+    if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "-" || e.key === "=" || e.key === "0")) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
 }
 
 if ("serviceWorker" in navigator) {

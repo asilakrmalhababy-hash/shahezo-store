@@ -279,7 +279,7 @@ function AdminLoginGate({ reason, onLogout, onSuccess }: { reason: "login" | "fo
           <h1>{reason === "suspended" ? "الحساب معطل" : "غير مصرح بالدخول"}</h1>
           <p>{message}</p>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "center" }}>
-            <Link className="button button-outline" href="/">العودة للمتجر</Link>
+            <button type="button" className="button button-outline" onClick={() => window.location.reload()}>تحديث الصفحة</button>
             {onLogout && <button className="button button-quiet" onClick={() => void onLogout()}>تسجيل الخروج</button>}
           </div>
         </div>
@@ -334,7 +334,7 @@ function AdminLoginGate({ reason, onLogout, onSuccess }: { reason: "login" | "fo
           </button>
         </form>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "14px", paddingTop: "12px", borderTop: "1px solid #ebefe8" }}>
-          <Link className="text-link" href="/">العودة لواجهة المتجر</Link>
+          <span style={{ fontSize: "11px", color: "#870210", fontWeight: 700 }}>تطبيق إدارة شهيزو المستقل</span>
           <small className="secure-caption" style={{ margin: 0 }}><ShieldCheck size={13} /> محمي بتشفير الخادم</small>
         </div>
       </div>
@@ -5813,6 +5813,55 @@ export default function Admin() {
   const utils = trpc.useUtils();
   const access = trpc.commerce.access.useQuery(undefined, { retry: 1, refetchOnWindowFocus: false });
   useAdminGlobalPushSync(Boolean(access.data?.isAdmin));
+
+  const [isStandaloneAdmin, setIsStandaloneAdmin] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as any).standalone);
+  });
+  const [adminInstallPrompt, setAdminInstallPrompt] = useState<any>(() => (typeof window !== "undefined" ? (window as any).__deferredPwaPrompt ?? null : null));
+
+  useEffect(() => {
+    const m = document.querySelector('link[rel="manifest"]');
+    if (m && m.getAttribute("href") !== "/manifest-admin.webmanifest") {
+      m.setAttribute("href", "/manifest-admin.webmanifest");
+    }
+    const checkStandalone = () => {
+      setIsStandaloneAdmin(window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as any).standalone));
+    };
+    checkStandalone();
+    const onPromptReady = () => setAdminInstallPrompt((window as any).__deferredPwaPrompt ?? null);
+    const onInstalled = () => {
+      setIsStandaloneAdmin(true);
+      setAdminInstallPrompt(null);
+      (window as any).__deferredPwaPrompt = null;
+      toast.success("📲 تم تثبيت تطبيق إدارة شهيزو المستقل على هاتفك بنجاح!");
+    };
+    window.addEventListener("pwa-prompt-ready", onPromptReady);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("pwa-prompt-ready", onPromptReady);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+
+  const triggerAdminInstall = async () => {
+    const promptEvent = adminInstallPrompt || (window as any).__deferredPwaPrompt;
+    if (promptEvent) {
+      try {
+        await promptEvent.prompt();
+        const choice = await promptEvent.userChoice;
+        if (choice?.outcome === "accepted") {
+          setIsStandaloneAdmin(true);
+          setAdminInstallPrompt(null);
+          (window as any).__deferredPwaPrompt = null;
+          toast.success("📲 جاري تثبيت تطبيق إدارة شهيزو المستقل على هاتفك!");
+        }
+        return;
+      } catch {}
+    }
+    toast.info("لتثبيت تطبيق الإدارة المستقل: اضغط قائمة جوجل كروم (⋮) بأعلى المتصفح واختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية» 📲");
+  };
+
   const logout = async () => { try { await auth.logout(); } finally { await utils.commerce.access.invalidate(); navigate("/admin"); } };
   const onLoginSuccess = async () => {
     await Promise.all([auth.refresh(), utils.commerce.access.invalidate()]);
@@ -5843,7 +5892,10 @@ export default function Admin() {
   return (
     <div className="admin-app" dir="rtl">
       <aside className="admin-sidebar">
-        <Link href="/" className="admin-brand"><span className="brand-mark has-brand-image"><img src="/chef-hat.png" alt="شهيزو" /></span><span><strong style={{ fontFamily: "inherit", letterSpacing: "0.02em" }}>شهيزو · SHAHEZO</strong><small>لوحة إدارة البوفية</small></span></Link>
+        <div className="admin-brand" onClick={() => { document.body.classList.remove("admin-menu-open"); navigate("/admin"); }} style={{ cursor: "pointer" }}>
+          <span className="brand-mark has-brand-image"><img src="/chef-hat.png" alt="شهيزو" /></span>
+          <span><strong style={{ fontFamily: "inherit", letterSpacing: "0.02em" }}>إدارة شهيزو</strong><small>تطبيق الإدارة المستقل</small></span>
+        </div>
         <div className="admin-profile">
           <span className="profile-initial">{(auth.user.name || "O").slice(0, 1)}</span>
           <span><strong>{auth.user.name || "مالك المتجر"}</strong><small>{roleLabel}</small></span>
@@ -5860,16 +5912,28 @@ export default function Admin() {
           })}
         </nav>
         <div className="admin-sidebar-bottom">
-          <Link href="/" className="back-store"><ShoppingBag size={16} />عرض المتجر<ArrowLeft size={14} /></Link>
+          {!isStandaloneAdmin && (
+            <button type="button" className="small-button selected" onClick={() => void triggerAdminInstall()} style={{ width: "100%", justifyContent: "center", fontWeight: 800 }}>
+              📲 تثبيت تطبيق الإدارة
+            </button>
+          )}
           <button className="logout-admin" onClick={() => void logout()}><LogOut size={16} />تسجيل الخروج</button>
-          <small>نظام صلاحيات متعدد المستويات</small>
+          <small>تطبيق الإدارة المستقل · شهيزو</small>
         </div>
       </aside>
       <main className="admin-main">
         <header className="admin-topbar">
           <button className="admin-menu-button" onClick={() => document.body.classList.toggle("admin-menu-open")}><ChevronDown size={18} />القائمة</button>
           <span className="admin-breadcrumb">📍 {allowedSections.find(item => item.id === activeSection)?.label}</span>
-          <Link className="small-button" href="/">فتح المتجر<ArrowLeft size={14} /></Link>
+          {!isStandaloneAdmin ? (
+            <button type="button" className="small-button selected" onClick={() => void triggerAdminInstall()} style={{ fontWeight: 800 }}>
+              📲 تثبيت تطبيق الإدارة
+            </button>
+          ) : (
+            <span style={{ fontSize: "10.5px", fontWeight: 800, color: "#166534", background: "#ecfdf3", border: "1px solid #bbf7d0", padding: "4px 9px", borderRadius: "99px" }}>
+              ✓ تطبيق الإدارة
+            </span>
+          )}
         </header>
         <AdminPanel section={activeSection} isOwner={isOwner} permissions={permissions} allowedCategoryIds={allowedCategoryIds} staffId={staffId} />
       </main>

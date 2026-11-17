@@ -1,5 +1,5 @@
-const CACHE = "shahezo-shell-v13";
-const PRECACHE = ["/", "/offline.html", "/manifest-v9.webmanifest", "/app-icon-192-v8.png", "/chef-hat.png", "/notif-icon-v8.png", "/notif-badge-v8.png"];
+const CACHE = "shahezo-shell-v18";
+const PRECACHE = ["/", "/offline.html", "/manifest-v9.webmanifest", "/manifest-admin.webmanifest", "/app-icon-192-v8.png", "/chef-hat.png", "/notif-icon-v8.png", "/notif-badge-v8.png"];
 
 self.addEventListener("install", event => {
   self.skipWaiting();
@@ -19,7 +19,7 @@ self.addEventListener("fetch", event => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/admin")) return;
+  if (url.pathname.startsWith("/api/")) return;
 
   if (url.pathname.startsWith("/assets/") || url.pathname.endsWith(".png") || url.pathname.endsWith(".webp") || url.pathname.endsWith(".webmanifest")) {
     event.respondWith(
@@ -38,6 +38,12 @@ self.addEventListener("fetch", event => {
   }
 
   if (request.mode === "navigate") {
+    if (url.pathname.startsWith("/admin")) {
+      event.respondWith(
+        fetch(request).catch(() => caches.match("/offline.html"))
+      );
+      return;
+    }
     event.respondWith(
       caches.open(CACHE).then(async cache => {
         const cachedShell = await cache.match("/");
@@ -74,7 +80,7 @@ self.addEventListener("push", event => {
         requireInteraction: isAdminUrl || isBroadcast,
         vibrate: isAdminUrl ? [240, 90, 240, 90, 320] : [180, 80, 200],
         actions: [
-          { action: "open_order", title: isAdminUrl ? "📋 فتح الطلب وتجهيزه" : isBroadcast ? "🔥 عرض التفاصيل الآن" : "🛵 تتبع حالة الطلب" }
+          { action: "open_order", title: isAdminUrl ? "📋 فتح الطلب في تطبيق الإدارة" : isBroadcast ? "🔥 عرض التفاصيل الآن" : "🛵 تتبع حالة الطلب" }
         ],
         data: { url },
         dir: "rtl",
@@ -90,13 +96,18 @@ self.addEventListener("notificationclick", event => {
   event.notification.close();
   const requestedUrl = typeof event.notification.data?.url === "string" ? event.notification.data.url : "/orders";
   const url = requestedUrl.startsWith("/") && !requestedUrl.startsWith("//") ? new URL(requestedUrl, self.location.origin) : new URL("/orders", self.location.origin);
+  const isTargetAdmin = url.pathname.startsWith("/admin");
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     for (const client of windows) {
       if (!client.url.startsWith(self.location.origin)) continue;
-      await client.navigate(url.href);
-      await client.focus();
-      return;
+      const clientPath = new URL(client.url).pathname;
+      const isClientAdmin = clientPath.startsWith("/admin");
+      if (isTargetAdmin === isClientAdmin) {
+        await client.navigate(url.href);
+        await client.focus();
+        return;
+      }
     }
     await self.clients.openWindow(url.href);
   })());

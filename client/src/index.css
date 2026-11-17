@@ -2153,3 +2153,29 @@ button, a, input, select, textarea, summary, [role="button"] { touch-action: man
   }
 }
 /* === SHAHEZO_ADMIN_CLEAN_V17_END === */
+
+/* === SHAHEZO_KIOSK_LOCK_V18_START === */
+html, body {
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-x pan-y !important;
+  -webkit-text-size-adjust: 100% !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+*, *::before, *::after {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+input, textarea, select, [contenteditable="true"] {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default !important;
+}
+img, svg, video, canvas, a {
+  -webkit-user-drag: none !important;
+  user-drag: none !important;
+  -webkit-touch-callout: none !important;
+}
+/* === SHAHEZO_KIOSK_LOCK_V18_END === */

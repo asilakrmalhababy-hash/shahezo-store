@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="google" content="notranslate" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#870210" />
     <title>شهيزو | بوفية ومطعم شهيزو – أشهى فلافل ساخنة وشاورما وعصائر طبيعية</title>
     <meta name="description" content="موقع شهيزو الرسمي (SHAHEZO) – اطلب أونلاين أشهى فلافل ساخنة ومقرمشة، شاورما عربي وصاج، وعصائر طبيعية طازجة من بوفية شهيزو مع توصيل سريع للطلبات: 779542219 - 772206455." />
@@ -119,6 +119,13 @@
         }
       ]
     }
+    </script>
+    <script>
+      if (window.location.pathname === "/admin" || window.location.pathname.indexOf("/admin/") === 0) {
+        var m = document.querySelector('link[rel="manifest"]');
+        if (m) m.setAttribute("href", "/manifest-admin.webmanifest");
+        document.title = "إدارة شهيزو – لوحة التحكم";
+      }
     </script>
   </head>
   <body class="notranslate" style="background:#fdf9f4;margin:0;font-family:system-ui,-apple-system,sans-serif">
