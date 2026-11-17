@@ -368,7 +368,7 @@ const PUBLIC_STORE_SETTING_KEYS = new Set([
   "storeName", "storeDescription", "contactPhone", "currency", "storeIconUrl",
   "deliveryEnabled", "deliveryFee", "deliveryZones", "orderPaused", "pausedMessage",
   "rewardEnabled", "rewardsThreshold", "rewardType", "rewardValue", "rewardsMessage",
-  "aiInstructions", "deliveryTreeConfig", "socialLinksConfig",
+  "aiInstructions", "deliveryTreeConfig", "socialLinksConfig", "store_broadcasts_v1",
 ]);
 
 const __orderRateBuckets = new Map<string, { count: number; resetAt: number }>();
@@ -881,6 +881,131 @@ export const commerceRouter = router({
 
   notifications: router({
     publicKey: publicProcedure.query(() => getWebPushPublicKey()),
+    registerSubscriber: publicProcedure.input(z.object({
+      subscription: pushSubscriptionSchema,
+      phone: z.string().trim().max(32).optional(),
+      name: z.string().trim().max(160).optional(),
+      orderCount: z.number().int().min(0).max(10000).default(0),
+      lastOrderAt: z.string().trim().max(60).optional(),
+    })).mutation(async ({ input }) => {
+      if (!isAllowedPushEndpoint(input.subscription.endpoint)) return { ok: false };
+      const db = await database();
+      const protectedSub = protectPushSubscription(input.subscription);
+      try {
+        const rows = await db.select().from(storeSettings).where(eq(storeSettings.key, "broadcast_push_subs_v1")).limit(1);
+        const list: any[] = JSON.parse(rows[0]?.value || "[]");
+        const filtered = Array.isArray(list) ? list.filter(x => x && x.endpointHash !== protectedSub.endpointHash) : [];
+        filtered.unshift({
+          endpointHash: protectedSub.endpointHash,
+          encryptedPayload: protectedSub.encryptedPayload,
+          phone: input.phone || "",
+          name: input.name || "",
+          orderCount: input.orderCount || 0,
+          lastOrderAt: input.lastOrderAt || "",
+          updatedAt: new Date().toISOString(),
+        });
+        const saved = JSON.stringify(filtered.slice(0, 500));
+        await db.insert(storeSettings).values({ key: "broadcast_push_subs_v1", value: saved }).onDuplicateKeyUpdate({ set: { value: saved } });
+      } catch {}
+      return { ok: true };
+    }),
+    sendBroadcast: requireAnyPermission(["settings.manage", "offers.manage", "orders.manage"]).input(z.object({
+      title: z.string().trim().min(2).max(120),
+      body: z.string().trim().min(2).max(400),
+      segment: z.enum(["all", "new_visitors", "returning", "vip", "inactive"]),
+      targetUrl: z.string().trim().max(200).default("/products?offers=1"),
+    })).mutation(async ({ input }) => {
+      const db = await database();
+      const nowIso = new Date().toISOString();
+      const broadcastItem = {
+        id: "bc-" + Date.now().toString(36),
+        title: input.title,
+        body: input.body,
+        segment: input.segment,
+        targetUrl: input.targetUrl || "/products?offers=1",
+        createdAt: nowIso,
+      };
+      try {
+        const bRows = await db.select().from(storeSettings).where(eq(storeSettings.key, "store_broadcasts_v1")).limit(1);
+        const prevList: any[] = JSON.parse(bRows[0]?.value || "[]");
+        const nextList = [broadcastItem, ...(Array.isArray(prevList) ? prevList : [])].slice(0, 40);
+        const nextJson = JSON.stringify(nextList);
+        await db.insert(storeSettings).values({ key: "store_broadcasts_v1", value: nextJson }).onDuplicateKeyUpdate({ set: { value: nextJson } });
+      } catch {}
+      clearCatalogCache();
+
+      let pushSent = 0;
+      try {
+        const [sRows, orderSubs, orderStats] = await Promise.all([
+          db.select().from(storeSettings).where(eq(storeSettings.key, "broadcast_push_subs_v1")).limit(1),
+          db.select({ orderId: customerPushSubscriptions.orderId, endpointHash: customerPushSubscriptions.endpointHash, encryptedPayload: customerPushSubscriptions.encryptedPayload }).from(customerPushSubscriptions).limit(500),
+          db.select({ id: orders.id, phone: orders.phone, createdAt: orders.createdAt }).from(orders).orderBy(desc(orders.createdAt)).limit(1000),
+        ]);
+        const phoneOrderCounts = new Map<string, { count: number; lastAt: number }>();
+        const orderIdToPhone = new Map<number, string>();
+        for (const o of orderStats) {
+          const p = String(o.phone || "").trim();
+          orderIdToPhone.set(o.id, p);
+          if (!p) continue;
+          const cur = phoneOrderCounts.get(p) || { count: 0, lastAt: 0 };
+          cur.count += 1;
+          const t = new Date(o.createdAt).getTime();
+          if (t > cur.lastAt) cur.lastAt = t;
+          phoneOrderCounts.set(p, cur);
+        }
+        const savedSubs: any[] = JSON.parse(sRows[0]?.value || "[]");
+        const byEndpoint = new Map<string, { id: number; endpointHash: string; encryptedPayload: string; orderCount: number; lastAt: number }>();
+        if (Array.isArray(savedSubs)) {
+          for (const sub of savedSubs) {
+            if (!sub?.endpointHash || !sub?.encryptedPayload) continue;
+            const pStat = sub.phone ? phoneOrderCounts.get(String(sub.phone).trim()) : undefined;
+            const count = Math.max(Number(sub.orderCount || 0), pStat?.count ?? 0);
+            const lastAt = Math.max(sub.lastOrderAt ? new Date(sub.lastOrderAt).getTime() : 0, pStat?.lastAt ?? 0);
+            byEndpoint.set(sub.endpointHash, { id: -1, endpointHash: sub.endpointHash, encryptedPayload: sub.encryptedPayload, orderCount: count, lastAt });
+          }
+        }
+        for (const os of orderSubs) {
+          if (!os.endpointHash || !os.encryptedPayload || byEndpoint.has(os.endpointHash)) continue;
+          const p = orderIdToPhone.get(os.orderId) || "";
+          const pStat = p ? phoneOrderCounts.get(p) : undefined;
+          byEndpoint.set(os.endpointHash, { id: -1, endpointHash: os.endpointHash, encryptedPayload: os.encryptedPayload, orderCount: pStat?.count ?? 1, lastAt: pStat?.lastAt ?? Date.now() });
+        }
+        const nowMs = Date.now();
+        const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+        const matchingTargets = [...byEndpoint.values()].filter(sub => {
+          if (input.segment === "all") return true;
+          if (input.segment === "new_visitors") return sub.orderCount === 0;
+          if (input.segment === "returning") return sub.orderCount >= 1;
+          if (input.segment === "vip") return sub.orderCount >= 3;
+          if (input.segment === "inactive") return sub.orderCount >= 1 && sub.lastAt > 0 && (nowMs - sub.lastAt) >= sevenDaysMs;
+          return true;
+        });
+        pushSent = matchingTargets.length;
+        if (matchingTargets.length > 0) {
+          void deliverPushRows(matchingTargets, {
+            title: input.title,
+            body: input.body,
+            url: input.targetUrl || "/products?offers=1",
+            tag: "shahezo-broadcast-" + broadcastItem.id,
+          }, async () => {});
+        }
+      } catch {}
+      return { success: true, pushSent, item: broadcastItem };
+    }),
+    deleteBroadcast: requireAnyPermission(["settings.manage", "offers.manage", "orders.manage"]).input(z.object({
+      id: z.string().trim().min(1).max(80),
+    })).mutation(async ({ input }) => {
+      const db = await database();
+      try {
+        const bRows = await db.select().from(storeSettings).where(eq(storeSettings.key, "store_broadcasts_v1")).limit(1);
+        const prevList: any[] = JSON.parse(bRows[0]?.value || "[]");
+        const nextList = (Array.isArray(prevList) ? prevList : []).filter(x => x && x.id !== input.id);
+        const nextJson = JSON.stringify(nextList);
+        await db.insert(storeSettings).values({ key: "store_broadcasts_v1", value: nextJson }).onDuplicateKeyUpdate({ set: { value: nextJson } });
+      } catch {}
+      clearCatalogCache();
+      return { success: true };
+    }),
   }),
 
   catalog: router({

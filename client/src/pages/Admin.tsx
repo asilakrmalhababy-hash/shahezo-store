@@ -15,7 +15,7 @@ import { ensureBrowserPushSubscription, getExistingBrowserPushSubscription, getP
 
 const money = (value: number) => `${Number(value || 0).toLocaleString("en-US")} ر.ي`;
 const labels: Record<string, string> = { new: "جديد", preparing: "قيد التجهيز", ready: "جاهز للتوصيل", out_for_delivery: "خرج للتوصيل", delivered: "تم التسليم", cancelled: "ملغي" };
-type Section = "overview" | "products" | "categories" | "delivery" | "banners" | "offers" | "orders" | "chats" | "users" | "staff" | "settings";
+type Section = "overview" | "products" | "categories" | "delivery" | "banners" | "offers" | "orders" | "broadcast" | "chats" | "users" | "staff" | "settings";
 const sections: Array<{ id: Section; label: string; icon: typeof LayoutDashboard }> = [
   { id: "overview", label: "نظرة عامة", icon: LayoutDashboard },
   { id: "products", label: "المنتجات", icon: Package },
@@ -24,6 +24,7 @@ const sections: Array<{ id: Section; label: string; icon: typeof LayoutDashboard
   { id: "banners", label: "الإعلانات", icon: Megaphone },
   { id: "offers", label: "العروض والخصومات", icon: BadgePercent },
   { id: "orders", label: "الطلبات", icon: ClipboardList },
+  { id: "broadcast", label: "إرسال الإشعارات 🔔", icon: BellRing },
   { id: "chats", label: "محادثات الزبائن", icon: Sparkles },
   { id: "users", label: "العملاء", icon: Users },
   { id: "staff", label: "المديرون والصلاحيات", icon: ShieldCheck },
@@ -5378,6 +5379,267 @@ function StaffManagementPanel({ actorIsOwner, actorPermissions, actorStaffId }: 
 }
 // --- STAFF_PANEL_END ---
 
+// === BROADCAST_PANEL_START ===
+function BroadcastPanel() {
+  const utils = trpc.useUtils();
+  const homeQuery = trpc.commerce.catalog.home.useQuery(undefined, { staleTime: 10_000 });
+  const customersQuery = trpc.commerce.admin.customers.list.useQuery();
+  const sendMutation = trpc.commerce.notifications.sendBroadcast.useMutation({
+    onSuccess: res => {
+      toast.success(`🚀 تم إرسال الإشعار الفوري بنجاح (${res.pushSent} جهاز متصل + صندوق إشعارات المتجر)!`);
+      setTitle("");
+      setBody("");
+      void utils.commerce.catalog.home.invalidate();
+    },
+    onError: err => toast.error(err.message || "تعذر إرسال الإشعار"),
+  });
+  const deleteMutation = trpc.commerce.notifications.deleteBroadcast.useMutation({
+    onSuccess: () => {
+      toast.success("تم حذف الإشعار من السجل");
+      void utils.commerce.catalog.home.invalidate();
+    },
+  });
+
+  const [segment, setSegment] = useState<"all" | "new_visitors" | "returning" | "vip" | "inactive">("all");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [targetUrl, setTargetUrl] = useState("/products?offers=1");
+
+  const broadcastList = (() => {
+    try {
+      const raw = (homeQuery.data?.settings as any)?.store_broadcasts_v1;
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  })() as Array<{ id: string; title: string; body: string; segment: string; targetUrl: string; createdAt: string }>;
+
+  const customers = customersQuery.data ?? [];
+  const nowMs = Date.now();
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+  const returningCount = customers.filter(c => Number(c.orderCount) >= 1).length;
+  const vipCount = customers.filter(c => Number(c.orderCount) >= 3).length;
+  const inactiveCount = customers.filter(c => c.lastOrderAt && (nowMs - new Date(c.lastOrderAt).getTime()) >= sevenDaysMs).length;
+
+  const segmentLabels: Record<string, { title: string; desc: string; badge: string }> = {
+    all: { title: "👥 جميع زبائن وزوار المتجر", desc: "يصل لكل من يدخل المتجر أو فعّل الإشعارات (الجدد والقدامى)", badge: "الكل" },
+    new_visitors: { title: "✨ الزوار الجدد فقط (بدون طلبات سابقة)", desc: "الأشخاص الذين دخلوا المتجر حديثاً ولم يرسلوا أول طلب بعد", badge: "زوار جدد" },
+    returning: { title: "🛍️ العملاء الحاليون (طلب واحد فأكثر)", desc: "كل زبون سبق له الطلب من بوفية شهيزو", badge: `${returningCount} عميل` },
+    vip: { title: "👑 العملاء الدائمون والقدامى VIP (3 طلبات فأكثر)", desc: "الزبائن الأكثر ولاءً وتكراراً للطلب من شهيزو", badge: `${vipCount} عميل VIP` },
+    inactive: { title: "⏰ العملاء المنقطعون (منذ 7 أيام فأكثر)", desc: "الزبائن الذين طلبوا سابقاً ولم يطلبوا خلال الأسبوع الماضي", badge: `${inactiveCount} عميل` },
+  };
+
+  const quickTemplates = [
+    {
+      label: "🎁 ترحيب بالزوار الجدد",
+      seg: "new_visitors" as const,
+      title: "🥙 أهلاً بك في بوفية شهيزو – SHAHEZO!",
+      body: "اطلب الآن أشهى شاورما وفلافل مقرمشة وعصائر طازجة توصلك ساخنة لباب منزلك بأسرع وقت!",
+      url: "/products",
+    },
+    {
+      label: "🔥 إشعار قسم العروضات",
+      seg: "all" as const,
+      title: "🔥 عروض وبوكسات توفير جديدة في شهيزو!",
+      body: "تفقد قسم العروضات الآن واستمتع بأقوى خصومات الوجبات العائلية والفردية قبل نفاد الكمية.",
+      url: "/products?offers=1",
+    },
+    {
+      label: "👑 مكافأة العملاء الدائمين",
+      seg: "vip" as const,
+      title: "👑 شكراً لثقتك الدائمة ببوفية شهيزو!",
+      body: "لأنك من عملائنا المميزين، جهزنا لك اليوم تشكيلة خاصة من الوجبات والعصائر الطازجة.",
+      url: "/products?offers=1",
+    },
+    {
+      label: "⏰ تذكير العملاء المنقطعين",
+      seg: "inactive" as const,
+      title: "🥙 اشتقنا لطلباتك في بوفية شهيزو!",
+      body: "شاورما ساخنة وفلافل مقرمشة وعصائر طبيعية بانتظارك اليوم — اطلبها الآن بضغطة زر!",
+      url: "/products",
+    },
+  ];
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (title.trim().length < 2 || body.trim().length < 2) {
+      toast.error("يرجى كتابة عنوان الإشعار ونص الرسالة");
+      return;
+    }
+    sendMutation.mutate({
+      title: title.trim(),
+      body: body.trim(),
+      segment,
+      targetUrl,
+    });
+  };
+
+  return (
+    <div className="admin-panel-stack">
+      <AdminHeading
+        eyebrow="مركز الإشعارات الذكي الموجه للفئات"
+        title="إرسال الإشعارات الفورية للزبائن 🔔"
+        text="حدد الفئة المستهدفة (الزوار الجدد، العملاء القدامى VIP، المنقطعين، أو الجميع) وأرسل إشعاراً يصلهم في نفس اللحظة على هواتفهم وداخل صندوق إشعارات المتجر."
+        icon={BellRing}
+      />
+
+      <section className="admin-form-card" style={{ border: "1.5px solid #ead8cc", background: "#ffffff" }}>
+        <div className="form-card-heading">
+          <span className="form-card-number" style={{ background: "#fceee9", color: "#870210" }}>01</span>
+          <div>
+            <h2>🎯 قوالب جاهزة سريعة (بضغطة واحدة)</h2>
+            <p>اختر قالباً جاهزاً لتعبئة الإشعار والفئة تلقائياً أو اكتب إشعارك المخصص بالأسفل.</p>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "8px" }}>
+          {quickTemplates.map((tpl, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => {
+                setSegment(tpl.seg);
+                setTitle(tpl.title);
+                setBody(tpl.body);
+                setTargetUrl(tpl.url);
+                toast.info(`تم اختيار قالب: ${tpl.label}`);
+              }}
+              style={{
+                padding: "11px 13px",
+                borderRadius: "14px",
+                border: "1.5px solid #ead8cc",
+                background: "#fdf9f4",
+                color: "#2b120f",
+                textAlign: "right",
+                cursor: "pointer",
+                display: "grid",
+                gap: "4px",
+              }}
+            >
+              <strong style={{ fontSize: "12.5px", color: "#870210" }}>{tpl.label}</strong>
+              <small style={{ fontSize: "11px", color: "#6e564d", lineHeight: 1.4 }}>{tpl.title}</small>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <form className="admin-form-card" onSubmit={handleSubmit} style={{ border: "1.5px solid #ead8cc", background: "#ffffff" }}>
+        <div className="form-card-heading">
+          <span className="form-card-number" style={{ background: "#fceee9", color: "#870210" }}>02</span>
+          <div>
+            <h2>📣 تحديد الفئة المستهدفة ومحتوى الإشعار</h2>
+            <p>يصل الإشعار في نفس اللحظة كإشعار منبثق (Web Push) وفي تبويب «الإشعارات 🔔» بصفحة حساب العميل.</p>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gap: "8px", marginBottom: "14px" }}>
+          <strong style={{ fontSize: "13px", color: "#2b120f" }}>اختر الفئة التي سيصلها الإشعار:</strong>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "8px" }}>
+            {(Object.keys(segmentLabels) as Array<keyof typeof segmentLabels>).map(key => {
+              const info = segmentLabels[key];
+              const active = segment === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSegment(key as any)}
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: "14px",
+                    border: active ? "2px solid #870210" : "1px solid #e2d5ca",
+                    background: active ? "#fff8f5" : "#ffffff",
+                    textAlign: "right",
+                    cursor: "pointer",
+                    display: "grid",
+                    gap: "4px",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "6px" }}>
+                    <strong style={{ fontSize: "12.5px", color: active ? "#870210" : "#2b120f" }}>{info.title}</strong>
+                    <span style={{ fontSize: "10px", fontWeight: 800, padding: "2px 8px", borderRadius: "99px", background: active ? "#870210" : "#f3ece6", color: active ? "#f1d897" : "#6e564d" }}>
+                      {info.badge}
+                    </span>
+                  </div>
+                  <small style={{ fontSize: "11px", color: "#7a5e54", lineHeight: 1.45 }}>{info.desc}</small>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="form-fields-grid">
+          <label className="field-wide">
+            عنوان الإشعار *
+            <input required maxLength={120} value={title} onChange={e => setTitle(e.target.value)} placeholder="مثال: 🔥 عرض خاص اليوم في بوفية شهيزو!" />
+          </label>
+          <label className="field-wide">
+            نص الإشعار بالتفصيل *
+            <textarea required rows={3} maxLength={400} value={body} onChange={e => setBody(e.target.value)} placeholder="اكتب تفاصيل العرض أو الرسالة التي ستظهر للزبائن..." />
+          </label>
+          <label className="field-wide">
+            الوجهة عند ضغط الزبون على الإشعار
+            <select value={targetUrl} onChange={e => setTargetUrl(e.target.value)} style={{ height: "42px", borderRadius: "11px", border: "1px solid #d8e2dc", padding: "0 12px", fontWeight: 700 }}>
+              <option value="/products?offers=1">🔥 فتح قسم العروضات والخصومات (/products?offers=1)</option>
+              <option value="/products">🛍️ فتح قائمة جميع الوجبات (/products)</option>
+              <option value="/">🏠 فتح الصفحة الرئيسية للمتجر (/)</option>
+            </select>
+          </label>
+        </div>
+
+        <div style={{ marginTop: "14px", display: "flex", justifyContent: "flex-end" }}>
+          <button type="submit" className="button button-primary" disabled={sendMutation.isPending} style={{ minHeight: "46px", padding: "0 24px", fontSize: "14px", fontWeight: 900, borderRadius: "14px" }}>
+            {sendMutation.isPending ? <LoaderCircle className="spin" size={18} /> : <BellRing size={18} />}
+            {sendMutation.isPending ? "جارٍ الإرسال الفوري..." : `🚀 إرسال الإشعار الفوري الآن (${segmentLabels[segment]?.badge})`}
+          </button>
+        </div>
+      </form>
+
+      <section className="admin-form-card" style={{ border: "1.5px solid #ead8cc", background: "#ffffff" }}>
+        <div className="form-card-heading">
+          <span className="form-card-number" style={{ background: "#fceee9", color: "#870210" }}>03</span>
+          <div>
+            <h2>📋 سجل الإشعارات المرسلة ({broadcastList.length})</h2>
+            <p>الإشعارات النشطة التي تظهر للزبائن حالياً حسب فئاتهم داخل تبويب «الإشعارات 🔔» في صفحة حسابي.</p>
+          </div>
+        </div>
+        {!broadcastList.length ? (
+          <div className="admin-empty">
+            <BellRing size={22} />
+            <strong>لم يتم إرسال أي إشعارات عامة بعد</strong>
+            <small>اختر قالباً من الأعلى وأرسل أول إشعار لزبائنك الآن.</small>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: "10px" }}>
+            {broadcastList.map(item => (
+              <div key={item.id} style={{ padding: "12px 14px", borderRadius: "14px", background: "#fdf9f4", border: "1px solid #ead8cc", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                <div style={{ display: "grid", gap: "4px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                    <strong style={{ fontSize: "13.5px", color: "#2b120f" }}>{item.title}</strong>
+                    <span style={{ fontSize: "10px", fontWeight: 800, padding: "2px 8px", borderRadius: "99px", background: "#fceee9", color: "#870210" }}>
+                      {segmentLabels[item.segment]?.badge || item.segment}
+                    </span>
+                    <small style={{ fontSize: "10.5px", color: "#7a5e54" }}>🕒 {new Date(item.createdAt).toLocaleString("ar-YE")}</small>
+                  </div>
+                  <p style={{ margin: 0, fontSize: "12px", color: "#5c433b", lineHeight: 1.55 }}>{item.body}</p>
+                </div>
+                <button
+                  type="button"
+                  className="small-button danger-soft"
+                  onClick={() => deleteMutation.mutate({ id: item.id })}
+                >
+                  <Trash2 size={14} /> حذف
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+// === BROADCAST_PANEL_END ===
+
 function canAccessSection(section: Section, isOwner: boolean, perms: PermissionKey[]): boolean {
   if (isOwner) return true;
   const has = (p: PermissionKey) => perms.includes(p);
@@ -5388,6 +5650,7 @@ function canAccessSection(section: Section, isOwner: boolean, perms: PermissionK
   if (section === "banners") return has("banners.manage");
   if (section === "offers") return has("offers.manage");
   if (section === "orders") return has("orders.view") || has("orders.manage");
+  if (section === "broadcast") return has("settings.manage") || has("offers.manage") || has("orders.manage");
   if (section === "chats") return has("chats.manage");
   if (section === "users") return has("customers.view");
   if (section === "staff") return has("staff.manage");
@@ -5403,6 +5666,7 @@ function AdminPanel({ section, isOwner, permissions, allowedCategoryIds, staffId
   if (section === "banners") return <BannersPanel />;
   if (section === "offers") return <OffersPanel />;
   if (section === "orders") return <OrdersPanel />;
+  if (section === "broadcast") return <BroadcastPanel />;
   if (section === "users") return <UsersPanel />;
   if (section === "staff") return <StaffManagementPanel actorIsOwner={isOwner} actorPermissions={permissions} actorStaffId={staffId} />;
   if (section === "settings") return <SettingsPanel />;

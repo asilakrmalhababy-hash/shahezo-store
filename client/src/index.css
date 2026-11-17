@@ -1293,7 +1293,7 @@ button, a, input, select, textarea, summary, [role="button"] { touch-action: man
   animation: shahezoSlideUp 0.16s ease-out;
 }
 
-/* Luxury Unified AccountPage Design System (v12) */
+/* Final Approved AccountPage Design System (v13 — Connected Tabs & Clean Cards) */
 .shahezo-acc-wrap {
   display: grid;
   gap: 14px;
@@ -1304,129 +1304,88 @@ button, a, input, select, textarea, summary, [role="button"] { touch-action: man
   border-radius: 22px;
   border: 1.5px solid #ead8cc;
   background: #ffffff;
-  box-shadow: 0 10px 28px rgba(43, 18, 15, 0.05);
+  box-shadow: 0 8px 24px rgba(43, 18, 15, 0.05);
   overflow: hidden;
 }
 .shahezo-acc-hero {
-  position: relative;
-  padding: 18px 16px;
-  background: radial-gradient(circle at top left, rgba(241, 216, 151, 0.18), transparent 55%), linear-gradient(135deg, #870210 0%, #5c010b 65%, #3d0007 100%);
+  padding: 20px 18px;
+  background: radial-gradient(circle at top left, rgba(241, 216, 151, 0.16), transparent 55%), linear-gradient(135deg, #870210 0%, #5b010b 68%, #3c0007 100%);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
 }
-.shahezo-acc-avatar {
+.shahezo-acc-user-badge {
   width: 54px;
   height: 54px;
-  border-radius: 17px;
-  background: linear-gradient(145deg, rgba(241, 216, 151, 0.26), rgba(241, 216, 151, 0.08));
-  border: 2px solid #f1d897;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(241, 216, 151, 0.24), rgba(241, 216, 151, 0.08));
+  border: 1.8px solid #f1d897;
   color: #f1d897;
   display: grid;
   place-items: center;
-  font-weight: 900;
-  font-size: 21px;
   flex-shrink: 0;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
 }
-.shahezo-acc-vip-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 800;
-  padding: 2px 8px;
-  border-radius: 99px;
-  background: rgba(241, 216, 151, 0.18);
-  color: #f1d897;
-  border: 1px solid rgba(241, 216, 151, 0.4);
-}
-.shahezo-acc-edit-btn {
-  padding: 8px 14px;
-  border-radius: 12px;
-  border: 1.5px solid rgba(241, 216, 151, 0.75);
-  background: rgba(255, 255, 255, 0.12);
-  color: #f1d897;
-  font-weight: 800;
-  font-size: 12px;
-  cursor: pointer;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  transition: transform 0.14s, background 0.14s;
-}
-.shahezo-acc-edit-btn:active {
-  transform: scale(0.96);
-  background: rgba(255, 255, 255, 0.22);
-}
-.shahezo-acc-shortcuts {
+/* Connected 4-Tab Bar directly attached to the Burgundy Hero Card (Design #8) */
+.shahezo-acc-connected-tabs {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 9px;
-  padding: 14px 12px;
-  background: linear-gradient(180deg, #fffcf8 0%, #ffffff 100%);
+  background: #fffdf9;
+  border-top: 1px solid #f0e2d6;
 }
-.shahezo-acc-tile {
+.shahezo-acc-connected-tab {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 12px 6px 10px;
-  border-radius: 16px;
-  background: #fdf9f4;
-  border: 1.5px solid #ead8cc;
+  padding: 13px 4px 12px;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid #f0e2d6;
   color: #2b120f;
   text-decoration: none;
-  box-shadow: 0 4px 10px rgba(43, 18, 15, 0.03);
-  transition: transform 0.14s, border-color 0.14s, box-shadow 0.14s;
+  cursor: pointer;
+  transition: background 0.15s;
 }
-.shahezo-acc-tile:active {
-  transform: scale(0.96);
-  border-color: #870210;
+.shahezo-acc-connected-tab:last-child {
+  border-left: 0;
 }
-.shahezo-acc-tile-icon {
+.shahezo-acc-connected-tab:active,
+.shahezo-acc-connected-tab.is-active {
+  background: #fceee9;
+}
+.shahezo-acc-tab-icon-wrap {
   position: relative;
-  width: 38px;
-  height: 38px;
-  border-radius: 13px;
-  background: linear-gradient(135deg, #fceee9 0%, #fff4eb 100%);
-  border: 1px solid #f2cfc6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: #870210;
-  display: grid;
-  place-items: center;
 }
-.shahezo-acc-tile-badge {
+.shahezo-acc-tab-dot {
   position: absolute;
-  top: -5px;
-  left: -6px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
+  top: -4px;
+  left: -7px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
   border-radius: 99px;
-  background: #870210;
-  color: #f1d897;
-  font-size: 10px;
+  background: #d90429;
+  color: #ffffff;
+  font-size: 9.5px;
   font-weight: 900;
   display: grid;
   place-items: center;
   border: 1.5px solid #ffffff;
-  box-shadow: 0 2px 6px rgba(135, 2, 16, 0.25);
 }
-.shahezo-acc-tile strong {
+.shahezo-acc-connected-tab strong {
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 800;
   color: #2b120f;
   line-height: 1.2;
-}
-.shahezo-acc-tile small {
-  font-size: 10px;
-  font-weight: 700;
-  color: #7a5e54;
 }
 .shahezo-acc-sec-head {
   display: flex;
@@ -1434,7 +1393,7 @@ button, a, input, select, textarea, summary, [role="button"] { touch-action: man
   justify-content: space-between;
   gap: 10px;
   padding: 14px 16px;
-  background: linear-gradient(180deg, #fffdf9 0%, #ffffff 100%);
+  background: #ffffff;
   border-bottom: 1px solid #f2e5da;
 }
 .shahezo-acc-sec-title {
@@ -1446,38 +1405,41 @@ button, a, input, select, textarea, summary, [role="button"] { touch-action: man
   width: 38px;
   height: 38px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #fceee9 0%, #fff4eb 100%);
-  border: 1px solid #f2cfc6;
+  background: #fceee9;
   color: #870210;
   display: grid;
   place-items: center;
   flex-shrink: 0;
 }
-.shahezo-acc-addr-item {
-  padding: 13px 14px;
-  border-radius: 16px;
-  background: #fdf9f4;
-  border: 1.5px solid #ead8cc;
-  display: grid;
-  gap: 8px;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.shahezo-acc-addr-item.is-default {
-  background: linear-gradient(145deg, #fffdf9 0%, #fff6ec 100%);
-  border: 2px solid #870210;
-  box-shadow: 0 6px 16px rgba(135, 2, 16, 0.06);
-}
-.shahezo-acc-badge {
+.shahezo-acc-add-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 10.5px;
-  font-weight: 800;
-  padding: 3px 9px;
-  border-radius: 99px;
-  background: #fceee9;
+  gap: 5px;
+  padding: 7px 14px;
+  border-radius: 12px;
+  border: 1.5px solid #d8c2b2;
+  background: #ffffff;
   color: #870210;
-  border: 1px solid #f2cfc6;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.14s, border-color 0.14s;
+}
+.shahezo-acc-add-btn.is-cancel {
+  border-color: #f2cfc6;
+  background: #fff5f4;
+  color: #b42318;
+}
+.shahezo-acc-addr-box {
+  padding: 14px 15px;
+  border-radius: 16px;
+  background: #fdfaf6;
+  border: 1.5px solid #870210;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 .shahezo-acc-badge-ok {
   display: inline-flex;
@@ -1485,11 +1447,22 @@ button, a, input, select, textarea, summary, [role="button"] { touch-action: man
   gap: 4px;
   font-size: 10.5px;
   font-weight: 800;
-  padding: 3px 9px;
+  padding: 2px 9px;
   border-radius: 99px;
-  background: #edf6eb;
-  color: #1f7a4c;
-  border: 1px solid #c6e6be;
+  background: #e6f4ea;
+  color: #1e7e34;
+}
+.shahezo-acc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 9px;
+  border-radius: 99px;
+  background: #fceee9;
+  color: #870210;
+  border: 1px solid #f2cfc6;
 }
 .shahezo-acc-row-btn {
   display: flex;
@@ -1497,7 +1470,7 @@ button, a, input, select, textarea, summary, [role="button"] { touch-action: man
   justify-content: space-between;
   gap: 10px;
   width: 100%;
-  padding: 14px 16px;
+  padding: 15px 16px;
   background: #ffffff;
   border: 0;
   border-bottom: 1px solid #f2e5da;
@@ -1512,20 +1485,68 @@ button, a, input, select, textarea, summary, [role="button"] { touch-action: man
 .shahezo-acc-row-btn:active {
   background: #fdf9f4;
 }
-.shahezo-social-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 10px 4px;
-  border-radius: 14px;
+.shahezo-social-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #870210;
+  color: #ffffff;
+  display: inline-grid;
+  place-items: center;
   text-decoration: none;
-  font-size: 10.5px;
-  font-weight: 800;
-  transition: transform 0.14s, box-shadow 0.14s;
+  transition: transform 0.14s, opacity 0.14s;
 }
-.shahezo-social-btn:active {
-  transform: scale(0.95);
+.shahezo-social-circle:active {
+  transform: scale(0.92);
+}
+.shahezo-clean-form {
+  padding: 15px 16px;
+  background: #fffdf9;
+  border-top: 1.5px dashed #e5d2c3;
+  display: grid;
+  gap: 11px;
+}
+.shahezo-clean-field {
+  display: grid;
+  gap: 5px;
+}
+.shahezo-clean-field > span {
+  font-size: 12px;
+  font-weight: 800;
+  color: #2b120f;
+}
+.shahezo-clean-field input,
+.shahezo-clean-field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.5px solid #e2cfc0;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  color: #2b120f;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.shahezo-clean-field input:focus,
+.shahezo-clean-field textarea:focus {
+  border-color: #870210;
+  box-shadow: 0 0 0 3px rgba(135, 2, 16, 0.08);
+}
+.shahezo-pref-chip {
+  padding: 5px 11px;
+  border-radius: 99px;
+  border: 1px solid #e2cfc0;
+  background: #ffffff;
+  color: #5c433b;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.14s;
+}
+.shahezo-pref-chip.is-selected {
+  background: #870210;
+  border-color: #870210;
+  color: #ffffff;
 }
 /* === SHAHEZO_UX_ANIMATIONS_V10_END === */

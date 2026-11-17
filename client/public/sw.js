@@ -1,4 +1,4 @@
-const CACHE = "shahezo-shell-v12";
+const CACHE = "shahezo-shell-v13";
 const PRECACHE = ["/", "/offline.html", "/manifest-v9.webmanifest", "/app-icon-192-v8.png", "/chef-hat.png", "/notif-icon-v8.png", "/notif-badge-v8.png"];
 
 self.addEventListener("install", event => {
@@ -59,21 +59,22 @@ self.addEventListener("push", event => {
     try {
       const payload = event.data.json();
       const title = typeof payload.title === "string" ? payload.title.slice(0, 110) : "🥙 بوفية شهيزو – SHAHEZO";
-      const body = typeof payload.body === "string" ? payload.body.slice(0, 340) : "تم تحديث حالة طلبك من بوفية شهيزو";
+      const body = typeof payload.body === "string" ? payload.body.slice(0, 340) : "إشعار جديد من بوفية شهيزو";
       const requestedUrl = typeof payload.url === "string" ? payload.url : "/orders";
       const url = requestedUrl.startsWith("/") && !requestedUrl.startsWith("//") ? requestedUrl : "/orders";
       const tag = typeof payload.tag === "string" ? payload.tag.slice(0, 100) : "shahezo-order-update";
       const isAdminUrl = url.startsWith("/admin");
+      const isBroadcast = tag.startsWith("shahezo-broadcast-");
       await self.registration.showNotification(title, {
         body,
         icon: "/notif-icon-v8.png",
         badge: "/notif-badge-v8.png",
         tag,
         renotify: true,
-        requireInteraction: isAdminUrl,
+        requireInteraction: isAdminUrl || isBroadcast,
         vibrate: isAdminUrl ? [240, 90, 240, 90, 320] : [180, 80, 200],
         actions: [
-          { action: "open_order", title: isAdminUrl ? "📋 فتح الطلب وتجهيزه" : "🛵 تتبع حالة الطلب" }
+          { action: "open_order", title: isAdminUrl ? "📋 فتح الطلب وتجهيزه" : isBroadcast ? "🔥 عرض التفاصيل الآن" : "🛵 تتبع حالة الطلب" }
         ],
         data: { url },
         dir: "rtl",
