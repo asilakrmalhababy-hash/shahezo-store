@@ -74,65 +74,6 @@ function Header({ data, onSearch }: { data?: HomeData; onSearch: (text: string) 
   </header>;
 }
 
-// === SHAHEZO_WA_BAR_START ===
-function ShahezoWhatsAppBar() {
-  const [location] = useLocation();
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setOpen(false);
-    const onToggle = () => setOpen(prev => !prev);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("toggle-shahezo-wa", onToggle);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("toggle-shahezo-wa", onToggle);
-    };
-  }, []);
-  if (location.startsWith("/account") || location.startsWith("/cart") || location.startsWith("/assistant")) {
-    return null;
-  }
-  return (
-    <div className="shahezo-wa-widget" aria-label="تواصل مباشر مع بوفية شهيزو">
-      <button
-        type="button"
-        className={`shahezo-wa-fab ${open ? "is-open" : ""}`}
-        onClick={() => setOpen(prev => !prev)}
-        aria-label="تواصل واتساب مع بوفية شهيزو"
-        title="تواصل معنا عبر واتساب"
-      >
-        <MessageCircle size={24} />
-      </button>
-      <div className={`shahezo-wa-strip ${open ? "is-open" : "is-closed"}`}>
-        <div className="shahezo-wa-strip-head">
-          <strong>🥙 تواصل مباشر · بوفية شهيزو</strong>
-          <button type="button" className="shahezo-wa-close" onClick={() => setOpen(false)} aria-label="إغلاق">×</button>
-        </div>
-        <div className="shahezo-wa-row">
-          <div className="shahezo-wa-label">
-            <span>للطلب والاستفسار</span>
-            <b dir="ltr">779 542 219</b>
-          </div>
-          <div className="shahezo-wa-actions">
-            <a className="shahezo-wa-btn" href="https://wa.me/967779542219?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A8%D9%88%D9%81%D9%8A%D8%A9%20%D8%B4%D9%87%D9%8A%D8%B2%D9%88%20%F0%9F%A5%99%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D8%B7%D9%84%D8%A8%20%D8%A3%D9%88%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1" target="_blank" rel="noreferrer">واتساب</a>
-            <a className="shahezo-call-btn" href="tel:779542219">اتصال</a>
-          </div>
-        </div>
-        <div className="shahezo-wa-row">
-          <div className="shahezo-wa-label">
-            <span>خدمة العملاء</span>
-            <b dir="ltr">772 206 455</b>
-          </div>
-          <div className="shahezo-wa-actions">
-            <a className="shahezo-wa-btn" href="https://wa.me/967772206455?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%AE%D8%AF%D9%85%D8%A9%20%D8%B9%D9%85%D9%84%D8%A7%D8%A1%20%D8%A8%D9%88%D9%81%D9%8A%D8%A9%20%D8%B4%D9%87%D9%8A%D8%B2%D9%88%20%F0%9F%A5%99" target="_blank" rel="noreferrer">واتساب</a>
-            <a className="shahezo-call-btn" href="tel:772206455">اتصال</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-// === SHAHEZO_WA_BAR_END ===
-
 function BottomNav({ active }: { active: string }) {
   const links = [
     { href: "/", label: "الرئيسية", icon: HomeIcon },
