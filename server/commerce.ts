@@ -356,7 +356,7 @@ const settingSchema = z.object({
   rewardValue: z.number().int().min(0).max(100).optional(),
   aiInstructions: z.string().trim().max(3000).optional(),
   deliveryTreeConfig: z.string().max(600000).optional(),
-  socialLinksConfig: z.string().max(4000).optional(),
+  socialLinksConfig: z.string().max(60000).optional(),
 });
 
 function slugify(value: string) {

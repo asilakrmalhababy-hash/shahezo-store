@@ -4716,9 +4716,10 @@ function SettingsPanel() {
                     value={ci.imageUrl || ""}
                     kind="icon"
                     aspect={1}
-                    onChange={val => {
+                    onChange={async val => {
+                      const compact = await compressCustomSocialIcon(val);
                       const next = [...((values.socialLinksConfig as any).customIcons ?? [])];
-                      next[idx] = { ...ci, imageUrl: val };
+                      next[idx] = { ...ci, imageUrl: compact };
                       update("socialLinksConfig", { ...values.socialLinksConfig, customIcons: next } as any);
                     }}
                   />
@@ -5764,6 +5765,32 @@ function AdminPanel({ section, isOwner, permissions, allowedCategoryIds, staffId
   if (section === "staff") return <StaffManagementPanel actorIsOwner={isOwner} actorPermissions={permissions} actorStaffId={staffId} />;
   if (section === "settings") return <SettingsPanel />;
   return <Overview />;
+}
+
+
+async function compressCustomSocialIcon(src: string): Promise<string> {
+  if (!src || !src.startsWith("data:image/")) return src;
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const size = 96;
+        const c = document.createElement("canvas");
+        c.width = size;
+        c.height = size;
+        const ctx = c.getContext("2d");
+        if (!ctx) { resolve(src); return; }
+        const minSide = Math.min(img.width, img.height);
+        const sx = (img.width - minSide) / 2;
+        const sy = (img.height - minSide) / 2;
+        ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+        const out = c.toDataURL("image/webp", 0.82);
+        resolve(out.length < src.length ? out : src);
+      } catch { resolve(src); }
+    };
+    img.onerror = () => resolve(src);
+    img.src = src;
+  });
 }
 
 export default function Admin() {
