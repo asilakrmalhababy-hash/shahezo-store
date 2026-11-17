@@ -3644,7 +3644,7 @@ function printOrderInvoiceWindow(order: any) {
   w.document.open(); w.document.write(html); w.document.close();
 }
 
-function OrdersPanel() {
+function OrdersPanel({ isOwner = false }: { isOwner?: boolean }) {
   const [openAdminOrderId, setOpenAdminOrderId] = useState<number | null>(null);
   const utils = trpc.useUtils();
   const query = trpc.commerce.admin.orders.list.useQuery(undefined, { retry: 1, refetchInterval: 45_000, refetchIntervalInBackground: false });
@@ -3693,6 +3693,27 @@ function OrdersPanel() {
     onSuccess: async () => {
       toast.success("تم حذف الطلب نهائياً");
       await Promise.all([utils.commerce.admin.orders.list.invalidate(), utils.commerce.admin.overview.invalidate()]);
+    },
+    onError: error => toast.error(error.message),
+  });
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetCountdown, setResetCountdown] = useState(10);
+  useEffect(() => {
+    if (!showResetModal || resetCountdown <= 0) return;
+    const t = window.setTimeout(() => setResetCountdown(c => Math.max(0, c - 1)), 1000);
+    return () => window.clearTimeout(t);
+  }, [showResetModal, resetCountdown]);
+  const resetAllOrders = trpc.commerce.admin.orders.resetAll.useMutation({
+    onSuccess: async () => {
+      setShowResetModal(false);
+      toast.success("✅ تم تصفير جميع الطلبات من قاعدة البيانات بنجاح (سيبدأ الترقيم من 1)");
+      await Promise.all([
+        utils.commerce.admin.orders.list.invalidate(),
+        utils.commerce.admin.overview.invalidate(),
+        utils.commerce.admin.customers.list.invalidate(),
+        utils.commerce.admin.dbStatus.invalidate(),
+        utils.commerce.orders.mine.invalidate(),
+      ]);
     },
     onError: error => toast.error(error.message),
   });
@@ -3816,7 +3837,61 @@ function OrdersPanel() {
         {filteredOrders.length > 0 && (
           <button type="button" className="small-button" onClick={exportOrders}><Download size={15} /> تصدير تقرير CSV ({filteredOrders.length})</button>
         )}
+        {isOwner && allOrders.length > 0 && (
+          <button
+            type="button"
+            className="small-button danger-soft"
+            onClick={() => { setResetCountdown(10); setShowResetModal(true); }}
+            style={{ fontWeight: 800 }}
+          >
+            <Trash2 size={14} /> تصفير الطلبات
+          </button>
+        )}
       </div>
+
+      {isOwner && showResetModal && (
+        <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget && !resetAllOrders.isPending) setShowResetModal(false); }} style={{ zIndex: 200 }}>
+          <section className="checkout-modal" style={{ maxWidth: "410px", padding: "18px", borderRadius: "18px" }}>
+            <div className="modal-heading" style={{ marginBottom: "10px" }}>
+              <div>
+                <span className="eyebrow" style={{ color: "#b91c1c" }}>إجراء حساس للمالك فقط</span>
+                <h2 style={{ fontSize: "16.5px", margin: "2px 0", color: "#991b1b" }}>⚠️ تأكيد تصفير جميع الطلبات</h2>
+              </div>
+              <button type="button" className="icon-button" disabled={resetAllOrders.isPending} onClick={() => setShowResetModal(false)}><X size={18} /></button>
+            </div>
+            <p style={{ margin: "0 0 12px", fontSize: "12px", lineHeight: 1.7, color: "#4a352f" }}>
+              سيتم حذف <strong>جميع الطلبات ({allOrders.length} طلب)</strong> والفواتير وسجلها نهائياً من قاعدة البيانات، وسيبدأ ترقيم الطلبات الجديدة من <strong>#1</strong>. لا يمكن التراجع عن هذه العملية بعد تأكيدها.
+            </p>
+            <div style={{ padding: "10px 12px", borderRadius: "12px", background: resetCountdown > 0 ? "#fff5f5" : "#ecfdf3", border: resetCountdown > 0 ? "1px solid #fecaca" : "1px solid #bbf7d0", textAlign: "center", marginBottom: "14px" }}>
+              <strong style={{ fontSize: "12.5px", color: resetCountdown > 0 ? "#b91c1c" : "#166534" }}>
+                {resetCountdown > 0
+                  ? `⏳ يرجى الانتظار ${resetCountdown} ${resetCountdown === 1 ? "ثانية" : "ثوانٍ"} قبل تفعيل زر التأكيد...`
+                  : "✅ انتهت مدة الانتظار — يمكنك الضغط على تأكيد التصفير الآن"}
+              </strong>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+              <button
+                type="button"
+                className="button button-quiet"
+                disabled={resetAllOrders.isPending}
+                onClick={() => setShowResetModal(false)}
+                style={{ borderRadius: "12px", minHeight: "42px", fontWeight: 800 }}
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                className="button button-primary"
+                disabled={resetCountdown > 0 || resetAllOrders.isPending}
+                onClick={() => resetAllOrders.mutate()}
+                style={{ borderRadius: "12px", minHeight: "42px", fontWeight: 900, background: resetCountdown > 0 ? "#d6c5be" : "#b91c1c", borderColor: "transparent", cursor: resetCountdown > 0 ? "not-allowed" : "pointer" }}
+              >
+                {resetAllOrders.isPending ? "جارٍ التصفير..." : resetCountdown > 0 ? `تأكيد (${resetCountdown})` : "🗑️ تأكيد التصفير النهائي"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {query.isLoading ? <AdminLoading /> : query.error ? <AdminError message={query.error.message} retry={() => void query.refetch()} /> : !filteredOrders.length ? <AdminEmpty title="لا توجد طلبات مطابقة" text="جرب تغيير فلتر الحالة أو البحث." /> : (
         <div className="admin-orders">
@@ -5755,7 +5830,7 @@ function AdminPanel({ section, isOwner, permissions, allowedCategoryIds, staffId
   if (section === "delivery") return <DeliveryZonesPanel />;
   if (section === "banners") return <BannersPanel />;
   if (section === "offers") return <OffersPanel />;
-  if (section === "orders") return <OrdersPanel />;
+  if (section === "orders") return <OrdersPanel isOwner={isOwner} />;
   if (section === "broadcast") return <BroadcastPanel />;
   if (section === "users") return <UsersPanel />;
   if (section === "staff") return <StaffManagementPanel actorIsOwner={isOwner} actorPermissions={permissions} actorStaffId={staffId} />;

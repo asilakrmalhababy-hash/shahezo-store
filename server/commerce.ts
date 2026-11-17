@@ -2443,6 +2443,19 @@ export const commerceRouter = router({
     }),
     orders: router({
       // --- ORDER_DELETE_ENDPOINT ---
+      resetAll: adminProcedure.use(async ({ next }) => { clearCatalogCache(); return next(); }).mutation(async ({ ctx }) => {
+        if (!ctx.user.isOwner) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "هذه العملية الحساسة مخصصة لمالك المتجر فقط." });
+        }
+        const db = await database();
+        await db.transaction(async tx => {
+          await tx.delete(orderEvents);
+          await tx.delete(orderItems);
+          await tx.delete(orders);
+        });
+        await recordStaffAudit(db, ctx.user, "RESET_ALL_ORDERS", "orders", null, "الطلبات", "تصفير قاعدة البيانات من جميع الطلبات وإعادة الترقيم من 1");
+        return { success: true };
+      }),
       delete: requirePermission("orders.manage").use(async ({ next }) => { clearCatalogCache(); return next(); }).input(z.object({ id: safeId })).mutation(async ({ input }) => {
         const db = await database();
         await db.transaction(async tx => {
