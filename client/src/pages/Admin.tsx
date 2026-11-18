@@ -3772,7 +3772,7 @@ let __kitchenWavUrl: string | null = null;
 function buildKitchenRingWavUrl(): string {
   if (__kitchenWavUrl) return __kitchenWavUrl;
   const sampleRate = 22050;
-  const durationSec = 3.6;
+  const durationSec = 3.0;
   const numSamples = Math.floor(sampleRate * durationSec);
   const buffer = new ArrayBuffer(44 + numSamples * 2);
   const view = new DataView(buffer);
@@ -3784,7 +3784,6 @@ function buildKitchenRingWavUrl(): string {
   writeStr(8, "WAVE");
   writeStr(12, "fmt ");
   view.setUint32(16, 16, true);
-  writeStr(20, "");
   view.setUint16(20, 1, true);
   view.setUint16(22, 1, true);
   view.setUint32(24, sampleRate, true);
@@ -3794,30 +3793,27 @@ function buildKitchenRingWavUrl(): string {
   writeStr(36, "data");
   view.setUint32(40, numSamples * 2, true);
 
-  const notes = [
-    { start: 0.02, freq: 523.25, dur: 0.75 },
-    { start: 0.22, freq: 659.25, dur: 0.75 },
-    { start: 0.42, freq: 783.99, dur: 0.85 },
-    { start: 0.64, freq: 1174.66, dur: 1.05 },
+  const strikes = [
+    { start: 0.02, freq: 783.99, dur: 1.05 },
+    { start: 0.42, freq: 1046.50, dur: 1.55 },
   ];
 
   for (let i = 0; i < numSamples; i++) {
     const t = i / sampleRate;
     let mix = 0;
-    for (const n of notes) {
-      if (t >= n.start && t < n.start + n.dur) {
-        const dt = t - n.start;
-        const attack = Math.min(1, dt / 0.015);
-        const decay = Math.exp(-dt * 4.2);
-        const env = attack * decay;
-        const tone =
-          Math.sin(2 * Math.PI * n.freq * dt) * 0.72 +
-          Math.sin(2 * Math.PI * n.freq * 2 * dt) * 0.16 * Math.exp(-dt * 7.0) +
-          Math.sin(2 * Math.PI * (n.freq * 0.5) * dt) * 0.22;
-        mix += tone * env;
+    if (t <= 2.02) {
+      for (const s of strikes) {
+        if (t >= s.start && t < s.start + s.dur) {
+          const dt = t - s.start;
+          const attack = Math.min(1, dt / 0.008);
+          const body = Math.sin(2 * Math.PI * s.freq * dt) * 0.72 * Math.exp(-dt * 2.1);
+          const octave = Math.sin(2 * Math.PI * s.freq * 2.0 * dt) * 0.24 * Math.exp(-dt * 4.5);
+          const bellMetallic = Math.sin(2 * Math.PI * s.freq * 2.756 * dt) * 0.18 * Math.exp(-dt * 9.0);
+          mix += (body + octave + bellMetallic) * attack;
+        }
       }
     }
-    const boosted = Math.tanh(mix * 1.45) * 0.96;
+    const boosted = Math.tanh(mix * 1.55) * 0.97;
     view.setInt16(44 + i * 2, Math.max(-32767, Math.min(32767, Math.floor(boosted * 32767))), true);
   }
   const blob = new Blob([buffer], { type: "audio/wav" });
