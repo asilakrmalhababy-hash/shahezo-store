@@ -3766,26 +3766,96 @@ async function downloadOrderInvoiceImage(order: any) {
   }
 }
 
-function playKitchenRingTone() {
+let __kitchenAudioEl: HTMLAudioElement | null = null;
+let __kitchenWavUrl: string | null = null;
+
+function buildKitchenRingWavUrl(): string {
+  if (__kitchenWavUrl) return __kitchenWavUrl;
+  const sampleRate = 22050;
+  const durationSec = 3.2;
+  const numSamples = Math.floor(sampleRate * durationSec);
+  const buffer = new ArrayBuffer(44 + numSamples * 2);
+  const view = new DataView(buffer);
+  const writeStr = (off: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i));
+  };
+  writeStr(0, "RIFF");
+  view.setUint32(4, 36 + numSamples * 2, true);
+  writeStr(8, "WAVE");
+  writeStr(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, "data");
+  view.setUint32(40, numSamples * 2, true);
+
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate;
+    let sample = 0;
+    if (t < 0.18) {
+      sample = Math.sin(2 * Math.PI * 880 * t) * 0.45 * (1 - t / 0.18);
+    } else if (t >= 0.24 && t < 0.42) {
+      const dt = t - 0.24;
+      sample = Math.sin(2 * Math.PI * 1046.5 * dt) * 0.5 * (1 - dt / 0.18);
+    } else if (t >= 0.48 && t < 0.72) {
+      const dt = t - 0.48;
+      sample = Math.sin(2 * Math.PI * 880 * dt) * 0.45 * (1 - dt / 0.24);
+    }
+    view.setInt16(44 + i * 2, Math.max(-32767, Math.min(32767, Math.floor(sample * 32767))), true);
+  }
+  const blob = new Blob([buffer], { type: "audio/wav" });
+  __kitchenWavUrl = URL.createObjectURL(blob);
+  return __kitchenWavUrl;
+}
+
+function getKitchenAudioElement(): HTMLAudioElement | null {
+  if (typeof window === "undefined") return null;
+  if (!__kitchenAudioEl) {
+    const el = new Audio(buildKitchenRingWavUrl());
+    el.loop = true;
+    el.preload = "auto";
+    el.volume = 1.0;
+    __kitchenAudioEl = el;
+  }
+  return __kitchenAudioEl;
+}
+
+function startBackgroundMediaRing(newCount = 1) {
   try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const now = ctx.currentTime;
-    [0, 0.22, 0.44].forEach((offset, idx) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(idx % 2 === 0 ? 880 : 1046.5, now + offset);
-      gain.gain.setValueAtTime(0.18, now + offset);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.18);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now + offset);
-      osc.stop(now + offset + 0.19);
-    });
-    setTimeout(() => { try { void ctx.close(); } catch {} }, 900);
+    const el = getKitchenAudioElement();
+    if (el && el.paused) {
+      void el.play().catch(() => {});
+    }
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: `🔔 طلب جديد (${newCount}) في بوفية شهيزو`,
+        artist: "إدارة شهيزو – افتح التطبيق لبدء التجهيز",
+        album: "تنبيهات الطلبات",
+        artwork: [{ src: "/app-icon-192-v8.png", sizes: "192x192", type: "image/png" }],
+      });
+      navigator.mediaSession.playbackState = "playing";
+    }
   } catch {}
+}
+
+function stopBackgroundMediaRing() {
+  try {
+    if (__kitchenAudioEl && !__kitchenAudioEl.paused) {
+      __kitchenAudioEl.pause();
+      __kitchenAudioEl.currentTime = 0;
+    }
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.playbackState = "none";
+    }
+  } catch {}
+}
+
+function playKitchenRingTone() {
+  startBackgroundMediaRing(1);
 }
 
 function printOrderInvoiceWindow(order: any) {
@@ -3905,12 +3975,12 @@ function OrdersPanel({ isOwner = false }: { isOwner?: boolean }) {
   const allOrders = (query.data ?? []).filter(o => o.city !== "طلب توفير خاص" && !String(o.orderNumber || "").startsWith("REQ-"));
   const newOrdersCount = allOrders.filter(o => o.status === "new").length;
   useEffect(() => {
-    if (ringMuted || newOrdersCount === 0) return;
-    playKitchenRingTone();
-    const timer = window.setInterval(() => {
-      playKitchenRingTone();
-    }, 5500);
-    return () => window.clearInterval(timer);
+    if (ringMuted || newOrdersCount === 0) {
+      stopBackgroundMediaRing();
+      return;
+    }
+    startBackgroundMediaRing(newOrdersCount);
+    return () => stopBackgroundMediaRing();
   }, [ringMuted, newOrdersCount]);
 
   const customerSummaryByPhone = new Map<string, {
@@ -6272,6 +6342,16 @@ export default function Admin() {
     if (m && m.getAttribute("href") !== "/manifest-admin.webmanifest") {
       m.setAttribute("href", "/manifest-admin.webmanifest");
     }
+    const unlockAudio = () => {
+      try {
+        const el = getKitchenAudioElement();
+        if (el && el.paused) {
+          el.muted = true;
+          void el.play().then(() => { el.pause(); el.currentTime = 0; el.muted = false; }).catch(() => { el.muted = false; });
+        }
+      } catch {}
+    };
+    window.addEventListener("pointerdown", unlockAudio, { once: true });
     const checkStandalone = () => {
       setIsStandaloneAdmin(window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as any).standalone));
     };
