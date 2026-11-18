@@ -3772,7 +3772,7 @@ let __kitchenWavUrl: string | null = null;
 function buildKitchenRingWavUrl(): string {
   if (__kitchenWavUrl) return __kitchenWavUrl;
   const sampleRate = 22050;
-  const durationSec = 3.0;
+  const durationSec = 3.0; // 2.0s classic mechanical electric bell + 1.0s pause
   const numSamples = Math.floor(sampleRate * durationSec);
   const buffer = new ArrayBuffer(44 + numSamples * 2);
   const view = new DataView(buffer);
@@ -3793,27 +3793,25 @@ function buildKitchenRingWavUrl(): string {
   writeStr(36, "data");
   view.setUint32(40, numSamples * 2, true);
 
-  const strikes = [
-    { start: 0.02, freq: 783.99, dur: 1.05 },
-    { start: 0.42, freq: 1046.50, dur: 1.55 },
-  ];
-
+  // Classic Mechanical Electric Bell (like school/alarm dome bell): ~23 hammer strikes/sec for 1.85s + natural metallic ring-out until 2.35s
+  const strikeRate = 23;
+  const ringEnd = 1.85;
   for (let i = 0; i < numSamples; i++) {
     const t = i / sampleRate;
     let mix = 0;
-    if (t <= 2.02) {
-      for (const s of strikes) {
-        if (t >= s.start && t < s.start + s.dur) {
-          const dt = t - s.start;
-          const attack = Math.min(1, dt / 0.008);
-          const body = Math.sin(2 * Math.PI * s.freq * dt) * 0.72 * Math.exp(-dt * 2.1);
-          const octave = Math.sin(2 * Math.PI * s.freq * 2.0 * dt) * 0.24 * Math.exp(-dt * 4.5);
-          const bellMetallic = Math.sin(2 * Math.PI * s.freq * 2.756 * dt) * 0.18 * Math.exp(-dt * 9.0);
-          mix += (body + octave + bellMetallic) * attack;
-        }
-      }
+    if (t <= 2.35) {
+      const strikeEnv = t <= ringEnd
+        ? (0.35 + 0.65 * Math.exp(-((t * strikeRate) % 1) * 3.8))
+        : Math.exp(-(t - ringEnd) * 7.5);
+      // Metallic dome bell partials
+      const p1 = Math.sin(2 * Math.PI * 1396.9 * t) * 0.48;
+      const p2 = Math.sin(2 * Math.PI * 2093.0 * t) * 0.34;
+      const p3 = Math.sin(2 * Math.PI * 2793.8 * t) * 0.24;
+      const p4 = Math.sin(2 * Math.PI * 3729.3 * t) * 0.16;
+      const p5 = Math.sin(2 * Math.PI * 698.45 * t) * 0.22;
+      mix = (p1 + p2 + p3 + p4 + p5) * strikeEnv;
     }
-    const boosted = Math.tanh(mix * 1.55) * 0.97;
+    const boosted = Math.tanh(mix * 1.45) * 0.96;
     view.setInt16(44 + i * 2, Math.max(-32767, Math.min(32767, Math.floor(boosted * 32767))), true);
   }
   const blob = new Blob([buffer], { type: "audio/wav" });
