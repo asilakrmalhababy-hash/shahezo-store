@@ -3772,7 +3772,7 @@ let __kitchenWavUrl: string | null = null;
 function buildKitchenRingWavUrl(): string {
   if (__kitchenWavUrl) return __kitchenWavUrl;
   const sampleRate = 22050;
-  const durationSec = 12.0; // 2.0s classic mechanical electric bell + 10.0s pause
+  const durationSec = 12.5; // 2.5s Shahezo Signature Branded Melody + 10.0s pause
   const numSamples = Math.floor(sampleRate * durationSec);
   const buffer = new ArrayBuffer(44 + numSamples * 2);
   const view = new DataView(buffer);
@@ -3793,25 +3793,34 @@ function buildKitchenRingWavUrl(): string {
   writeStr(36, "data");
   view.setUint32(40, numSamples * 2, true);
 
-  // Classic Mechanical Electric Bell (like school/alarm dome bell): ~23 hammer strikes/sec for 1.85s + natural metallic ring-out until 2.35s
-  const strikeRate = 23;
-  const ringEnd = 1.85;
+  const notes: Array<{ t0: number; dur: number; f: number; amp: number }> = [
+    { t0: 0.00, dur: 0.24, f: 587.33, amp: 0.42 },
+    { t0: 0.16, dur: 0.24, f: 739.99, amp: 0.44 },
+    { t0: 0.32, dur: 0.26, f: 880.00, amp: 0.46 },
+    { t0: 0.50, dur: 0.48, f: 1174.66, amp: 0.52 },
+    { t0: 0.00, dur: 0.90, f: 293.66, amp: 0.24 },
+    { t0: 1.05, dur: 0.22, f: 739.99, amp: 0.42 },
+    { t0: 1.21, dur: 0.22, f: 880.00, amp: 0.45 },
+    { t0: 1.38, dur: 0.24, f: 1174.66, amp: 0.50 },
+    { t0: 1.56, dur: 0.85, f: 1479.98, amp: 0.48 },
+    { t0: 1.05, dur: 1.30, f: 293.66, amp: 0.26 },
+  ];
+
   for (let i = 0; i < numSamples; i++) {
     const t = i / sampleRate;
     let mix = 0;
-    if (t <= 2.35) {
-      const strikeEnv = t <= ringEnd
-        ? (0.35 + 0.65 * Math.exp(-((t * strikeRate) % 1) * 3.8))
-        : Math.exp(-(t - ringEnd) * 7.5);
-      // Metallic dome bell partials
-      const p1 = Math.sin(2 * Math.PI * 1396.9 * t) * 0.48;
-      const p2 = Math.sin(2 * Math.PI * 2093.0 * t) * 0.34;
-      const p3 = Math.sin(2 * Math.PI * 2793.8 * t) * 0.24;
-      const p4 = Math.sin(2 * Math.PI * 3729.3 * t) * 0.16;
-      const p5 = Math.sin(2 * Math.PI * 698.45 * t) * 0.22;
-      mix = (p1 + p2 + p3 + p4 + p5) * strikeEnv;
+    if (t <= 2.55) {
+      for (const n of notes) {
+        if (t >= n.t0 && t <= n.t0 + n.dur) {
+          const dt = t - n.t0;
+          const env = Math.min(1, dt / 0.012) * Math.exp(-dt * 4.2);
+          const fundamental = Math.sin(2 * Math.PI * n.f * dt);
+          const overtone = Math.sin(2 * Math.PI * (n.f * 2) * dt) * 0.28 * Math.exp(-dt * 7.0);
+          mix += (fundamental + overtone) * env * n.amp;
+        }
+      }
     }
-    const boosted = Math.tanh(mix * 1.45) * 0.96;
+    const boosted = Math.tanh(mix * 1.35) * 0.96;
     view.setInt16(44 + i * 2, Math.max(-32767, Math.min(32767, Math.floor(boosted * 32767))), true);
   }
   const blob = new Blob([buffer], { type: "audio/wav" });
@@ -3833,6 +3842,7 @@ function getKitchenAudioElement(): HTMLAudioElement | null {
 
 function startBackgroundMediaRing(newCount = 1) {
   try {
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) { navigator.vibrate([180, 90, 180, 90, 300]); }
     const el = getKitchenAudioElement();
     if (el && el.paused) {
       void el.play().catch(() => {});
