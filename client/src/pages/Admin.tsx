@@ -3815,7 +3815,7 @@ function printOrderInvoiceWindow(order: any) {
 function OrdersPanel({ isOwner = false }: { isOwner?: boolean }) {
   const [openAdminOrderId, setOpenAdminOrderId] = useState<number | null>(null);
   const utils = trpc.useUtils();
-  const query = trpc.commerce.admin.orders.list.useQuery(undefined, { retry: 1, refetchInterval: 45_000, refetchIntervalInBackground: false });
+  const query = trpc.commerce.admin.orders.list.useQuery(undefined, { retry: 1, refetchInterval: 10_000, refetchIntervalInBackground: true });
   const nextStates: Record<string, string[]> = { new: ["preparing", "cancelled"], preparing: ["ready", "cancelled"], ready: ["out_for_delivery", "cancelled"], out_for_delivery: ["delivered"], delivered: [], cancelled: [] };
   const [deliveryNotes, setDeliveryNotes] = useState<Record<number, string>>({});
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -4423,8 +4423,23 @@ function readOwnerOrderCursor() {
 }
 
 function useAdminGlobalPushSync(isAdmin: boolean) {
+  const utils = trpc.useUtils();
   const publicKey = trpc.commerce.notifications.publicKey.useQuery(undefined, { enabled: false, retry: 1 });
   const subscribe = trpc.commerce.admin.notifications.subscribe.useMutation();
+  useEffect(() => {
+    if (!isAdmin || typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    const onSwMessage = (event: MessageEvent) => {
+      if (event.data?.type === "SHAHEZO_NEW_ORDER_PUSH") {
+        playKitchenRingTone();
+        void Promise.all([
+          utils.commerce.admin.orders.list.invalidate(),
+          utils.commerce.admin.overview.invalidate(),
+        ]);
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", onSwMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onSwMessage);
+  }, [isAdmin, utils]);
   useEffect(() => {
     if (!isAdmin || getPushPermissionState() !== "granted") return;
     let active = true;

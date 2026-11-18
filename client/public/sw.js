@@ -71,14 +71,21 @@ self.addEventListener("push", event => {
       const tag = typeof payload.tag === "string" ? payload.tag.slice(0, 100) : "shahezo-order-update";
       const isAdminUrl = url.startsWith("/admin");
       const isBroadcast = tag.startsWith("shahezo-broadcast-");
+      if (isAdminUrl) {
+        const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+        for (const c of clientsList) {
+          try { c.postMessage({ type: "SHAHEZO_NEW_ORDER_PUSH", url }); } catch {}
+        }
+      }
       await self.registration.showNotification(title, {
         body,
         icon: "/notif-icon-v8.png",
         badge: "/notif-badge-v8.png",
         tag,
         renotify: true,
+        silent: false,
         requireInteraction: isAdminUrl || isBroadcast,
-        vibrate: isAdminUrl ? [240, 90, 240, 90, 320] : [180, 80, 200],
+        vibrate: isAdminUrl ? [450, 120, 450, 120, 450, 120, 600] : [180, 80, 200],
         actions: [
           { action: "open_order", title: isAdminUrl ? "📋 فتح الطلب في تطبيق الإدارة" : isBroadcast ? "🔥 عرض التفاصيل الآن" : "🛵 تتبع حالة الطلب" }
         ],
