@@ -4865,28 +4865,29 @@ function UsersPanel() {
             const custName = (customer.name || "").trim() || "عميل شهيزو";
             const areaText = [customer.city, customer.district].filter(Boolean).join(" — ");
             return (
-              <article className="user-row" key={customer.phone} style={{ alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1 }}>
-                  <span className="user-avatar"><CircleUserRound size={20} /></span>
-                  <div className="user-main" style={{ minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                      <strong style={{ fontSize: "13.5px", color: "#2b120f", fontWeight: 900 }}>{custName}</strong>
-                      <span dir="ltr" style={{ fontSize: "12px", fontWeight: 800, color: "#870210", background: "#fceee9", padding: "2px 8px", borderRadius: "99px" }}>
+              <article className="user-row" key={customer.phone} style={{ display: "grid", gap: "9px", padding: "12px 14px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "9px", minWidth: 0, flex: 1 }}>
+                    <span className="user-avatar" style={{ flexShrink: 0 }}><CircleUserRound size={20} /></span>
+                    <div style={{ minWidth: 0, display: "grid", gap: "3px" }}>
+                      <strong style={{ fontSize: "14px", color: "#2b120f", fontWeight: 900, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{custName}</strong>
+                      <span dir="ltr" style={{ width: "fit-content", fontSize: "11.5px", fontWeight: 800, color: "#870210", background: "#fceee9", padding: "2px 8px", borderRadius: "99px" }}>
                         {customer.phone}
                       </span>
                     </div>
-                    <small style={{ color: "#6e5a53", fontSize: "11px" }}>
-                      {areaText ? `📍 ${areaText} · ` : ""}
-                      إجمالي المشتريات: <b>{money(customer.totalSpent)}</b> · آخر طلب: {new Date(customer.lastOrderAt).toLocaleDateString("ar-YE")}
-                    </small>
                   </div>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                  <span className="visibility-tag visible">
+                  <span className="visibility-tag visible" style={{ flexShrink: 0, fontSize: "11px", fontWeight: 800 }}>
                     {customer.orderCount} {customer.orderCount === 1 ? "طلب" : "طلبات"}
                   </span>
-                  <a className="small-button" href={`tel:${customer.phone}`}>
+                </div>
+
+                <div style={{ fontSize: "11.5px", color: "#6e5a53", lineHeight: 1.5, background: "#fdf9f4", padding: "6px 10px", borderRadius: "9px", border: "1px solid #f0e4d8" }}>
+                  {areaText ? <span>📍 {areaText} · </span> : null}
+                  <span>إجمالي المشتريات: <b style={{ color: "#870210" }}>{money(customer.totalSpent)}</b> · آخر طلب: {new Date(customer.lastOrderAt).toLocaleDateString("ar-YE")}</span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                  <a className="small-button" href={`tel:${customer.phone}`} style={{ justifyContent: "center", minHeight: "36px", borderRadius: "10px", fontWeight: 800 }}>
                     📞 اتصال
                   </a>
                   <a
@@ -4895,6 +4896,7 @@ function UsersPanel() {
 معك بوفية شهيزو – SHAHEZO، نسعد بخدمتك دائماً!`)}
                     target="_blank"
                     rel="noreferrer"
+                    style={{ justifyContent: "center", minHeight: "36px", borderRadius: "10px", fontWeight: 800 }}
                   >
                     💬 واتساب
                   </a>
