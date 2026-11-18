@@ -69,6 +69,104 @@ function useOnlineStatus(): boolean {
   return online;
 }
 
+function SmartImage({
+  src,
+  alt,
+  className,
+  style,
+  loading,
+  decoding,
+  fetchPriority,
+  draggable,
+  compact = false,
+  minPlaceholderHeight,
+}: {
+  src?: string | null;
+  alt: string;
+  className?: string;
+  style?: React.CSSProperties;
+  loading?: "eager" | "lazy";
+  decoding?: "async" | "sync" | "auto";
+  fetchPriority?: "high" | "low" | "auto";
+  draggable?: boolean;
+  compact?: boolean;
+  minPlaceholderHeight?: string;
+}) {
+  const isOnline = useOnlineStatus();
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src, isOnline]);
+
+  if (!src || failed) {
+    if (compact) {
+      return (
+        <div
+          className={className}
+          style={{
+            ...style,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#f3f1ef",
+            overflow: "hidden",
+          }}
+        >
+          <img
+            src="/chef-hat.png"
+            alt="شهيزو"
+            style={{ width: "62%", height: "62%", objectFit: "contain", filter: "grayscale(100%) opacity(0.32)" }}
+          />
+        </div>
+      );
+    }
+    return (
+      <div
+        className={className}
+        style={{
+          ...style,
+          minHeight: minPlaceholderHeight || style?.minHeight || "100%",
+          width: "100%",
+          height: style?.height && style.height !== "auto" ? style.height : "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "6px",
+          padding: "12px",
+          background: "#f4f2f0",
+          color: "#9ca3af",
+          textAlign: "center",
+        }}
+      >
+        <img
+          src="/chef-hat.png"
+          alt="شهيزو"
+          style={{ width: "42px", height: "42px", objectFit: "contain", filter: "grayscale(100%) opacity(0.32)" }}
+        />
+        <span style={{ fontSize: "11px", fontWeight: 700, color: "#9ca3af", lineHeight: 1.3 }}>
+          {!isOnline ? "لا يوجد لديك إنترنت" : "تعذر تحميل الصورة"}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      style={style}
+      loading={loading}
+      decoding={decoding}
+      fetchPriority={fetchPriority}
+      draggable={draggable}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import {
@@ -366,12 +464,13 @@ function BannerCarousel({ banners }: { banners: HomeData["banners"] }) {
         boxShadow: "0 10px 26px rgba(94, 1, 11, 0.08)",
       }}
     >
-      <img
+      <SmartImage
         src={banner.imageUrl}
         alt={banner.title || "إعلان المتجر"}
         loading="eager"
         decoding="async"
         fetchPriority="high"
+        minPlaceholderHeight="135px"
         style={isAutoSize ? {
           position: "relative",
           width: "100%",
@@ -873,7 +972,7 @@ function VariantPickerModal({
       <section className="checkout-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: "370px", padding: "18px", borderRadius: "22px" }}>
         <div className="modal-heading" style={{ marginBottom: "12px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            {product.imageUrl && <img src={product.imageUrl} alt="" style={{ width: "44px", height: "44px", borderRadius: "12px", objectFit: "cover" }} />}
+            {product.imageUrl && <SmartImage compact src={product.imageUrl} alt="" style={{ width: "44px", height: "44px", borderRadius: "12px", objectFit: "cover" }} />}
             <div>
               <h2 style={{ fontSize: "16px", margin: "0 0 2px" }}>{product.name}</h2>
               <small style={{ color: "#870210", fontWeight: 800 }}>
@@ -1010,7 +1109,7 @@ function ProductCard({ product, onOpen, onAiRecipe, priority = false }: { produc
   return <>
     <article className="product-card">
       <div className="product-visual" onClick={onOpen} role="button" tabIndex={0} onKeyDown={event => { if (event.key === "Enter") onOpen(); }}>
-        {product.imageUrl ? <img src={product.imageUrl} alt={product.name} loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : "auto"} decoding="async" /> : <div className="product-no-image"><Leaf size={27} strokeWidth={1.4} /><span>صورة المنتج</span></div>}
+        {product.imageUrl ? <SmartImage src={product.imageUrl} alt={product.name} loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : "auto"} decoding="async" /> : <div className="product-no-image"><Leaf size={27} strokeWidth={1.4} /><span>صورة المنتج</span></div>}
         <button type="button" className={"favorite-toggle " + (favorite ? "is-favorite" : "")} aria-label={favorite ? "إزالة من المفضلة" : "أضف للمفضلة"} aria-pressed={favorite} onClick={event => { event.stopPropagation(); toggleFavorite(product.id); toast.success(favorite ? "أُزيل من المفضلة" : "أُضيف إلى المفضلة على هذا الجهاز"); }}><Heart size={17} fill={favorite ? "currentColor" : "none"} /></button>
         {onAiRecipe && <button type="button" className="ai-recipe-toggle" aria-label="أفكار وتحضير بالذكاء الاصطناعي" title="أفكار ووصفات تحضير" onClick={event => { event.stopPropagation(); onAiRecipe(product); }}><Sparkles size={16} /></button>}
         {hasOffer && !disabled && <span className="offer-corner-badge">{isBundle ? "🎁 تجميعة توفيرية" : ("🔥 وفّر " + formatPrice(oldPrice - product.price))}</span>}
@@ -1110,7 +1209,7 @@ function CategoryStrip({ data, onSelect, offersCount = 0, onSelectOffers }: { da
           >
             <div style={{ width: "100%", height: "134px", borderRadius: "14px", overflow: "hidden", background: "#fdf6f0" }}>
               {category.imageUrl ? (
-                <img
+                <SmartImage
                   src={category.imageUrl}
                   alt={category.name}
                   loading="eager"
@@ -1340,7 +1439,7 @@ function ProductListPage({ data, onOpen, onAiRecipe }: { data: HomeData; onOpen:
                 }}
               >
                 {cat.imageUrl && (
-                  <img src={cat.imageUrl} alt="" style={{ width: "24px", height: "24px", borderRadius: "50%", objectFit: "cover" }} />
+                  <SmartImage compact src={cat.imageUrl} alt="" style={{ width: "24px", height: "24px", borderRadius: "50%", objectFit: "cover" }} />
                 )}
                 <span>{cat.name}</span>
               </button>
@@ -1389,7 +1488,7 @@ function CategoriesPage({ data }: { data: HomeData }) {
               >
                 <div style={{ width: "100%", height: "174px", borderRadius: "14px", overflow: "hidden", background: "#fdf6f0" }}>
                   {category.imageUrl ? (
-                    <img
+                    <SmartImage
                       src={category.imageUrl}
                       alt={category.name}
                       loading="eager"
@@ -1525,7 +1624,7 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
           style={{ position: "relative", cursor: hasGallery ? "pointer" : "default", userSelect: "none" }}
         >
           {product.imageUrl ? (
-            <img key={product.id} src={product.imageUrl} alt={product.name} decoding="async" fetchPriority="high" draggable={false} />
+            <SmartImage key={product.id} src={product.imageUrl} alt={product.name} decoding="async" fetchPriority="high" draggable={false} />
           ) : (
             <div className="product-no-image detail-placeholder"><Leaf size={45} /><span>لا توجد صورة لهذا المنتج</span></div>
           )}
@@ -4855,7 +4954,7 @@ export default function Home() {
   }, [location, productId, productPath, data]);
   return <div className="store-app" dir="rtl"><Header data={data} onSearch={text => navigate(`/products${text ? `?search=${encodeURIComponent(text)}` : ""}`)} /><GamifiedRewardBar settings={data.settings} location={location} />{(!isOnline || (home.isError && !home.data)) && (
   <div className="connection-strip">
-    <span>{data.products.length > 0 ? "📡 تتصفح النسخة المحفوظة (بدون إنترنت) — تصفح وأضف للسلة، وتأكيد الطلب يتفعل فور عودة النت" : "الاتصال بالخدمة غير متاح مؤقتًا"}</span>
+    <span>{data.products.length > 0 ? "📡 بدون إنترنت — تصفّح بحرية (تأكيد الطلب عند عودة النت)" : "الاتصال بالخدمة غير متاح مؤقتًا"}</span>
     <button onClick={() => void home.refetch()}>تحديث</button>
   </div>
 )}
