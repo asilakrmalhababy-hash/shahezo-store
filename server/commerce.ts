@@ -1444,7 +1444,7 @@ export const commerceRouter = router({
       items: z.array(z.object({ productId: safeId, quantity: z.number().int().min(1).max(10000), name: z.string().trim().max(220).optional(), variant: z.string().trim().max(120).optional(), customAmount: z.number().int().min(1).max(100000000).optional() })).min(1).max(100),
       offerCode: z.string().trim().max(40).optional(),
       recipientName: z.string().trim().min(2).max(160), phone: z.string().trim().min(7).max(32).refine(isValidGuestPhone, "يرجى إدخال رقم جوال يمني صحيح مكون من 9 أرقام ويبدأ بـ 77 أو 73 أو 78 أو 71 أو 70."),
-      city: z.string().trim().min(1).max(100), district: z.string().trim().min(1).max(120), addressDetails: z.string().trim().max(1000).optional(), customerNote: z.string().trim().max(1000).optional(),
+      city: z.string().trim().min(1).max(100), district: z.string().trim().min(1).max(120), addressDetails: z.string().trim().max(1000).optional(), customerNote: z.string().trim().max(1000).optional(), orderType: z.enum(["delivery", "takeaway", "dine_in"]).optional().default("delivery"),
     })).mutation(async ({ ctx, input }) => {
       const db = await database();
       const requested = aggregateItems(input.items);
@@ -1457,7 +1457,8 @@ export const commerceRouter = router({
       if (settings.orderPaused === "true") throw new TRPCError({ code: "PRECONDITION_FAILED", message: settings.pausedMessage || "استقبال الطلبات متوقف مؤقتًا." });
       const whStatus = checkStoreWorkingHours(settings);
       if (!whStatus.isOpen) throw new TRPCError({ code: "PRECONDITION_FAILED", message: whStatus.message });
-      const prelimDeliveryFee = deliveryFeeForCity(settings, input.city, input.district, input.phone, 0);
+      const isPickup = input.orderType === "takeaway" || input.orderType === "dine_in";
+      const prelimDeliveryFee = isPickup ? 0 : deliveryFeeForCity(settings, input.city, input.district, input.phone, 0);
       if (prelimDeliveryFee === null) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "منطقة التوصيل أو رسومها غير محددة بعد." });
 
       let appliedOffer: typeof offers.$inferSelect | null = null;
@@ -1510,7 +1511,7 @@ export const commerceRouter = router({
             orderLines.push({ product, quantity: item.quantity, effectiveUnit: product.unit, effectivePrice: product.price, effectiveLineTotal: lineTotal, isWeighed: false });
           }
         }
-        const finalDeliveryFee = deliveryFeeForCity(settings, input.city, input.district, input.phone, subtotal) ?? prelimDeliveryFee;
+        const finalDeliveryFee = isPickup ? 0 : (deliveryFeeForCity(settings, input.city, input.district, input.phone, subtotal) ?? prelimDeliveryFee);
         const totals = orderTotals(subtotal, finalDeliveryFee, appliedOffer, settings);
         const currency = settings.currency || "ر.ي";
         const currentLines = orderLines.map(line => ({ productId: line.product.id, name: line.product.name, quantity: line.quantity, unit: line.effectiveUnit, price: line.effectivePrice, lineTotal: line.effectiveLineTotal }));
