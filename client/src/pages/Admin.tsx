@@ -4326,6 +4326,16 @@ function OrdersPanel({ isOwner = false }: { isOwner?: boolean }) {
                     <span dir="ltr" style={{ fontWeight: 800, color: "#870210" }}>📞 {order.phone}</span>
                     <span>📍 {order.city} — {order.district}{order.addressDetails ? (" (" + order.addressDetails + ")") : ""}</span>
                   </div>
+                  {(order as any).rating && (() => {
+                    const rt = (order as any).rating;
+                    const face = (v: number) => v === 5 ? "🤩 رهيب" : v === 4 ? "😊 ممتاز" : v === 3 ? "😐 عادي" : v === 2 ? "😕 مقبول" : "😠 سيء";
+                    return (
+                      <div style={{ marginTop: "6px", padding: "8px 10px", borderRadius: "10px", background: "#f0fdf4", border: "1.5px solid #86efac", fontSize: "11.5px", color: "#166534", display: "grid", gap: "3px" }}>
+                        <strong>⭐ تقييم الزبون: {isPickupOrder ? "الخدمة" : "الموصل"} ({face(rt.driverRating)}) · الجودة ({face(rt.qualityRating)}) · المذاق ({face(rt.tasteRating)})</strong>
+                        {rt.note && <span>💬 ملاحظة الزبون: {rt.note}</span>}
+                      </div>
+                    );
+                  })()}
                   {order.customerNote && (
                     <div style={{ padding: "5px 8px", borderRadius: "8px", background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e", fontWeight: 800, fontSize: "11.5px" }}>
                       📝 {order.customerNote}

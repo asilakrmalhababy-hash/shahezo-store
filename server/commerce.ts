@@ -1489,6 +1489,22 @@ export const commerceRouter = router({
       };
       map[ord.orderNumber] = entry;
       await saveOrderRatingsMap(db, map);
+      void (async () => {
+        try {
+          const targets = await getAllAdminPushTargets(db);
+          if (!targets.length) return;
+          const faceLbl = (v: number) => v === 5 ? "🤩 رهيب" : v === 4 ? "😊 ممتاز" : v === 3 ? "😐 عادي" : v === 2 ? "😕 مقبول" : "😠 سيء";
+          await deliverPushRows(targets, {
+            title: "⭐ تقييم جديد للطلب #" + ord.orderNumber + " (" + ord.recipientName + ")",
+            body: (ord.city === "استلام من البوفية" ? "الخدمة: " : "الموصل: ") + faceLbl(entry.driverRating) + " · الجودة: " + faceLbl(entry.qualityRating) + " · المذاق: " + faceLbl(entry.tasteRating) + (entry.note ? ("\n💬 " + entry.note) : ""),
+            url: "/admin/orders?order=" + encodeURIComponent(ord.orderNumber),
+            tag: "shahezo-admin-rating-" + ord.id,
+          }, async (id, endpointHash) => {
+            if (id > 0) await db.delete(ownerPushSubscriptions).where(eq(ownerPushSubscriptions.id, id)).catch(() => {});
+            if (endpointHash) await removeBackupAdminSubscription(db, endpointHash);
+          });
+        } catch {}
+      })();
       return { success: true, rating: entry };
     }),
     place: publicProcedure.input(z.object({
