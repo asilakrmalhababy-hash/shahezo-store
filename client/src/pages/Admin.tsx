@@ -1927,8 +1927,6 @@ function CategoriesPanel() {
 </label>
               <label className="field-wide">وصف (اختياري)<textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></label>
               <label>ترتيب العرض<input type="number" value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: e.target.value })} /></label>
-              <label>⏳ موعد بدء ظهور الإعلان (اختياري)<input type="datetime-local" value={cfg.startsAt || ""} onChange={e => setCfg({ ...cfg, startsAt: e.target.value })} /></label>
-              <label>⌛ موعد انتهاء وإخفاء الإعلان (اختياري)<input type="datetime-local" value={cfg.endsAt || ""} onChange={e => setCfg({ ...cfg, endsAt: e.target.value })} /></label>
               <label className="toggle-field"><input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} /> القسم مفعّل في الواجهة</label>
             </div>
             <ImageField title="قص وتجهيز صورة القسم" value={form.imageUrl} onChange={imageUrl => setForm(curr => ({ ...curr, imageUrl }))} kind="category" aspect={4 / 5} />
@@ -3058,6 +3056,8 @@ function BannersPanel() {
               )}
 
               <label>ترتيب العرض<input type="number" value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: e.target.value })} /></label>
+              <label>⏳ موعد بدء ظهور الإعلان (اختياري)<input type="datetime-local" value={cfg.startsAt || ""} onChange={e => setCfg({ ...cfg, startsAt: e.target.value })} /></label>
+              <label>⌛ موعد انتهاء وإخفاء الإعلان (اختياري)<input type="datetime-local" value={cfg.endsAt || ""} onChange={e => setCfg({ ...cfg, endsAt: e.target.value })} /></label>
               <label className="toggle-field"><input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} /> تفعيل ونشر الإعلان في المتجر</label>
 
               {cfg.placement === "popup" && (
