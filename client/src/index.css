@@ -2234,3 +2234,7 @@ img, svg, video, canvas, a {
 /* Clean compact product title without duplicate unit */
 .product-title-button { min-height: 30px !important; padding: 8px 4px 2px !important; }
 .product-title-button strong { font-size: 12.5px !important; font-weight: 800 !important; color: #2b120f !important; }
+
+/* Refined heart favorite colors matching Shahezo palette */
+.favorite-toggle { color: #7c6862 !important; background: rgba(255, 255, 255, 0.94) !important; box-shadow: 0 2px 8px rgba(43, 18, 15, 0.12); }
+.favorite-toggle.is-favorite { color: #dc2626 !important; border-color: rgba(220, 38, 38, 0.25) !important; }

@@ -1529,40 +1529,50 @@ function ProductListPage({ data, onOpen, onAiRecipe }: { data: HomeData; onOpen:
   const input = { search: debouncedSearch || undefined, categoryId, sort: "featured" as const, limit: 500 };
   const query = trpc.commerce.catalog.listProducts.useQuery(input, { retry: 1, staleTime: 0, refetchOnMount: "always", placeholderData: cachedProducts.length ? cachedProducts : undefined });
 
+  const visibleProducts = (query.data ?? []).filter(p => !onlyOffers || (() => { const u = unpackProductVariants(p.description); return u.oldPrice > p.price || u.isBundle; })());
+
   return (
-    <main className="page-shell inner-page" style={{ paddingTop: "12px" }}>
+    <main className="page-shell inner-page" style={{ paddingTop: "10px" }}>
       <div
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: "12px",
-          padding: "10px 14px",
-          borderRadius: "18px",
+          gap: "10px",
+          padding: "8px 12px",
+          borderRadius: "16px",
           background: "#ffffff",
-          border: "1.5px solid #dce8df",
-          boxShadow: "0 8px 22px rgba(135, 2, 16, 0.06)",
-          marginBottom: "12px",
+          border: "1px solid #ece0d5",
+          boxShadow: "0 4px 14px rgba(43, 18, 15, 0.04)",
+          marginBottom: "10px",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "11px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
           {activeCategory?.imageUrl ? (
-            <img
+            <SmartImage
+              compact
               src={activeCategory.imageUrl}
               alt={activeCategory.name}
-              style={{ width: "48px", height: "48px", borderRadius: "14px", objectFit: "cover", border: "1.5px solid #870210", flexShrink: 0 }}
+              style={{ width: "38px", height: "38px", borderRadius: "12px", objectFit: "cover", border: "1px solid #e6d5c7", flexShrink: 0 }}
             />
           ) : (
-            <span style={{ width: "46px", height: "46px", borderRadius: "14px", background: "#fceee9", color: "#870210", display: "grid", placeItems: "center", flexShrink: 0 }}>
-              <ShoppingBag size={22} />
+            <span style={{ width: "38px", height: "38px", borderRadius: "12px", background: onlyOffers ? "#fff1ed" : "#fbf4ee", color: "#870210", display: "grid", placeItems: "center", flexShrink: 0 }}>
+              {onlyOffers ? <BadgePercent size={20} /> : <ShoppingBag size={19} />}
             </span>
           )}
-          <div>
-            <h1 style={{ fontSize: "19px", fontWeight: 800, color: "#5e010b", margin: 0, lineHeight: 1.25 }}>
-              {onlyOffers ? "🔥 قسم العروضات والتجميعات التوفيرية" : activeCategory ? activeCategory.name : (debouncedSearch ? ("نتائج البحث: " + debouncedSearch) : "كل المنتجات")}
-            </h1>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "7px", flexWrap: "wrap" }}>
+              <h1 style={{ fontSize: "16px", fontWeight: 900, color: "#2b120f", margin: 0, lineHeight: 1.25 }}>
+                {onlyOffers ? "العروض والتوفير" : activeCategory ? activeCategory.name : (debouncedSearch ? ("نتائج: " + debouncedSearch) : "كل المنتجات")}
+              </h1>
+              {!query.isLoading && (
+                <span style={{ fontSize: "10.5px", fontWeight: 800, color: "#870210", background: "#fdf3ec", padding: "2px 8px", borderRadius: "99px" }}>
+                  {visibleProducts.length} صنف
+                </span>
+              )}
+            </div>
             {activeCategory?.description && (
-              <small style={{ fontSize: "11.5px", color: "#5c7063", display: "block", marginTop: "2px" }}>{activeCategory.description}</small>
+              <small style={{ fontSize: "11px", color: "#7a5e54", display: "block", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{activeCategory.description}</small>
             )}
           </div>
         </div>
@@ -1571,22 +1581,22 @@ function ProductListPage({ data, onOpen, onAiRecipe }: { data: HomeData; onOpen:
           type="button"
           onClick={() => setLocation("/categories")}
           style={{
-            padding: "7px 12px",
-            borderRadius: "12px",
-            border: "1px solid #cfe0d4",
-            background: "#fdf6f0",
+            padding: "6px 10px",
+            borderRadius: "10px",
+            border: "1px solid #ead8cc",
+            background: "#fdf9f4",
             color: "#870210",
-            fontSize: "12px",
+            fontSize: "11.5px",
             fontWeight: 800,
             cursor: "pointer",
             display: "inline-flex",
             alignItems: "center",
-            gap: "5px",
+            gap: "4px",
             flexShrink: 0,
           }}
         >
           <span>الأقسام</span>
-          <ArrowLeft size={14} />
+          <ArrowLeft size={13} />
         </button>
       </div>
 
@@ -1607,8 +1617,8 @@ function ProductListPage({ data, onOpen, onAiRecipe }: { data: HomeData; onOpen:
             style={{
               padding: "6px 13px",
               borderRadius: "99px",
-              border: onlyOffers ? "1.5px solid #d90429" : "1px solid #f0cfa0",
-              background: onlyOffers ? "#d90429" : "#fff8eb",
+              border: onlyOffers ? "1.5px solid #870210" : "1px solid #eadcd0",
+              background: onlyOffers ? "#870210" : "#ffffff",
               color: onlyOffers ? "#ffffff" : "#870210",
               fontSize: "12px",
               fontWeight: 900,
@@ -1617,7 +1627,7 @@ function ProductListPage({ data, onOpen, onAiRecipe }: { data: HomeData; onOpen:
               flexShrink: 0,
             }}
           >
-            🔥 قسم العروضات
+            🔥 العروض
           </button>
           <button
             type="button"
@@ -1625,9 +1635,9 @@ function ProductListPage({ data, onOpen, onAiRecipe }: { data: HomeData; onOpen:
             style={{
               padding: "6px 13px",
               borderRadius: "99px",
-              border: !categoryId ? "1.5px solid #870210" : "1px solid #d5e3da",
-              background: !categoryId ? "#870210" : "#ffffff",
-              color: !categoryId ? "#ffffff" : "#870210",
+              border: (!categoryId && !onlyOffers) ? "1.5px solid #870210" : "1px solid #eadcd0",
+              background: (!categoryId && !onlyOffers) ? "#870210" : "#ffffff",
+              color: (!categoryId && !onlyOffers) ? "#ffffff" : "#2b120f",
               fontSize: "12px",
               fontWeight: 800,
               whiteSpace: "nowrap",
@@ -1651,9 +1661,9 @@ function ProductListPage({ data, onOpen, onAiRecipe }: { data: HomeData; onOpen:
                   gap: "6px",
                   padding: "4px 11px 4px 6px",
                   borderRadius: "99px",
-                  border: isActive ? ("1.5px solid " + catColor) : "1px solid #d5e3da",
+                  border: isActive ? ("1.5px solid " + catColor) : "1px solid #eadcd0",
                   background: isActive ? catColor : "#ffffff",
-                  color: isActive ? "#ffffff" : "#870210",
+                  color: isActive ? "#ffffff" : "#2b120f",
                   fontSize: "12px",
                   fontWeight: 800,
                   whiteSpace: "nowrap",
@@ -1671,7 +1681,7 @@ function ProductListPage({ data, onOpen, onAiRecipe }: { data: HomeData; onOpen:
         </div>
       )}
 
-      {query.isLoading ? <Loading /> : query.error ? <LoadError onRetry={() => void query.refetch()} /> : <ProductGrid items={(query.data ?? []).filter(p => !onlyOffers || (() => { const u = unpackProductVariants(p.description); return u.oldPrice > p.price || u.isBundle; })())} onOpen={onOpen} onAiRecipe={onAiRecipe} />}
+      {query.isLoading ? <Loading /> : query.error ? <LoadError onRetry={() => void query.refetch()} /> : <ProductGrid items={visibleProducts} onOpen={onOpen} onAiRecipe={onAiRecipe} />}
     </main>
   );
 }
