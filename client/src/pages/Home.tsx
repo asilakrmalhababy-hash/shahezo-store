@@ -1247,11 +1247,70 @@ function CategoryStrip({ data, onSelect, offersCount = 0, onSelectOffers }: { da
   );
 }
 
+const MY_ORDER_COUNTS_KEY = "shahezo-my-ordered-counts-v1";
+function readMyOrderedCounts(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(MY_ORDER_COUNTS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function recordMyOrderedItems(itemsList: Array<{ productId: number; quantity: number }>) {
+  try {
+    const counts = readMyOrderedCounts();
+    for (const it of itemsList) {
+      const k = String(it.productId);
+      counts[k] = (Number(counts[k]) || 0) + Number(it.quantity || 1);
+    }
+    localStorage.setItem(MY_ORDER_COUNTS_KEY, JSON.stringify(counts));
+  } catch {}
+}
+
+type HomeSortMode = "featured" | "price-asc" | "price-desc" | "most-ordered" | "my-most-ordered" | "category-first";
+
 function HomePage({ data, onOpen, onAiRecipe }: { data: HomeData; onOpen: (id: number) => void; onAiRecipe?: (p: PublicProduct) => void }) {
   const [, navigate] = useLocation();
-  const [sort, setSort] = useState<"featured" | "price-asc" | "price-desc">("featured");
-  const { data: products, isLoading: productsLoading } = trpc.commerce.catalog.listProducts.useQuery({ sort, limit: 24 }, { enabled: sort !== "featured", retry: 1, staleTime: 15000, refetchInterval: false, refetchOnWindowFocus: true });
-  const featured = sort === "featured" ? (data.products?.length ? data.products : (products ?? [])) : (products ?? data.products);
+  const [sort, setSort] = useState<HomeSortMode>("featured");
+  const [startCategoryId, setStartCategoryId] = useState<number | null>(null);
+  const [sortModalOpen, setSortModalOpen] = useState(false);
+  const myCounts = useMemo(() => readMyOrderedCounts(), [sort, sortModalOpen]);
+
+  const featured = useMemo(() => {
+    const base = [...(data.products ?? [])];
+    if (sort === "price-asc") {
+      base.sort((a, b) => a.price - b.price);
+    } else if (sort === "price-desc") {
+      base.sort((a, b) => b.price - a.price);
+    } else if (sort === "most-ordered") {
+      base.sort((a, b) => (Number((b as any).orderCount) || 0) - (Number((a as any).orderCount) || 0));
+    } else if (sort === "my-most-ordered") {
+      base.sort((a, b) => (Number(myCounts[String(b.id)]) || 0) - (Number(myCounts[String(a.id)]) || 0));
+    } else if (sort === "category-first" && startCategoryId !== null) {
+      base.sort((a, b) => {
+        const aMatch = a.categoryId === startCategoryId ? 1 : 0;
+        const bMatch = b.categoryId === startCategoryId ? 1 : 0;
+        return bMatch - aMatch;
+      });
+    }
+    return base;
+  }, [data.products, sort, startCategoryId, myCounts]);
+
+  const activeStartCategoryName = useMemo(
+    () => (startCategoryId !== null ? data.categories.find(c => c.id === startCategoryId)?.name || "" : ""),
+    [data.categories, startCategoryId]
+  );
+
+  const sortLabel =
+    sort === "featured" ? "الافتراضي"
+    : sort === "price-asc" ? "الأقل سعراً"
+    : sort === "price-desc" ? "الأكثر سعراً"
+    : sort === "most-ordered" ? "الأكثر طلباً"
+    : sort === "my-most-ordered" ? "أكثر ما أطلبه"
+    : activeStartCategoryName ? ("قسم: " + activeStartCategoryName) : "البدء بقسم";
+
   const changeCategory = (id: number) => { navigate("/products?category=" + id); };
 
   const topBanners = useMemo(() => (data.banners ?? []).filter(b => parseBannerMeta(b.actionUrl).cfg.placement === "top"), [data.banners]);
@@ -1281,7 +1340,169 @@ function HomePage({ data, onOpen, onAiRecipe }: { data: HomeData; onOpen: (id: n
       );
     })()}
     {middleBanners.length > 0 && <BannerCarousel banners={middleBanners} />}
-    <section className="store-section products-section"><div className="section-heading"><div><h2>منتجات المتجر</h2></div><div className="section-tools"><label className="sort-select"><ArrowUpDown size={15} /><select aria-label="ترتيب المنتجات" value={sort} onChange={event => setSort(event.target.value as typeof sort)}><option value="featured">الأبرز</option><option value="price-asc">السعر: الأقل أولًا</option><option value="price-desc">السعر: الأعلى أولًا</option></select></label><Link className="text-link" href="/products">عرض الكل <ArrowLeft size={15} /></Link></div></div>{productsLoading && !featured.length ? <Loading /> : <ProductGrid items={featured} onOpen={onOpen} onAiRecipe={onAiRecipe} />}</section>
+    <section className="store-section products-section">
+      <div className="section-heading">
+        <div><h2>منتجات المتجر</h2></div>
+        <div className="section-tools">
+          <button
+            type="button"
+            onClick={() => setSortModalOpen(true)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "6px 11px",
+              borderRadius: "11px",
+              border: sort !== "featured" ? "1.5px solid #870210" : "1px solid #e4d5c9",
+              background: sort !== "featured" ? "#fff4ee" : "#ffffff",
+              color: "#870210",
+              fontSize: "11.5px",
+              fontWeight: 800,
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(43, 18, 15, 0.04)",
+            }}
+          >
+            <ArrowUpDown size={14} />
+            <span>{sortLabel}</span>
+            <ChevronDown size={13} />
+          </button>
+          <Link className="text-link" href="/products">عرض الكل <ArrowLeft size={15} /></Link>
+        </div>
+      </div>
+      <ProductGrid items={featured} onOpen={onOpen} onAiRecipe={onAiRecipe} />
+    </section>
+
+    {sortModalOpen && (
+      <div
+        className="modal-backdrop"
+        role="presentation"
+        onMouseDown={e => { if (e.target === e.currentTarget) setSortModalOpen(false); }}
+        style={{ zIndex: 92 }}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            width: "min(360px, calc(100vw - 28px))",
+            background: "#ffffff",
+            borderRadius: "22px",
+            padding: "16px",
+            border: "1.5px solid #ead8cc",
+            boxShadow: "0 20px 44px rgba(43, 18, 15, 0.22)",
+            display: "grid",
+            gap: "10px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "8px", borderBottom: "1px solid #f2e6dc" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ width: "32px", height: "32px", borderRadius: "10px", background: "#fff2eb", color: "#870210", display: "grid", placeItems: "center" }}>
+                <ArrowUpDown size={16} />
+              </span>
+              <strong style={{ fontSize: "14.5px", color: "#2b120f", fontWeight: 900 }}>ترتيب عرض المنتجات</strong>
+            </div>
+            <button type="button" className="icon-button" onClick={() => setSortModalOpen(false)} aria-label="إغلاق">
+              <X size={17} />
+            </button>
+          </div>
+
+          <div style={{ display: "grid", gap: "6px" }}>
+            {[
+              { id: "featured" as const, title: "الافتراضي", sub: "ترتيب المتجر الأساسي والأبرز", icon: "✨" },
+              { id: "price-asc" as const, title: "السعر: الأقل أولاً", sub: "من الأرخص إلى الأغلى", icon: "⬇️" },
+              { id: "price-desc" as const, title: "السعر: الأكثر أولاً", sub: "من الأغلى إلى الأرخص", icon: "⬆️" },
+              { id: "most-ordered" as const, title: "الأكثر طلباً", sub: "الأصناف الأكثر طلباً في شهيزو", icon: "🔥" },
+              { id: "my-most-ordered" as const, title: "أكثر ما أطلبه أنا", sub: "أصنافك المفضلة من طلباتك السابقة", icon: "❤️" },
+              { id: "category-first" as const, title: "البدء بقسم محدد", sub: "اعرض منتجات قسمك المفضل في البداية", icon: "📂" },
+            ].map(opt => {
+              const active = sort === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => {
+                    setSort(opt.id);
+                    if (opt.id !== "category-first") {
+                      setSortModalOpen(false);
+                    } else if (startCategoryId === null && data.categories.length > 0) {
+                      setStartCategoryId(data.categories[0].id);
+                    }
+                  }}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "10px",
+                    padding: "9px 11px",
+                    borderRadius: "13px",
+                    border: active ? "1.5px solid #870210" : "1px solid #efe4da",
+                    background: active ? "#fff5ef" : "#ffffff",
+                    cursor: "pointer",
+                    textAlign: "right",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+                    <span style={{ fontSize: "16px", lineHeight: 1 }}>{opt.icon}</span>
+                    <div style={{ display: "grid", gap: "1px" }}>
+                      <strong style={{ fontSize: "12.5px", color: active ? "#870210" : "#2b120f", fontWeight: active ? 900 : 800 }}>{opt.title}</strong>
+                      <small style={{ fontSize: "10.5px", color: "#7a5e54" }}>{opt.sub}</small>
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "50%",
+                      border: active ? "2px solid #870210" : "1.5px solid #d5c5b8",
+                      background: active ? "#870210" : "transparent",
+                      color: "#ffffff",
+                      display: "grid",
+                      placeItems: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {active && <Check size={12} strokeWidth={3} />}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {sort === "category-first" && data.categories.length > 0 && (
+            <div style={{ paddingTop: "6px", borderTop: "1px dashed #ead8cc", display: "grid", gap: "7px" }}>
+              <small style={{ fontSize: "11px", fontWeight: 800, color: "#870210" }}>اختر القسم الذي يبدأ به العرض:</small>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {data.categories.map(cat => {
+                  const chosen = startCategoryId === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        setStartCategoryId(cat.id);
+                        setSortModalOpen(false);
+                      }}
+                      style={{
+                        padding: "6px 11px",
+                        borderRadius: "99px",
+                        border: chosen ? "1.5px solid #870210" : "1px solid #e5d6c8",
+                        background: chosen ? "#870210" : "#fdf9f4",
+                        color: chosen ? "#ffffff" : "#2b120f",
+                        fontSize: "11.5px",
+                        fontWeight: 800,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {cat.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
     {bottomBanners.length > 0 && <BannerCarousel banners={bottomBanners} />}
   </main>;
 }
@@ -2499,6 +2720,7 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
     onSuccess: result => {
       const idempotencyKey = keyRef.current.key;
       customer.rememberOrder({ orderNumber: result.orderNumber, idempotencyKey, createdAt: new Date().toISOString() });
+      recordMyOrderedItems(items);
       clearPendingOrderIdempotencyKey(idempotencyKey);
       if (result.duplicate) {
         toast.info("الطلب مسجل مسبقاً برقم " + result.orderNumber + ". راجع «طلباتي».");

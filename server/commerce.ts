@@ -1000,18 +1000,25 @@ async function refreshHomeCatalogCache() {
     try {
       const db = await database();
       void ensureOrderItemsFastSchema(db);
-      const [categoryRows, productRows, bannerRows, offerRows, settings] = await Promise.all([
+      const [categoryRows, productRows, bannerRows, offerRows, settings, popRows] = await Promise.all([
         db.select().from(categories).where(eq(categories.isActive, true)).orderBy(asc(categories.sortOrder), asc(categories.id)),
         db.select().from(products).where(and(eq(products.isPublished, true), eq(products.isAvailable, true))).orderBy(asc(products.sortOrder), desc(products.createdAt)).limit(500),
         db.select().from(banners).where(and(eq(banners.isActive, true))).orderBy(asc(banners.sortOrder), desc(banners.createdAt)),
         db.select().from(offers).where(and(eq(offers.isActive, true))).orderBy(desc(offers.createdAt)),
         readSettings(db),
+        db.select({ productId: orderItems.productId, quantity: orderItems.quantity }).from(orderItems).limit(5000).catch(() => []),
       ]);
+      const popularityMap = new Map<number, number>();
+      for (const pr of popRows) {
+        if (pr.productId != null) {
+          popularityMap.set(pr.productId, (popularityMap.get(pr.productId) || 0) + Number(pr.quantity || 1));
+        }
+      }
       const validBanners = bannerRows.filter(b => Boolean(b.imageUrl && b.imageUrl.trim()));
       const g = globalThis as any;
       g.__fastHomeData = {
         categories: categoryRows.map(r => toFastImg("category", r)),
-        products: productRows.map(r => toFastImg("product", r)),
+        products: productRows.map(r => ({ ...toFastImg("product", r), orderCount: popularityMap.get(r.id) || 0 })),
         banners: validBanners.map(r => toFastImg("banner", r)),
         offers: offerRows,
         settings,
