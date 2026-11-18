@@ -2211,10 +2211,10 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
     offerCode: "",
   }));
   const items = useMemo(() => cart.map(item => ({ productId: item.id, quantity: item.quantity, name: item.name, ...(item.variant ? { variant: item.variant } : {}), ...(item.customAmount ? { customAmount: item.customAmount } : {}) })), [cart]);
+  const [orderType, setOrderType] = useState<"delivery" | "takeaway" | "dine_in">("delivery");
   const signature = JSON.stringify({ form, items, orderType });
   const keyRef = useRef<{ signature: string; key: string }>({ signature: "", key: "" });
   if (keyRef.current.signature !== signature) keyRef.current = { signature, key: getPendingOrderIdempotencyKey(signature) };
-  const [orderType, setOrderType] = useState<"delivery" | "takeaway" | "dine_in">("delivery");
   const [quoteSignature, setQuoteSignature] = useState("");
 
   const handleUnavailableOrderError = (rawMsg: string) => {
