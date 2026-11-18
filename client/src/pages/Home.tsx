@@ -244,7 +244,7 @@ function ShahezoWhatsAppBar() {
       window.removeEventListener("toggle-shahezo-wa", onToggle);
     };
   }, []);
-  if (location.startsWith("/account") || location.startsWith("/cart") || location.startsWith("/assistant")) {
+  if (location.startsWith("/account") || location.startsWith("/cart") || location.startsWith("/assistant") || location.startsWith("/orders")) {
     return null;
   }
   return (
@@ -3175,23 +3175,25 @@ function OrderRatingCard({ orderNumber, isPickup, existingRating, onRated }: { o
     const r = existingRating || { driverRating, qualityRating, tasteRating, note };
     const faceFor = (v: number) => RATING_FACES.find(f => f.val === v) || RATING_FACES[0];
     return (
-      <div style={{ margin: "0 14px 12px", padding: "10px 12px", borderRadius: "14px", background: "#f0fdf4", border: "1px solid #bbf7d0", display: "grid", gap: "5px" }}>
+      <div style={{ margin: "10px 14px 4px", padding: "10px 12px", borderRadius: "12px", background: "#f7fbf8", border: "1px solid #d5ebd9", display: "grid", gap: "5px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
-          <strong style={{ fontSize: "12px", color: "#166534" }}>⭐ شكراً لتقييمك هذا الطلب</strong>
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", fontSize: "11px", fontWeight: 700, color: "#15803d" }}>
+          <strong style={{ fontSize: "11.5px", color: "#166534", display: "inline-flex", alignItems: "center", gap: "5px" }}>
+            <CheckCircle2 size={14} /> تم استلام تقييمك بنجاح
+          </strong>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", fontSize: "11px", fontWeight: 700, color: "#2b4a36" }}>
             <span>{isPickup ? "الخدمة" : "الموصل"}: {faceFor(r.driverRating).emoji} {faceFor(r.driverRating).label}</span>
             <span>· الجودة: {faceFor(r.qualityRating).emoji} {faceFor(r.qualityRating).label}</span>
             <span>· المذاق: {faceFor(r.tasteRating).emoji} {faceFor(r.tasteRating).label}</span>
           </div>
         </div>
-        {r.note && <small style={{ fontSize: "11px", color: "#166534" }}>💬 «{r.note}»</small>}
+        {r.note && <small style={{ fontSize: "11px", color: "#4b6352" }}>«{r.note}»</small>}
       </div>
     );
   }
 
   const renderFaceRow = (title: string, value: number, onChange: (v: number) => void) => (
     <div style={{ display: "grid", gap: "5px" }}>
-      <span style={{ fontSize: "11.5px", fontWeight: 800, color: "#2b120f" }}>{title}</span>
+      <span style={{ fontSize: "11.5px", fontWeight: 800, color: "#3d2621" }}>{title}</span>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "5px" }}>
         {RATING_FACES.map(f => {
           const active = value === f.val;
@@ -3201,20 +3203,21 @@ function OrderRatingCard({ orderNumber, isPickup, existingRating, onRated }: { o
               type="button"
               onClick={() => onChange(f.val)}
               style={{
-                padding: "6px 2px",
-                borderRadius: "11px",
-                border: active ? "2px solid #870210" : "1px solid #e6d7cb",
-                background: active ? "#fff3eb" : "#ffffff",
+                padding: "6px 2px 5px",
+                borderRadius: "10px",
+                border: active ? "1.5px solid #870210" : "1px solid #ede2d8",
+                background: active ? "#fdf3ed" : "#ffffff",
+                opacity: active ? 1 : 0.72,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 gap: "2px",
                 cursor: "pointer",
-                transition: "transform 0.12s",
+                transition: "all 0.14s ease",
               }}
             >
-              <span style={{ fontSize: "18px", lineHeight: 1.1 }}>{f.emoji}</span>
-              <span style={{ fontSize: "9.5px", fontWeight: active ? 900 : 700, color: active ? "#870210" : "#6e564d" }}>{f.label}</span>
+              <span style={{ fontSize: "17px", lineHeight: 1.1 }}>{f.emoji}</span>
+              <span style={{ fontSize: "9.5px", fontWeight: active ? 800 : 600, color: active ? "#870210" : "#7c6862" }}>{f.label}</span>
             </button>
           );
         })}
@@ -3223,30 +3226,30 @@ function OrderRatingCard({ orderNumber, isPickup, existingRating, onRated }: { o
   );
 
   return (
-    <div style={{ margin: "0 14px 12px", padding: "12px", borderRadius: "15px", background: "linear-gradient(135deg, #fffdf9 0%, #fff6ec 100%)", border: "1.5px solid #ead4bd", display: "grid", gap: "10px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <strong style={{ fontSize: "13px", color: "#870210", fontWeight: 900 }}>⭐ قيّم تجربتك بعد استلام الطلب</strong>
-        <small style={{ fontSize: "10.5px", color: "#7a5e54" }}>بضغطة واحدة</small>
+    <div style={{ margin: "10px 14px 4px", padding: "12px 13px", borderRadius: "14px", background: "#ffffff", border: "1px solid #eadcd0", display: "grid", gap: "9px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "7px", borderBottom: "1px solid #f4ebe3" }}>
+        <strong style={{ fontSize: "12.5px", color: "#2b120f", fontWeight: 900 }}>تقييم الطلب</strong>
+        <small style={{ fontSize: "10.5px", color: "#8c746a", fontWeight: 600 }}>رأيك يهمنا</small>
       </div>
-      {renderFaceRow(isPickup ? "🤝 تقييم الخدمة والاستلام" : "🛵 تقييم الموصل", driverRating, setDriverRating)}
-      {renderFaceRow("✨ تقييم الجودة والتغليف", qualityRating, setQualityRating)}
-      {renderFaceRow("😋 تقييم المذاق والطعم", tasteRating, setTasteRating)}
+      {renderFaceRow(isPickup ? "الخدمة والاستلام" : "أداء الموصل", driverRating, setDriverRating)}
+      {renderFaceRow("الجودة والتغليف", qualityRating, setQualityRating)}
+      {renderFaceRow("المذاق والطعم", tasteRating, setTasteRating)}
       <input
         type="text"
         maxLength={500}
         value={note}
         onChange={e => setNote(e.target.value)}
-        placeholder="أضف ملاحظة إن أردت (اختياري)..."
-        style={{ width: "100%", padding: "8px 11px", borderRadius: "10px", border: "1px solid #e2d2c3", background: "#ffffff", fontSize: "12px" }}
+        placeholder="إضافة ملاحظة (اختياري)..."
+        style={{ width: "100%", padding: "8px 11px", borderRadius: "10px", border: "1px solid #e6d8cc", background: "#fcfaf7", fontSize: "12px", color: "#2b120f" }}
       />
       <button
         type="button"
         disabled={mut.isPending}
         onClick={() => mut.mutate({ orderNumber, driverRating, qualityRating, tasteRating, note: note.trim() || undefined })}
         className="button button-primary"
-        style={{ minHeight: "38px", fontSize: "12.5px", fontWeight: 900, borderRadius: "11px" }}
+        style={{ minHeight: "38px", fontSize: "12.5px", fontWeight: 800, borderRadius: "10px" }}
       >
-        {mut.isPending ? "جارٍ إرسال التقييم..." : "إرسال التقييم ✓"}
+        {mut.isPending ? "جارٍ الاعتماد..." : "اعتماد التقييم"}
       </button>
     </div>
   );
@@ -3373,9 +3376,9 @@ function OrdersPage() {
             type="button"
             onClick={() => { void query.refetch(); toast.success("تم تحديث حالة الطلبات"); }}
             className="small-button"
-            style={{ background: "#fdf9f4", border: "1px solid #ead8cc", color: "#870210", fontWeight: 800 }}
+            style={{ background: "#fdf9f4", border: "1px solid #e6d5c7", color: "#870210", fontWeight: 800, fontSize: "11.5px", padding: "6px 11px", borderRadius: "10px" }}
           >
-            🔄 تحديث الحالة
+            تحديث
           </button>
         )}
       </div>
@@ -3432,7 +3435,7 @@ function OrdersPage() {
                 style={{
                   borderRadius: "20px",
                   background: "#ffffff",
-                  border: isExpanded ? "2px solid #870210" : "1.5px solid #ead8cc",
+                  border: isExpanded ? "1.5px solid #d9b8a3" : "1px solid #ece0d5",
                   boxShadow: isExpanded ? "0 10px 24px rgba(135, 2, 16, 0.07)" : "0 4px 12px rgba(43, 18, 15, 0.04)",
                   overflow: "hidden",
                   transition: "border-color 0.18s, box-shadow 0.18s",
@@ -3459,13 +3462,13 @@ function OrdersPage() {
                       <strong style={{ fontSize: "15px", color: "#2b120f" }}>طلب #{displayOrderNo}</strong>
                       {isLatest && (
                         <span style={{ fontSize: "10px", fontWeight: 900, padding: "2px 8px", borderRadius: "99px", background: "#870210", color: "#f1d897" }}>
-                          ✨ الأحدث
+                          الأحدث
                         </span>
                       )}
                       <span className={"status-pill status-" + order.status}>{pickupAwareStatusLabel}</span>
                     </div>
                     <small style={{ color: "#7a5e54", fontSize: "11px", fontWeight: 600 }}>
-                      🕒 {new Date(order.createdAt).toLocaleString("ar-YE")} · {order.items.length} أصناف
+                      {new Date(order.createdAt).toLocaleString("ar-YE")} · {order.items.length} أصناف
                     </small>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
