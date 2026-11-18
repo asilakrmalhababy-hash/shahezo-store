@@ -75,7 +75,7 @@ function AdminSelect({
   }, [open]);
 
   return (
-    <div ref={wrapRef} className={className} style={{ position: "relative", width: "100%", ...style, padding: 0, border: 0, background: "transparent" }}>
+    <div ref={wrapRef} className={className} style={{ position: "relative", width: "100%", minWidth: 0, maxWidth: "100%", ...style, padding: 0, border: 0, background: "transparent" }}>
       <button
         type="button"
         disabled={disabled}
@@ -100,7 +100,7 @@ function AdminSelect({
           textAlign: "right",
         }}
       >
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {selectedOpt?.label || "اختر..."}
         </span>
         <ChevronDown
@@ -163,7 +163,7 @@ function AdminSelect({
                   cursor: opt.disabled ? "not-allowed" : "pointer",
                 }}
               >
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opt.label}</span>
+                <span style={{ flex: 1, minWidth: 0, whiteSpace: "normal", lineHeight: 1.35, wordBreak: "break-word" }}>{opt.label}</span>
                 {active && <Check size={14} strokeWidth={2.5} style={{ color: "#870210", flexShrink: 0 }} />}
               </button>
             );
