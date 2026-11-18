@@ -443,11 +443,13 @@ async function notifyCustomerOrderStatus(orderId: number, orderNumber: string, s
   }).from(customerPushSubscriptions).where(eq(customerPushSubscriptions.orderId, orderId));
   const uniqueByEndpoint = [...new Map(subscriptions.map(s => [s.endpointHash, s])).values()];
   if (!uniqueByEndpoint.length) return;
+  const orderRow = (await db.select({ city: orders.city }).from(orders).where(eq(orders.id, orderId)).limit(1))[0];
+  const isPickupOrder = orderRow?.city === "استلام من البوفية";
   const shortNo = orderNumber.split("-").pop() || orderNumber;
   const defaultBodies: Record<string, string> = {
     new: "تم استلام طلبك بنجاح، شكراً لك. وبانتظار التجهيز ✨",
     preparing: "طلبك الآن قيد التجهيز بعناية 👨‍🍳",
-    ready: "طلبك جاهز للتوصيل الكامل 📦",
+    ready: isPickupOrder ? "طلبك جاهز الآن في البوفية — تفضل بالاستلام ✨" : "طلبك جاهز للتوصيل الكامل 📦",
     out_for_delivery: "طلبك خرج للتوصيل وهو في طريقه إليك 🛵",
     delivered: "شكراً لطلبك من جاهز، ننتظرك مجدداً.، بالهناء والشفاء من بوفية شهيزو 🥙❤️",
     cancelled: "عذراً، تم إلغاء الطلب #" + shortNo,
@@ -455,7 +457,7 @@ async function notifyCustomerOrderStatus(orderId: number, orderNumber: string, s
   const statusTitles: Record<string, string> = {
     new: "🥙 بوفية شهيزو | تأكيد استلام الطلب #" + shortNo,
     preparing: "👨‍🍳 بوفية شهيزو | طلبك الآن قيد التجهيز. #" + shortNo,
-    ready: "📦 بوفية شهيزو | طلبك #" + shortNo + " جاهز للتوصيل",
+    ready: isPickupOrder ? ("🛍️ بوفية شهيزو | طلبك #" + shortNo + " جاهز للاستلام") : ("📦 بوفية شهيزو | طلبك #" + shortNo + " جاهز للتوصيل"),
     out_for_delivery: "🛵 بوفية شهيزو | طلبك #" + shortNo + " في الطريق إليك",
     delivered: "❤️ بوفية شهيزو | تم تسليم طلبك #" + shortNo,
     cancelled: "⚠️ بوفية شهيزو | إشعار بخصوص الطلب #" + shortNo,

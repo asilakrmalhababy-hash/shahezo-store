@@ -173,7 +173,7 @@ import {
   ArrowDownWideNarrow, ArrowLeft, ArrowUpDown, BadgePercent, BellRing, Check, ChevronDown, ChevronLeft, ChevronRight, CircleUserRound, Copy,
   Heart, Home as HomeIcon, Leaf, LoaderCircle, MapPin, Menu, MessageCircle, Minus, Package,
   Plus, Search, ShoppingBag, ShoppingCart, SlidersHorizontal, Sparkles, Trash2, Truck, UserRound,
-  X, Bot, Clock3, ShieldCheck,
+  X, Bot, Clock3, ShieldCheck, CheckCircle2, Flame, UtensilsCrossed,
 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -2958,7 +2958,7 @@ function OrdersPage() {
             <Package size={20} />
           </span>
           <div>
-            <h1 style={{ margin: 0, fontSize: "17px", fontWeight: 900, color: "#2b120f" }}>طلباتي ومتابعة التوصيل</h1>
+            <h1 style={{ margin: 0, fontSize: "17px", fontWeight: 900, color: "#2b120f" }}>طلباتي ومتابعة الطلب</h1>
             <small style={{ fontSize: "11px", color: "#7a5e54", fontWeight: 700 }}>
               {orders.length > 0 ? `إجمالي الطلبات: ${orders.length}` + (activeOrdersCount > 0 ? ` · (${activeOrdersCount} قيد التنفيذ الآن 🔥)` : "") : "تتبع حالة طلباتك خطوة بخطوة"}
             </small>
@@ -3002,7 +3002,20 @@ function OrdersPage() {
           {orders.map((order, idx) => {
             const isLatest = idx === 0;
             const isExpanded = expandedOrderNo === order.orderNumber;
-            const currentStepIdx = stepOrder.indexOf(order.status);
+            const isPickupOrder = order.city === "استلام من البوفية";
+            const isDineInOrder = isPickupOrder && String(order.district || "").includes("محلي");
+            const orderSteps = isPickupOrder
+              ? ["new", "preparing", "ready", "delivered"]
+              : stepOrder;
+            const currentStepIdx = isPickupOrder && order.status === "out_for_delivery"
+              ? 2
+              : orderSteps.indexOf(order.status);
+            const pickupAwareStatusLabel =
+              isPickupOrder && (order.status === "ready" || order.status === "out_for_delivery")
+                ? (isDineInOrder ? "جاهز للتقديم" : "جاهز للاستلام")
+                : isDineInOrder && order.status === "delivered"
+                ? "تم التقديم"
+                : (stateLabels[order.status] || order.status);
             const cancelledNotes = (order.events || []).filter(ev => String(ev.note || "").startsWith("❌")).map(ev => String(ev.note || "").replace(/\s*\|\s*الإجمالي الجديد:.*$/, ""));
             const regularNotes = (order.events || []).filter(ev => ev.note && ev.note.trim() && ev.note !== "تم استلام الطلب" && !String(ev.note).startsWith("❌"));
             const latestStoreNote = regularNotes.at(-1);
@@ -3045,7 +3058,7 @@ function OrdersPage() {
                           ✨ الأحدث
                         </span>
                       )}
-                      <span className={"status-pill status-" + order.status}>{stateLabels[order.status] || order.status}</span>
+                      <span className={"status-pill status-" + order.status}>{pickupAwareStatusLabel}</span>
                     </div>
                     <small style={{ color: "#7a5e54", fontSize: "11px", fontWeight: 600 }}>
                       🕒 {new Date(order.createdAt).toLocaleString("ar-YE")} · {order.items.length} أصناف
@@ -3062,32 +3075,48 @@ function OrdersPage() {
                 </div>
 
                 {(isExpanded || (isLatest && order.status !== "delivered" && order.status !== "cancelled")) && order.status !== "cancelled" && (
-                  <div style={{ padding: "12px 14px", background: "#fdf9f4", borderTop: "1px solid #f2e4d8", borderBottom: isExpanded ? "1px solid #f2e4d8" : "none" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "6px" }}>
-                      {stepOrder.map((st, sIdx) => {
+                  <div style={{ padding: "14px 12px", background: "#fdf9f4", borderTop: "1px solid #f2e4d8", borderBottom: isExpanded ? "1px solid #f2e4d8" : "none" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: `repeat(${orderSteps.length}, 1fr)`, gap: "6px" }}>
+                      {orderSteps.map((st, sIdx) => {
                         const done = currentStepIdx >= sIdx;
                         const active = currentStepIdx === sIdx;
-                        const meta = stepMeta[st];
+                        const stepLabel =
+                          st === "new" ? "تم الاستلام"
+                          : st === "preparing" ? (isDineInOrder ? "قيد التحضير" : "قيد التجهيز")
+                          : st === "ready" ? (isPickupOrder ? (isDineInOrder ? "جاهز للتقديم" : "جاهز للاستلام") : "جاهز للتوصيل")
+                          : st === "out_for_delivery" ? "خرج للتوصيل"
+                          : (isDineInOrder ? "تم التقديم" : "تم التسليم");
+                        const StepIcon =
+                          st === "new" ? <Check size={16} strokeWidth={2.6} />
+                          : st === "preparing" ? <Flame size={16} strokeWidth={2.2} />
+                          : st === "ready" ? (isDineInOrder ? <UtensilsCrossed size={15} strokeWidth={2.2} /> : isPickupOrder ? <ShoppingBag size={15} strokeWidth={2.2} /> : <Package size={15} strokeWidth={2.2} />)
+                          : st === "out_for_delivery" ? <Truck size={15} strokeWidth={2.2} />
+                          : <CheckCircle2 size={16} strokeWidth={2.3} />;
                         return (
-                          <div key={st} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "5px", textAlign: "center" }}>
+                          <div key={st} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", textAlign: "center" }}>
                             <span
                               className={active ? "shahezo-step-dot-active" : ""}
                               style={{
-                                width: "30px",
-                                height: "30px",
+                                width: "34px",
+                                height: "34px",
                                 borderRadius: "50%",
-                                background: active ? "#870210" : done ? "#fceee9" : "#eee6df",
-                                border: active ? "2px solid #f1d897" : done ? "1.5px solid #870210" : "1px solid #d8cbc0",
+                                background: active
+                                  ? "linear-gradient(135deg, #870210 0%, #b91c1c 100%)"
+                                  : done
+                                  ? "#fceee9"
+                                  : "#f2ebe4",
+                                color: active ? "#f1d897" : done ? "#870210" : "#9c877f",
+                                border: active ? "2px solid #f1d897" : done ? "1.5px solid #870210" : "1px solid #dfd3c8",
+                                boxShadow: active ? "0 4px 12px rgba(135, 2, 16, 0.25)" : "none",
                                 display: "grid",
                                 placeItems: "center",
-                                fontSize: "13px",
                               }}
                             >
-                              {meta.emoji}
+                              {StepIcon}
                             </span>
-                            <div style={{ width: "100%", height: "4px", borderRadius: "99px", background: done ? "linear-gradient(90deg, #870210, #e86c12)" : "#e2d6cc" }} />
-                            <span style={{ fontSize: "9.5px", fontWeight: active ? 900 : 700, color: active ? "#870210" : done ? "#2b120f" : "#96827a", lineHeight: 1.2 }}>
-                              {meta.label}
+                            <div style={{ width: "100%", height: "4px", borderRadius: "99px", background: done ? "linear-gradient(90deg, #870210, #d97706)" : "#e5d9ce" }} />
+                            <span style={{ fontSize: "10px", fontWeight: active ? 900 : 700, color: active ? "#870210" : done ? "#2b120f" : "#96827a", lineHeight: 1.25 }}>
+                              {stepLabel}
                             </span>
                           </div>
                         );
@@ -3100,7 +3129,12 @@ function OrdersPage() {
                   <div style={{ padding: "14px 16px", display: "grid", gap: "11px" }}>
                     {ordAny.city && (
                       <div style={{ fontSize: "11.5px", color: "#5c433b", background: "#fffaf5", padding: "8px 11px", borderRadius: "10px", border: "1px solid #f0e0d2" }}>
-                        📍 <strong>عنوان التوصيل:</strong> {ordAny.city}{ordAny.district ? (" — " + ordAny.district) : ""}{ordAny.addressDetails ? (" · " + ordAny.addressDetails) : ""}
+                        {isPickupOrder ? (isDineInOrder ? "🍽️ " : "🛍️ ") : "📍 "}
+                        <strong>{isPickupOrder ? "طريقة الاستلام:" : "عنوان التوصيل:"}</strong>{" "}
+                        {isPickupOrder
+                          ? (isDineInOrder ? "أكل محلي داخل البوفية" : "استلام سفري مغلف من البوفية")
+                          : `${ordAny.city}${ordAny.district ? (" — " + ordAny.district) : ""}`}
+                        {ordAny.addressDetails ? (" · " + ordAny.addressDetails) : ""}
                       </div>
                     )}
 
@@ -3137,7 +3171,7 @@ function OrdersPage() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", paddingTop: "4px" }}>
                       <div>
                         <small style={{ display: "block", fontSize: "10.5px", color: "#7a5e54" }}>
-                          الفرعي: {formatPrice(order.subtotal)} · التوصيل: {formatPrice(order.deliveryFee)}
+                          الفرعي: {formatPrice(order.subtotal)} · {isPickupOrder ? "بدون رسوم توصيل" : `التوصيل: ${formatPrice(order.deliveryFee)}`}
                         </small>
                         <strong style={{ fontSize: "16px", color: "#870210" }}>الإجمالي: {formatPrice(order.total)}</strong>
                       </div>
