@@ -256,7 +256,9 @@ function ShahezoWhatsAppBar() {
         aria-label="تواصل واتساب مع بوفية شهيزو"
         title="تواصل معنا عبر واتساب"
       >
-        <MessageCircle size={24} />
+        <svg width="22" height="22" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
+          <path d="M16.01 3.2c-7.07 0-12.8 5.73-12.8 12.8 0 2.26.59 4.46 1.71 6.4L3.1 28.9l6.67-1.75a12.75 12.75 0 0 0 6.24 1.63h.01c7.06 0 12.8-5.73 12.8-12.8 0-3.42-1.33-6.64-3.75-9.05A12.72 12.72 0 0 0 16.01 3.2zm0 23.42h-.01a10.6 10.6 0 0 1-5.41-1.48l-.39-.23-3.96 1.04 1.06-3.86-.25-.4a10.58 10.58 0 0 1-1.63-5.67c0-5.85 4.76-10.62 10.61-10.62 2.83 0 5.49 1.1 7.5 3.11a10.54 10.54 0 0 1 3.1 7.52c0 5.85-4.76 10.61-10.62 10.61zm5.82-7.95c-.32-.16-1.89-.93-2.18-1.04-.29-.11-.5-.16-.72.16-.21.32-.82 1.04-1.01 1.25-.19.21-.37.24-.69.08-.32-.16-1.35-.5-2.57-1.59-.95-.85-1.59-1.9-1.78-2.22-.19-.32-.02-.49.14-.65.14-.14.32-.37.48-.56.16-.19.21-.32.32-.53.11-.21.05-.4-.03-.56-.08-.16-.72-1.73-.98-2.37-.26-.62-.52-.54-.72-.55h-.61c-.21 0-.56.08-.85.4-.29.32-1.12 1.09-1.12 2.66 0 1.57 1.15 3.09 1.31 3.3.16.21 2.26 3.45 5.48 4.84.77.33 1.36.53 1.83.68.77.24 1.47.21 2.02.13.62-.09 1.89-.77 2.16-1.52.27-.75.27-1.39.19-1.52-.08-.13-.29-.21-.61-.37z" />
+        </svg>
       </button>
       <div className={`shahezo-wa-strip ${open ? "is-open" : "is-closed"}`}>
         <div className="shahezo-wa-strip-head">
@@ -1160,54 +1162,54 @@ function CategoryStrip({ data, onSelect, offersCount = 0, onSelectOffers }: { da
           type="button"
           onClick={onSelectOffers}
           style={{
-            flex: "0 0 156px",
-            width: "156px",
+            flex: "0 0 106px",
+            width: "106px",
             scrollSnapAlign: "start",
-            background: "linear-gradient(145deg, #fff9f0 0%, #ffe8d6 100%)",
-            border: "1.5px solid #e86c12",
-            borderRadius: "18px",
-            padding: "5px 5px 9px",
+            background: "#ffffff",
+            border: "1.5px solid #f0c29c",
+            borderRadius: "16px",
+            padding: "5px 5px 8px",
             cursor: "pointer",
-            boxShadow: "0 6px 16px rgba(232, 108, 18, 0.14)",
+            boxShadow: "0 4px 12px rgba(135, 2, 16, 0.07)",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: "8px",
+            gap: "6px",
           }}
         >
-          <div style={{ width: "100%", height: "134px", borderRadius: "14px", background: "linear-gradient(135deg, #870210 0%, #d90429 60%, #e86c12 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#ffffff", gap: "6px" }}>
-            <BadgePercent size={44} strokeWidth={2} />
-            <strong style={{ fontSize: "13px", color: "#ffe6a7" }}>{offersCount > 0 ? `${offersCount} عرض متاح` : "عروض وتجميعات"}</strong>
+          <div style={{ width: "100%", height: "90px", borderRadius: "12px", background: "linear-gradient(135deg, #870210 0%, #c81e1e 60%, #e86c12 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#ffffff", gap: "4px" }}>
+            <BadgePercent size={30} strokeWidth={2} />
+            <strong style={{ fontSize: "10.5px", color: "#ffe6a7" }}>{offersCount > 0 ? `${offersCount} عروض` : "توفير"}</strong>
           </div>
-          <span style={{ display: "inline-block", maxWidth: "100%", padding: "5px 12px", borderRadius: "10px", backgroundColor: "#d90429", color: "#ffffff", fontSize: "11px", fontWeight: 800, lineHeight: 1.35, textAlign: "center" }}>
-            🔥 قسم العروضات
+          <span style={{ fontSize: "11.5px", fontWeight: 900, color: "#870210", lineHeight: 1.25, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>
+            🔥 العروضات
           </span>
         </button>
       )}
       {data.map(category => {
-        const btnColor = category.color && category.color.trim() ? category.color.trim() : "#b8332a";
+        const btnColor = category.color && category.color.trim() ? category.color.trim() : "#870210";
         return (
           <button
             key={category.id}
             type="button"
             onClick={() => onSelect(category.id)}
             style={{
-              flex: "0 0 156px",
-              width: "156px",
+              flex: "0 0 106px",
+              width: "106px",
               scrollSnapAlign: "start",
               background: "#ffffff",
-              border: "1px solid #e6ece8",
-              borderRadius: "18px",
-              padding: "5px 5px 9px",
+              border: "1px solid #ede2d8",
+              borderRadius: "16px",
+              padding: "5px 5px 8px",
               cursor: "pointer",
-              boxShadow: "0 4px 12px rgba(135, 2, 16, 0.05)",
+              boxShadow: "0 3px 10px rgba(43, 18, 15, 0.04)",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: "8px",
+              gap: "6px",
             }}
           >
-            <div style={{ width: "100%", height: "134px", borderRadius: "14px", overflow: "hidden", background: "#fdf6f0" }}>
+            <div style={{ width: "100%", height: "90px", borderRadius: "12px", overflow: "hidden", background: "#fdf6f0" }}>
               {category.imageUrl ? (
                 <SmartImage
                   src={category.imageUrl}
@@ -1219,25 +1221,21 @@ function CategoryStrip({ data, onSelect, offersCount = 0, onSelectOffers }: { da
                 />
               ) : (
                 <div style={{ width: "100%", height: "100%", display: "grid", placeItems: "center", color: btnColor }}>
-                  <Leaf size={30} strokeWidth={1.6} />
+                  <Leaf size={26} strokeWidth={1.6} />
                 </div>
               )}
             </div>
             <span
               style={{
-                display: "inline-block",
-                maxWidth: "100%",
-                padding: "5px 12px",
-                borderRadius: "10px",
-                backgroundColor: btnColor,
-                color: "#ffffff",
-                fontSize: "11px",
-                fontWeight: 700,
-                lineHeight: 1.35,
+                fontSize: "11.5px",
+                fontWeight: 800,
+                color: "#2b120f",
+                lineHeight: 1.25,
                 textAlign: "center",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
+                maxWidth: "100%",
               }}
             >
               {category.name}
@@ -1713,6 +1711,7 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
 function CartPage({ minOrder = 0 }: { minOrder?: number }) {
   const { cart, setQuantity, remove, clear } = useStore();
   const [checkout, setCheckout] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
   const subtotal = cart.reduce((sum, line) => sum + line.price * line.quantity, 0);
   const totalItemsCount = cart.reduce((sum, line) => sum + line.quantity, 0);
   const belowMin = minOrder > 0 && subtotal < minOrder;
@@ -1747,9 +1746,7 @@ function CartPage({ minOrder = 0 }: { minOrder?: number }) {
         {cart.length > 0 && (
           <button
             type="button"
-            onClick={() => {
-              if (window.confirm("هل تريد إفراغ السلة بالكامل؟")) clear();
-            }}
+            onClick={() => setConfirmClear(true)}
             style={{
               padding: "6px 11px",
               borderRadius: "10px",
@@ -1855,7 +1852,73 @@ function CartPage({ minOrder = 0 }: { minOrder?: number }) {
             >
               <Check size={17} /> المتابعة لإتمام الطلب ({formatPrice(subtotal)}) <ArrowLeft size={16} />
             </button>
-            {checkout && <Checkout onClose={() => setCheckout(false)} onSuccess={clear} cart={cart} />}
+            {confirmClear && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={e => { if (e.target === e.currentTarget) setConfirmClear(false); }}
+          style={{ zIndex: 90 }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              width: "min(310px, calc(100vw - 36px))",
+              background: "#ffffff",
+              borderRadius: "20px",
+              padding: "18px 18px 16px",
+              border: "1px solid #efe2d7",
+              boxShadow: "0 18px 40px rgba(43, 18, 15, 0.18)",
+              textAlign: "center",
+              display: "grid",
+              gap: "10px",
+            }}
+          >
+            <div style={{ width: "42px", height: "42px", borderRadius: "14px", background: "#fff1f0", color: "#b42318", display: "grid", placeItems: "center", margin: "0 auto" }}>
+              <Trash2 size={20} />
+            </div>
+            <strong style={{ fontSize: "15px", color: "#2b120f", fontWeight: 900 }}>إفراغ السلة؟</strong>
+            <p style={{ margin: 0, fontSize: "12px", color: "#7a5e54", lineHeight: 1.5 }}>
+              سيتم حذف جميع الأصناف المضافة من سلتك.
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "4px" }}>
+              <button
+                type="button"
+                onClick={() => { clear(); setConfirmClear(false); toast.success("تم إفراغ السلة"); }}
+                style={{
+                  minHeight: "38px",
+                  borderRadius: "11px",
+                  border: 0,
+                  background: "#870210",
+                  color: "#ffffff",
+                  fontSize: "12.5px",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                نعم، إفراغ
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmClear(false)}
+                style={{
+                  minHeight: "38px",
+                  borderRadius: "11px",
+                  border: "1px solid #e6d7cb",
+                  background: "#fdf9f4",
+                  color: "#2b120f",
+                  fontSize: "12.5px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {checkout && <Checkout onClose={() => setCheckout(false)} onSuccess={clear} cart={cart} />}
           </aside>
         </div>
       )}
