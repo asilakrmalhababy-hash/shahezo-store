@@ -597,7 +597,7 @@ function Overview() {
       </section>
 
       <div className="admin-section-heading" style={{ marginTop: "18px" }}><div><h2>آخر الطلبات</h2><p>تظهر الطلبات هنا بعد أن يرسلها العملاء.</p></div><Link href="/admin/orders" className="small-button">إدارة الطلبات<ArrowLeft size={15} /></Link></div>
-      {!data.recentOrders.length ? <div className="admin-empty"><ClipboardList size={22} /><strong>لا توجد طلبات بعد</strong><span>تأكد من إعداد التوصيل قبل فتح الطلبات.</span></div> : <div className="admin-order-table">{data.recentOrders.map(order => <div className="admin-order-row" key={order.id}><span className="order-number">طلب #{order.orderNumber}</span><span>{order.recipientName}</span><span>{new Date(order.createdAt).toLocaleDateString("ar-YE")}</span><b>{money(order.total)}</b><span className={"status-pill status-" + order.status}>{labels[order.status]}</span></div>)}</div>}
+      {!data.recentOrders.length ? <div className="admin-empty"><ClipboardList size={22} /><strong>لا توجد طلبات بعد</strong><span>تأكد من إعداد التوصيل قبل فتح الطلبات.</span></div> : <div className="admin-order-table">{data.recentOrders.map(order => <div className="admin-order-row" key={order.id}><span className="order-number">طلب #{order.orderNumber}</span><span>{order.recipientName}</span><span>{new Date(order.createdAt).toLocaleDateString("ar-YE")}</span><b>{money(order.total)}</b><span className={"status-pill status-" + order.status}>{isPickupOrder && order.status === "ready" ? (String(order.district || "").includes("محلي") ? "جاهز للتقديم" : "جاهز للاستلام") : labels[order.status]}</span></div>)}</div>}
     </div>
   );
 }
@@ -3772,7 +3772,7 @@ let __kitchenWavUrl: string | null = null;
 function buildKitchenRingWavUrl(): string {
   if (__kitchenWavUrl) return __kitchenWavUrl;
   const sampleRate = 22050;
-  const durationSec = 3.0; // 2.0s classic mechanical electric bell + 1.0s pause
+  const durationSec = 12.0; // 2.0s classic mechanical electric bell + 10.0s pause
   const numSamples = Math.floor(sampleRate * durationSec);
   const buffer = new ArrayBuffer(44 + numSamples * 2);
   const view = new DataView(buffer);
@@ -4418,9 +4418,11 @@ function OrdersPanel({ isOwner = false }: { isOwner?: boolean }) {
                       💬 للعميل
                     </a>
                   ) : <span />}
+                  {!isPickupOrder && (
                   <a href={["ht", "tps://wa.me/?text="].join("") + encodeURIComponent(driverWhatsAppText)} target="_blank" rel="noreferrer" className="small-button" style={{ justifyContent: "center", padding: "0 4px", fontSize: "11px", background: "#eff6ff", color: "#1d4ed8", borderColor: "#bfdbfe", fontWeight: 800 }}>
                     🛵 للمندوب
                   </a>
+                  )}
                   {order.phone ? (
                     blockedSet.has(order.phone.trim()) ? (
                       <button type="button" className="small-button" onClick={() => unblockPhoneMut.mutate({ phone: order.phone })} style={{ justifyContent: "center", padding: "0 4px", fontSize: "10.5px", background: "#ecfdf3", color: "#166534", borderColor: "#bbf7d0" }}>

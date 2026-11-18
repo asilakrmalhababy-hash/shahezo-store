@@ -2748,10 +2748,16 @@ export const commerceRouter = router({
       setStatus: requirePermission("orders.manage").input(z.object({ id: safeId, status: orderStatus, note: z.string().trim().max(500).optional() })).mutation(async ({ ctx, input }) => {
         const db = await database();
         const orderNumber = await db.transaction(async tx => {
-          const current = (await tx.select({ id: orders.id, status: orders.status, orderNumber: orders.orderNumber }).from(orders).where(eq(orders.id, input.id)).limit(1).for("update"))[0];
+          const current = (await tx.select({ id: orders.id, status: orders.status, orderNumber: orders.orderNumber, city: orders.city }).from(orders).where(eq(orders.id, input.id)).limit(1).for("update"))[0];
           if (!current) throw new TRPCError({ code: "NOT_FOUND", message: "لم يتم العثور على الطلب." });
           if (current.status === "delivered" || current.status === "cancelled") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "لا يمكن تغيير حالة طلب مغلق." });
-          const allowed: Record<string, string[]> = { new: ["preparing", "cancelled"], preparing: ["ready", "cancelled"], ready: ["out_for_delivery", "cancelled"], out_for_delivery: ["delivered"] };
+          const isPickupOrder = current.city === "استلام من البوفية";
+          const allowed: Record<string, string[]> = {
+            new: ["preparing", "cancelled"],
+            preparing: ["ready", "cancelled"],
+            ready: isPickupOrder ? ["delivered", "out_for_delivery", "cancelled"] : ["out_for_delivery", "cancelled"],
+            out_for_delivery: ["delivered"],
+          };
           if (!allowed[current.status]?.includes(input.status)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: current.status === "out_for_delivery" && input.status === "cancelled" ? "لا يمكن إلغاء الطلب بعد خروجه للتوصيل؛ عالجه عبر إجراء إرجاع بعد استلامه." : "اتبع تسلسل حالات الطلب: جديد، تجهيز، جاهز، توصيل، ثم تسليم؛ أو ألغِ الطلب قبل خروجه." });
           if (input.status === "cancelled") {
             const lines = await tx.select({ productId: orderItems.productId, quantity: orderItems.quantity }).from(orderItems).where(eq(orderItems.orderId, input.id));
