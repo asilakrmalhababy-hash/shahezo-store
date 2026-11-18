@@ -281,6 +281,29 @@ type PersistentCustomerEntry = {
   lastOrderAt: string;
 };
 
+
+async function getBlockedPhonesSet(db: any): Promise<Set<string>> {
+  const out = new Set<string>();
+  try {
+    const row = (await db.select({ value: storeSettings.value }).from(storeSettings).where(eq(storeSettings.key, "store_blocked_phones_v1")).limit(1))[0];
+    if (row?.value) {
+      const arr = JSON.parse(row.value);
+      if (Array.isArray(arr)) {
+        for (const p of arr) {
+          const clean = normalizeYemeniPhone(String(p || ""));
+          if (clean) out.add(clean);
+        }
+      }
+    }
+  } catch {}
+  return out;
+}
+
+async function saveBlockedPhonesSet(db: any, set: Set<string>) {
+  const jsonStr = JSON.stringify(Array.from(set));
+  await db.insert(storeSettings).values({ key: "store_blocked_phones_v1", value: jsonStr }).onDuplicateKeyUpdate({ set: { value: jsonStr } });
+}
+
 async function syncAndReadPersistentCustomers(db: any, mergeFromOrders = true): Promise<PersistentCustomerEntry[]> {
   let savedMap = new Map<string, PersistentCustomerEntry>();
   try {
@@ -1228,7 +1251,7 @@ export const commerceRouter = router({
     }),
     saveAddress: protectedProcedure.input(z.object({
       id: safeId.optional(), label: z.string().trim().min(1).max(80), recipientName: z.string().trim().min(2).max(160),
-      phone: z.string().trim().min(7).max(32), city: z.string().trim().min(1).max(100), district: z.string().trim().min(1).max(120),
+      phone: z.string().trim().min(7).max(32), city: z.string().trim().min(1).max(100), district: z.string().trim().min(1).max(120), orderType: z.enum(["delivery", "takeaway", "dine_in"]).optional().default("delivery"),
       details: z.string().trim().max(1000).optional().nullable(), isDefault: z.boolean().default(false),
     })).mutation(async ({ ctx, input }) => {
       const db = await database();
@@ -1272,14 +1295,15 @@ export const commerceRouter = router({
   orders: router({
     quote: publicProcedure.input(z.object({
       items: z.array(z.object({ productId: safeId, quantity: z.number().int().min(1).max(10000), name: z.string().trim().max(220).optional(), variant: z.string().trim().max(120).optional(), customAmount: z.number().int().min(1).max(100000000).optional() })).min(1).max(100),
-      city: z.string().trim().min(1).max(100), district: z.string().trim().max(160).optional(), phone: z.string().trim().max(40).optional(), offerCode: z.string().trim().max(40).optional(),
+      city: z.string().trim().min(1).max(100), district: z.string().trim().max(160).optional(), phone: z.string().trim().max(40).optional(), offerCode: z.string().trim().max(40).optional(), orderType: z.enum(["delivery", "takeaway", "dine_in"]).optional().default("delivery"),
     })).mutation(async ({ input }) => {
       const db = await database();
       const settings = await readSettings(db);
       if (settings.orderPaused === "true") throw new TRPCError({ code: "PRECONDITION_FAILED", message: settings.pausedMessage || "استقبال الطلبات متوقف مؤقتًا." });
       const whStatus = checkStoreWorkingHours(settings);
       if (!whStatus.isOpen) throw new TRPCError({ code: "PRECONDITION_FAILED", message: whStatus.message });
-      const prelimFee = deliveryFeeForCity(settings, input.city, input.district, input.phone, 0);
+      const isPickup = input.orderType === "takeaway" || input.orderType === "dine_in";
+      const prelimFee = isPickup ? 0 : deliveryFeeForCity(settings, input.city, input.district, input.phone, 0);
       if (prelimFee === null) throw new TRPCError({ code: "PRECONDITION_FAILED", message: settings.deliveryEnabled === "true" ? "منطقة التوصيل أو رسومها غير محددة بعد." : "لم يفعّل المتجر التوصيل بعد." });
       const requested = aggregateItems(input.items);
       if (requested.some(item => item.quantity > 10000)) throw new TRPCError({ code: "BAD_REQUEST", message: "الكمية الإجمالية لأحد المنتجات تتجاوز الحد المسموح." });
@@ -1320,7 +1344,7 @@ export const commerceRouter = router({
         appliedOffer = (await db.select().from(offers).where(and(eq(offers.code, input.offerCode.trim().toUpperCase()), eq(offers.isActive, true), sql`(${offers.startsAt} is null or ${offers.startsAt} <= now())`, sql`(${offers.endsAt} is null or ${offers.endsAt} >= now())`)).limit(1))[0] ?? null;
         if (!appliedOffer) throw new TRPCError({ code: "BAD_REQUEST", message: "رمز العرض غير صالح أو غير نشط." });
       }
-      const deliveryFee = deliveryFeeForCity(settings, input.city, input.district, input.phone, subtotal) ?? prelimFee;
+      const deliveryFee = isPickup ? 0 : (deliveryFeeForCity(settings, input.city, input.district, input.phone, subtotal) ?? prelimFee);
       const totals = orderTotals(subtotal, deliveryFee, appliedOffer, settings);
       const currency = settings.currency || "ر.ي";
       return { lines, ...totals, currency, quoteHash: quoteFingerprint(lines, totals, currency, appliedOffer?.id ?? null), offerTitle: appliedOffer?.title ?? null };
@@ -2593,6 +2617,26 @@ export const commerceRouter = router({
       }),
     }),
     orders: router({
+      blockedPhones: requirePermission("orders.view").query(async () => {
+        const db = await database();
+        return Array.from(await getBlockedPhonesSet(db));
+      }),
+      blockPhone: requirePermission("orders.manage").input(z.object({ phone: z.string().trim().min(7).max(32) })).mutation(async ({ input }) => {
+        const db = await database();
+        const set = await getBlockedPhonesSet(db);
+        const clean = normalizeYemeniPhone(input.phone);
+        if (clean) set.add(clean);
+        await saveBlockedPhonesSet(db, set);
+        return { phones: Array.from(set) };
+      }),
+      unblockPhone: requirePermission("orders.manage").input(z.object({ phone: z.string().trim().min(7).max(32) })).mutation(async ({ input }) => {
+        const db = await database();
+        const set = await getBlockedPhonesSet(db);
+        const clean = normalizeYemeniPhone(input.phone);
+        set.delete(clean);
+        await saveBlockedPhonesSet(db, set);
+        return { phones: Array.from(set) };
+      }),
       // --- ORDER_DELETE_ENDPOINT ---
       resetAll: adminProcedure.use(async ({ next }) => { clearCatalogCache(); return next(); }).mutation(async ({ ctx }) => {
         if (!ctx.user.isOwner) {

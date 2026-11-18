@@ -2211,9 +2211,10 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
     offerCode: "",
   }));
   const items = useMemo(() => cart.map(item => ({ productId: item.id, quantity: item.quantity, name: item.name, ...(item.variant ? { variant: item.variant } : {}), ...(item.customAmount ? { customAmount: item.customAmount } : {}) })), [cart]);
-  const signature = JSON.stringify({ form, items });
+  const signature = JSON.stringify({ form, items, orderType });
   const keyRef = useRef<{ signature: string; key: string }>({ signature: "", key: "" });
   if (keyRef.current.signature !== signature) keyRef.current = { signature, key: getPendingOrderIdempotencyKey(signature) };
+  const [orderType, setOrderType] = useState<"delivery" | "takeaway" | "dine_in">("delivery");
   const [quoteSignature, setQuoteSignature] = useState("");
 
   const handleUnavailableOrderError = (rawMsg: string) => {
@@ -2265,13 +2266,13 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
   const quote = quoteSignature === signature ? quoteMutation.data : undefined;
 
   useEffect(() => {
-    if (!form.city || !form.district || !items.length) return;
+    if (!items.length || (orderType === "delivery" && (!form.city || !form.district))) return;
     const timer = setTimeout(() => {
       setQuoteSignature(signature);
-      quoteMutation.mutate({ items, city: form.city, district: form.district, phone: cleanYemeniPhone(form.phone), offerCode: form.offerCode || undefined } as any);
+      quoteMutation.mutate({ items, city: orderType === "delivery" ? form.city : "استلام من البوفية", district: orderType === "takeaway" ? "استلام سفري مغلف" : orderType === "dine_in" ? "أكل محلي في البوفية" : form.district, phone: cleanYemeniPhone(form.phone), offerCode: form.offerCode || undefined, orderType } as any);
     }, 150);
     return () => clearTimeout(timer);
-  }, [form.city, form.district, form.phone, form.offerCode, signature]);
+  }, [form.city, form.district, form.phone, form.offerCode, orderType, signature]);
 
   const mutation = trpc.commerce.orders.place.useMutation({
     onSuccess: result => {
@@ -2345,16 +2346,21 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
       toast.error("يرجى إدخال رقم جوال يمني صحيح مكون من 9 أرقام ويبدأ بـ 77 أو 73 أو 78 أو 71 أو 70.");
       return;
     }
-    if (!form.city.trim() || !form.district.trim()) {
-      toast.error("يرجى الضغط على حقل عنوان التوصيل واختيار المدينة والمنطقة والشارع.");
-      return;
+    if (orderType === "delivery") {
+      if (!form.city.trim() || !form.district.trim()) {
+        toast.error("يرجى الضغط على حقل عنوان التوصيل واختيار المدينة والمنطقة والشارع.");
+        return;
+      }
+      if (!form.addressDetails.trim()) {
+        toast.error("يرجى كتابة أقرب معلم للعنوان.");
+        return;
+      }
     }
-    if (!form.addressDetails.trim()) {
-      toast.error("يرجى كتابة أقرب معلم للعنوان.");
-      return;
-    }
+    const effCity = orderType === "delivery" ? form.city : "استلام من البوفية";
+    const effDistrict = orderType === "takeaway" ? "استلام سفري مغلف" : orderType === "dine_in" ? "أكل محلي في البوفية" : form.district;
+    const effDetails = orderType === "delivery" ? form.addressDetails : (orderType === "dine_in" ? ("🍽️ أكل محلي في البوفية" + (form.addressDetails ? " · " + form.addressDetails : "")) : ("🛍️ استلام سفري من البوفية" + (form.addressDetails ? " · " + form.addressDetails : "")));
     try {
-      const activeQuote = quote ?? await quoteMutation.mutateAsync({ items, city: form.city, district: form.district, phone: cleanYemeniPhone(form.phone), offerCode: form.offerCode || undefined } as any);
+      const activeQuote = quote ?? await quoteMutation.mutateAsync({ items, city: effCity, district: effDistrict, phone: cleanYemeniPhone(form.phone), offerCode: form.offerCode || undefined, orderType } as any);
       const savedPrefs = (() => { try { return (localStorage.getItem("shahezo-customer-food-prefs-v1") || "").trim(); } catch { return ""; } })();
       const combinedNote = [
         savedPrefs ? ("⭐ تفضيل العميل الدائم (" + form.recipientName.trim() + "): " + savedPrefs) : "",
@@ -2362,6 +2368,10 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
       ].filter(Boolean).join(" | ");
       mutation.mutate({
         ...form,
+        city: effCity,
+        district: effDistrict,
+        addressDetails: effDetails,
+        orderType,
         customerNote: combinedNote || undefined,
         phone: cleanYemeniPhone(form.phone),
         idempotencyKey: keyRef.current.key,
@@ -2369,7 +2379,7 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
         expectedQuoteHash: activeQuote.quoteHash,
         offerCode: form.offerCode || undefined,
         items,
-      });
+      } as any);
     } catch {}
   };
 
@@ -2385,6 +2395,44 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
         </div>
 
         <form onSubmit={e => void submit(e)} className="form-stack" style={{ gap: "14px" }}>
+          <div style={{ display: "grid", gap: "6px" }}>
+            <strong style={{ fontSize: "12px", color: "#2b120f" }}>طريقة الاستلام:</strong>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "6px" }}>
+              {[
+                { id: "delivery", title: "🛵 توصيل", sub: "لباب منزلك" },
+                { id: "takeaway", title: "🛍️ سفري", sub: "استلام مغلف" },
+                { id: "dine_in", title: "🍽️ محلي", sub: "أكل بالبوفية" },
+              ].map(opt => {
+                const active = orderType === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setOrderType(opt.id as any)}
+                    style={{
+                      padding: "8px 6px",
+                      borderRadius: "12px",
+                      border: active ? "2px solid #870210" : "1px solid #dfd3c9",
+                      background: active ? "#fceee9" : "#fcfaf8",
+                      color: active ? "#870210" : "#4a352f",
+                      cursor: "pointer",
+                      display: "grid",
+                      gap: "2px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <strong style={{ fontSize: "12px", fontWeight: 900 }}>{opt.title}</strong>
+                    <small style={{ fontSize: "10px", opacity: 0.85 }}>{opt.sub}</small>
+                  </button>
+                );
+              })}
+            </div>
+            {orderType !== "delivery" && (
+              <div style={{ padding: "8px 10px", borderRadius: "10px", background: "#fffaf5", border: "1px solid #ead8cc", fontSize: "11px", color: "#870210", fontWeight: 700 }}>
+                ✓ بدون رسوم توصيل — يبدأ المطبخ بالتجهيز فور تأكيد الطلب معك هاتفياً أو عبر الواتساب.
+              </div>
+            )}
+          </div>
           {customer.addresses.length > 0 && (
             <div style={{ display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "2px" }}>
               {customer.addresses.map(addr => {
@@ -2437,29 +2485,43 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
             </label>
           </div>
 
-          <ThreeStepLocationPicker
-            tree={deliveryTree}
-            city={form.city}
-            district={form.district}
-            phone={form.phone}
-            subtotal={subtotal}
-            onChangeLocation={(nextCity, nextDist) => {
-              setForm(curr => ({ ...curr, city: nextCity, district: nextDist }));
-              setSelectedAddressId("new");
-            }}
-          />
+          {orderType === "delivery" ? (
+            <>
+              <ThreeStepLocationPicker
+                tree={deliveryTree}
+                city={form.city}
+                district={form.district}
+                phone={form.phone}
+                subtotal={subtotal}
+                onChangeLocation={(nextCity, nextDist) => {
+                  setForm(curr => ({ ...curr, city: nextCity, district: nextDist }));
+                  setSelectedAddressId("new");
+                }}
+              />
 
-          <label style={{ fontSize: "12.5px", fontWeight: 700, color: "#2b120f" }}>
-            <span>أقرب معلم للعنوان</span>
-            <input
-              required
-              maxLength={400}
-              autoComplete="street-address"
-              value={form.addressDetails}
-              onChange={event => updateField("addressDetails", event.target.value)}
-              placeholder="مثال: بجوار بنك الكريمي، أمام جامع..."
-            />
-          </label>
+              <label style={{ fontSize: "12.5px", fontWeight: 700, color: "#2b120f" }}>
+                <span>أقرب معلم للعنوان</span>
+                <input
+                  required
+                  maxLength={400}
+                  autoComplete="street-address"
+                  value={form.addressDetails}
+                  onChange={event => updateField("addressDetails", event.target.value)}
+                  placeholder="مثال: بجوار بنك الكريمي، أمام جامع..."
+                />
+              </label>
+            </>
+          ) : (
+            <label style={{ fontSize: "12.5px", fontWeight: 700, color: "#2b120f" }}>
+              <span>{orderType === "dine_in" ? "رقم الطاولة أو وقت الحضور (اختياري)" : "وقت الحضور للاستلام (اختياري)"}</span>
+              <input
+                maxLength={200}
+                value={form.addressDetails}
+                onChange={event => updateField("addressDetails", event.target.value)}
+                placeholder={orderType === "dine_in" ? "مثلاً: طاولة 3 أو سأصل بعد 10 دقائق..." : "مثلاً: سأصل للاستلام بعد 15 دقيقة..."}
+              />
+            </label>
+          )}
 
           <div>
             <button

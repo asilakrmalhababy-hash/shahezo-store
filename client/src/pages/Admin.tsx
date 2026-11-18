@@ -3630,6 +3630,164 @@ function OffersPanel() {
 }
 // === SHAHEZO_OFFERS_STUDIO_END ===
 
+
+async function downloadOrderInvoiceImage(order: any) {
+  try {
+    const items = Array.isArray(order.items) ? order.items : [];
+    const W = 760;
+    const rowH = 44;
+    const H = 430 + Math.max(1, items.length) * rowH + (order.customerNote ? 42 : 0);
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.fillStyle = "#fdf9f4";
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = "#e6d5c8";
+    ctx.lineWidth = 3;
+    ctx.fillRect(24, 24, W - 48, H - 48);
+    ctx.strokeRect(24, 24, W - 48, H - 48);
+
+    const grad = ctx.createLinearGradient(24, 24, W - 24, 150);
+    grad.addColorStop(0, "#870210");
+    grad.addColorStop(1, "#5b010b");
+    ctx.fillStyle = grad;
+    ctx.fillRect(24, 24, W - 48, 122);
+
+    await new Promise<void>(resolve => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        try {
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(W - 88, 85, 36, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.drawImage(img, W - 116, 57, 56, 56);
+        } catch {}
+        resolve();
+      };
+      img.onerror = () => resolve();
+      img.src = "/chef-hat.png";
+    });
+
+    ctx.direction = "rtl";
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#f1d897";
+    ctx.font = "bold 26px system-ui, sans-serif";
+    ctx.fillText("بوفية شهيزو – SHAHEZO", W - 140, 74);
+    ctx.fillStyle = "#fde8d7";
+    ctx.font = "600 15px system-ui, sans-serif";
+    ctx.fillText("شاورما • فلافل • عصائر طبيعية", W - 140, 102);
+
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 20px system-ui, sans-serif";
+    ctx.fillText(`فاتورة #${order.orderNumber}`, 48, 76);
+    ctx.fillStyle = "#f1d897";
+    ctx.font = "600 13px system-ui, sans-serif";
+    ctx.fillText(new Date(order.createdAt).toLocaleString("ar-YE"), 48, 102);
+
+    let y = 172;
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#fcfaf8";
+    ctx.fillRect(46, y, W - 92, order.customerNote ? 105 : 74);
+    ctx.strokeStyle = "#eadfd6";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(46, y, W - 92, order.customerNote ? 105 : 74);
+
+    ctx.fillStyle = "#2b120f";
+    ctx.font = "bold 17px system-ui, sans-serif";
+    ctx.fillText(`العميل: ${order.recipientName || "عميل شهيزو"}   |   الهاتف: ${order.phone || "-"}`, W - 64, y + 28);
+    ctx.fillStyle = "#6e5a53";
+    ctx.font = "600 14.5px system-ui, sans-serif";
+    ctx.fillText(`الاستلام/العنوان: ${order.city || ""} — ${order.district || ""}${order.addressDetails ? " (" + order.addressDetails + ")" : ""}`, W - 64, y + 54);
+    if (order.customerNote) {
+      ctx.fillStyle = "#870210";
+      ctx.font = "bold 14px system-ui, sans-serif";
+      ctx.fillText(`ملاحظات: ${String(order.customerNote).slice(0, 82)}`, W - 64, y + 84);
+      y += 126;
+    } else {
+      y += 96;
+    }
+
+    ctx.fillStyle = "#fceee9";
+    ctx.fillRect(46, y, W - 92, 36);
+    ctx.fillStyle = "#870210";
+    ctx.font = "bold 15px system-ui, sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText("الصنف", W - 64, y + 24);
+    ctx.textAlign = "center";
+    ctx.fillText("الكمية", 230, y + 24);
+    ctx.textAlign = "left";
+    ctx.fillText("الإجمالي", 64, y + 24);
+    y += 42;
+
+    for (const it of items) {
+      ctx.fillStyle = "#2b120f";
+      ctx.font = "600 15px system-ui, sans-serif";
+      ctx.textAlign = "right";
+      ctx.fillText(String(it.productName || "").slice(0, 42), W - 64, y + 24);
+      ctx.textAlign = "center";
+      ctx.fillText(String(it.quantity || 1), 230, y + 24);
+      ctx.textAlign = "left";
+      ctx.fillText(`${Number(it.lineTotal || 0).toLocaleString("en-US")} ر.ي`, 64, y + 24);
+      ctx.strokeStyle = "#f2eae3";
+      ctx.beginPath();
+      ctx.moveTo(46, y + 36);
+      ctx.lineTo(W - 46, y + 36);
+      ctx.stroke();
+      y += rowH;
+    }
+
+    y += 12;
+    ctx.fillStyle = "#870210";
+    ctx.fillRect(46, y, W - 92, 86);
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#fde8d7";
+    ctx.font = "600 14.5px system-ui, sans-serif";
+    ctx.fillText(`المجموع الفرعي: ${Number(order.subtotal || 0).toLocaleString("en-US")} ر.ي   ·   التوصيل: ${Number(order.deliveryFee || 0).toLocaleString("en-US")} ر.ي${order.discount ? "   ·   الخصم: " + Number(order.discount).toLocaleString("en-US") + " ر.ي" : ""}`, W - 66, y + 30);
+    ctx.fillStyle = "#f1d897";
+    ctx.font = "bold 22px system-ui, sans-serif";
+    ctx.fillText(`الإجمالي المطلوب: ${Number(order.total || 0).toLocaleString("en-US")} ر.ي`, W - 66, y + 65);
+
+    const dataUrl = canvas.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.href = dataUrl;
+    link.download = `shahezo-invoice-${order.orderNumber}.png`;
+    link.click();
+    toast.success(`🖼️ تم حفظ صورة الفاتورة #${order.orderNumber} بنجاح — يمكنك إرسالها للزبون عبر واتساب الآن!`);
+  } catch {
+    toast.error("تعذر إنشاء صورة الفاتورة");
+  }
+}
+
+function playKitchenRingTone() {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    [0, 0.22, 0.44].forEach((offset, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(idx % 2 === 0 ? 880 : 1046.5, now + offset);
+      gain.gain.setValueAtTime(0.18, now + offset);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.18);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + offset);
+      osc.stop(now + offset + 0.19);
+    });
+    setTimeout(() => { try { void ctx.close(); } catch {} }, 900);
+  } catch {}
+}
+
 function printOrderInvoiceWindow(order: any) {
   const w = window.open("", "_blank", "width=460,height=680");
   if (!w) { toast.error("يرجى السماح بالنوافذ المنبثقة لطباعة الفاتورة"); return; }
@@ -3699,6 +3857,22 @@ function OrdersPanel({ isOwner = false }: { isOwner?: boolean }) {
     },
     onError: err => toast.error(err.message),
   });
+  const [ringMuted, setRingMuted] = useState(false);
+  const blockedQuery = trpc.commerce.admin.orders.blockedPhones.useQuery(undefined, { retry: 1 });
+  const blockedSet = new Set((blockedQuery.data ?? []).map(p => String(p)));
+  const blockPhoneMut = trpc.commerce.admin.orders.blockPhone.useMutation({
+    onSuccess: async () => {
+      toast.success("🚫 تم حظر رقم الهاتف من إرسال أي طلبات مستقبلاً");
+      await utils.commerce.admin.orders.blockedPhones.invalidate();
+    },
+  });
+  const unblockPhoneMut = trpc.commerce.admin.orders.unblockPhone.useMutation({
+    onSuccess: async () => {
+      toast.success("✓ تم فك الحظر عن رقم الهاتف");
+      await utils.commerce.admin.orders.blockedPhones.invalidate();
+    },
+  });
+
   const deleteOrder = trpc.commerce.admin.orders.delete.useMutation({
     onSuccess: async () => {
       toast.success("تم حذف الطلب نهائياً");
@@ -3729,6 +3903,15 @@ function OrdersPanel({ isOwner = false }: { isOwner?: boolean }) {
   });
 
   const allOrders = (query.data ?? []).filter(o => o.city !== "طلب توفير خاص" && !String(o.orderNumber || "").startsWith("REQ-"));
+  const newOrdersCount = allOrders.filter(o => o.status === "new").length;
+  useEffect(() => {
+    if (ringMuted || newOrdersCount === 0) return;
+    playKitchenRingTone();
+    const timer = window.setInterval(() => {
+      playKitchenRingTone();
+    }, 5500);
+    return () => window.clearInterval(timer);
+  }, [ringMuted, newOrdersCount]);
 
   const customerSummaryByPhone = new Map<string, {
     weekOrdersCount: number;
@@ -3827,6 +4010,16 @@ function OrdersPanel({ isOwner = false }: { isOwner?: boolean }) {
     <div className="admin-content">
       <AdminHeading eyebrow="تحكم كامل بالفواتير والأصناف والتواصل" title="إدارة الطلبات والفواتير الذكية" text="ألغِ أي صنف غير متوفر من الفاتورة مع توضيح السبب للزبون، وشارك الفاتورة عبر واتساب أو اطبعها، وشاهد الملخص الأسبوعي لكل زبون." icon={ClipboardList} />
       <OwnerNotificationControl />
+      {newOrdersCount > 0 && (
+        <div style={{ marginTop: "8px", padding: "9px 12px", borderRadius: "12px", background: ringMuted ? "#fcfaf8" : "#fff5f5", border: ringMuted ? "1px solid #e8ddd4" : "1.5px solid #e5a3a3", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <strong style={{ fontSize: "12px", color: ringMuted ? "#5a4640" : "#991b1b" }}>
+            {ringMuted ? `🔇 تم كتم رنين الطلبات الجديدة (${newOrdersCount})` : `🔔 يوجد ${newOrdersCount} طلب جديد ينتظر القبول — الرنين يعمل حتى تنقله إلى «قيد التجهيز»`}
+          </strong>
+          <button type="button" className={"small-button " + (ringMuted ? "selected" : "danger-soft")} onClick={() => setRingMuted(m => !m)}>
+            {ringMuted ? "🔊 تشغيل الرنين" : "🔇 كتم الرنين مؤقتاً"}
+          </button>
+        </div>
+      )}
 
       <div className="filter-bar" style={{ marginTop: "12px", marginBottom: "12px" }}>
         <label className="filter-search">
@@ -3959,6 +4152,11 @@ function OrdersPanel({ isOwner = false }: { isOwner?: boolean }) {
                 </div>
                 {isAdminOrdOpen && (<>
 
+                {(order.city === "استلام من البوفية" || !custSummary || custSummary.allTimeOrdersCount <= 1) && order.status === "new" && (
+                  <div style={{ marginTop: "6px", padding: "6px 10px", borderRadius: "9px", background: "#fffbeb", border: "1px solid #fde68a", fontSize: "11px", fontWeight: 800, color: "#92400e" }}>
+                    ⚠️ عميل جديد / استلام من البوفية — تأكد من جدية الطلب بالاتصال أو واتساب قبل البدء بالتجهيز
+                  </div>
+                )}
                 <div className="admin-order-customer">
                   <strong>👤 {order.recipientName}</strong>
                   <span dir="ltr">📞 {order.phone}</span>
@@ -3979,6 +4177,17 @@ function OrdersPanel({ isOwner = false }: { isOwner?: boolean }) {
                   <a href={["ht", "tps://wa.me/?text="].join("") + encodeURIComponent(driverWhatsAppText)} target="_blank" rel="noreferrer" className="small-button" style={{ background: "#f2f6ff", color: "#1d4ed8", borderColor: "#bfd3fe", fontWeight: 800, fontSize: "11.5px" }}>
                     🛵 إرسال بيانات التوصيل للمندوب واتساب
                   </a>
+                  {order.phone && (
+                    blockedSet.has(order.phone.trim()) ? (
+                      <button type="button" className="small-button" onClick={() => unblockPhoneMut.mutate({ phone: order.phone })} style={{ fontSize: "11px" }}>
+                        ✓ فك حظر الرقم
+                      </button>
+                    ) : (
+                      <button type="button" className="small-button danger-soft" onClick={() => { if (window.confirm("حظر الرقم " + order.phone + " من إرسال أي طلبات مستقبلاً؟")) blockPhoneMut.mutate({ phone: order.phone }); }} style={{ fontSize: "11px" }}>
+                        🚫 حظر الرقم
+                      </button>
+                    )
+                  )}
                 </div>
 
                 {lastWhatsAppAlert && lastWhatsAppAlert.orderId === order.id && (
