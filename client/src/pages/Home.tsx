@@ -2848,6 +2848,111 @@ function FavoritesPage({ allProducts = [] }: { allProducts?: PublicProduct[] }) 
   );
 }
 
+const RATING_FACES = [
+  { val: 5, emoji: "🤩", label: "رهيب" },
+  { val: 4, emoji: "😊", label: "ممتاز" },
+  { val: 3, emoji: "😐", label: "عادي" },
+  { val: 2, emoji: "😕", label: "مقبول" },
+  { val: 1, emoji: "😠", label: "سيء" },
+];
+
+function OrderRatingCard({ orderNumber, isPickup, existingRating, onRated }: { orderNumber: string; isPickup: boolean; existingRating?: any; onRated: () => void }) {
+  const [driverRating, setDriverRating] = useState<number>(existingRating?.driverRating || 5);
+  const [qualityRating, setQualityRating] = useState<number>(existingRating?.qualityRating || 5);
+  const [tasteRating, setTasteRating] = useState<number>(existingRating?.tasteRating || 5);
+  const [note, setNote] = useState<string>(existingRating?.note || "");
+  const [submitted, setSubmitted] = useState<boolean>(Boolean(existingRating));
+
+  const mut = trpc.commerce.orders.submitRating.useMutation({
+    onSuccess: () => {
+      setSubmitted(true);
+      toast.success("شكراً لتقييمك! رأيك يهمنا لتطوير شهيزو ❤️");
+      onRated();
+    },
+    onError: err => toast.error(err.message || "تعذر حفظ التقييم"),
+  });
+
+  if (submitted || existingRating) {
+    const r = existingRating || { driverRating, qualityRating, tasteRating, note };
+    const faceFor = (v: number) => RATING_FACES.find(f => f.val === v) || RATING_FACES[0];
+    return (
+      <div style={{ margin: "0 14px 12px", padding: "10px 12px", borderRadius: "14px", background: "#f0fdf4", border: "1px solid #bbf7d0", display: "grid", gap: "5px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
+          <strong style={{ fontSize: "12px", color: "#166534" }}>⭐ شكراً لتقييمك هذا الطلب</strong>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", fontSize: "11px", fontWeight: 700, color: "#15803d" }}>
+            <span>{isPickup ? "الخدمة" : "الموصل"}: {faceFor(r.driverRating).emoji} {faceFor(r.driverRating).label}</span>
+            <span>· الجودة: {faceFor(r.qualityRating).emoji} {faceFor(r.qualityRating).label}</span>
+            <span>· المذاق: {faceFor(r.tasteRating).emoji} {faceFor(r.tasteRating).label}</span>
+          </div>
+        </div>
+        {r.note && <small style={{ fontSize: "11px", color: "#166534" }}>💬 «{r.note}»</small>}
+      </div>
+    );
+  }
+
+  const renderFaceRow = (title: string, value: number, onChange: (v: number) => void) => (
+    <div style={{ display: "grid", gap: "5px" }}>
+      <span style={{ fontSize: "11.5px", fontWeight: 800, color: "#2b120f" }}>{title}</span>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "5px" }}>
+        {RATING_FACES.map(f => {
+          const active = value === f.val;
+          return (
+            <button
+              key={f.val}
+              type="button"
+              onClick={() => onChange(f.val)}
+              style={{
+                padding: "6px 2px",
+                borderRadius: "11px",
+                border: active ? "2px solid #870210" : "1px solid #e6d7cb",
+                background: active ? "#fff3eb" : "#ffffff",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "2px",
+                cursor: "pointer",
+                transition: "transform 0.12s",
+              }}
+            >
+              <span style={{ fontSize: "18px", lineHeight: 1.1 }}>{f.emoji}</span>
+              <span style={{ fontSize: "9.5px", fontWeight: active ? 900 : 700, color: active ? "#870210" : "#6e564d" }}>{f.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ margin: "0 14px 12px", padding: "12px", borderRadius: "15px", background: "linear-gradient(135deg, #fffdf9 0%, #fff6ec 100%)", border: "1.5px solid #ead4bd", display: "grid", gap: "10px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <strong style={{ fontSize: "13px", color: "#870210", fontWeight: 900 }}>⭐ قيّم تجربتك بعد استلام الطلب</strong>
+        <small style={{ fontSize: "10.5px", color: "#7a5e54" }}>بضغطة واحدة</small>
+      </div>
+      {renderFaceRow(isPickup ? "🤝 تقييم الخدمة والاستلام" : "🛵 تقييم الموصل", driverRating, setDriverRating)}
+      {renderFaceRow("✨ تقييم الجودة والتغليف", qualityRating, setQualityRating)}
+      {renderFaceRow("😋 تقييم المذاق والطعم", tasteRating, setTasteRating)}
+      <input
+        type="text"
+        maxLength={500}
+        value={note}
+        onChange={e => setNote(e.target.value)}
+        placeholder="أضف ملاحظة إن أردت (اختياري)..."
+        style={{ width: "100%", padding: "8px 11px", borderRadius: "10px", border: "1px solid #e2d2c3", background: "#ffffff", fontSize: "12px" }}
+      />
+      <button
+        type="button"
+        disabled={mut.isPending}
+        onClick={() => mut.mutate({ orderNumber, driverRating, qualityRating, tasteRating, note: note.trim() || undefined })}
+        className="button button-primary"
+        style={{ minHeight: "38px", fontSize: "12.5px", fontWeight: 900, borderRadius: "11px" }}
+      >
+        {mut.isPending ? "جارٍ إرسال التقييم..." : "إرسال التقييم ✓"}
+      </button>
+    </div>
+  );
+}
+
 function OrdersPage() {
   const customer = useCustomer();
   const { add } = useStore();
@@ -3123,6 +3228,15 @@ function OrdersPage() {
                       })}
                     </div>
                   </div>
+                )}
+
+                {order.status === "delivered" && (
+                  <OrderRatingCard
+                    orderNumber={order.orderNumber}
+                    isPickup={isPickupOrder}
+                    existingRating={ordAny.rating}
+                    onRated={() => void query.refetch()}
+                  />
                 )}
 
                 {isExpanded && (

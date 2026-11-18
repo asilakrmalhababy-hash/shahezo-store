@@ -1027,6 +1027,22 @@ async function refreshHomeCatalogCache() {
 (globalThis as any).__loadCatalogHome = refreshHomeCatalogCache;
 setTimeout(() => { void refreshHomeCatalogCache().catch(() => {}); }, 80);
 // --- FAST_IMG_HELPER_END ---
+const ORDER_RATINGS_SETTING_KEY = "store_order_ratings_v1";
+async function readOrderRatingsMap(db: Awaited<ReturnType<typeof database>>): Promise<Record<string, any>> {
+  try {
+    const row = (await db.select({ value: storeSettings.value }).from(storeSettings).where(eq(storeSettings.key, ORDER_RATINGS_SETTING_KEY)).limit(1))[0];
+    if (!row?.value) return {};
+    const parsed = JSON.parse(row.value);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+async function saveOrderRatingsMap(db: Awaited<ReturnType<typeof database>>, map: Record<string, any>) {
+  const payload = JSON.stringify(map);
+  await db.insert(storeSettings).values({ key: ORDER_RATINGS_SETTING_KEY, value: payload }).onDuplicateKeyUpdate({ set: { value: payload } });
+}
+
 export const commerceRouter = router({
     access: publicProcedure.query(({ ctx }) => {
     const isAdminActive = ctx.user?.role === "admin" && !ctx.user.suspended;
@@ -1371,12 +1387,14 @@ export const commerceRouter = router({
       });
       if (!authorized.length) return [];
       const orderIds = authorized.map(order => order.id);
-      const [items, events] = await Promise.all([
+      const [items, events, ratingsMap] = await Promise.all([
         db.select().from(orderItems).where(inArray(orderItems.orderId, orderIds)),
         db.select({ id: orderEvents.id, orderId: orderEvents.orderId, status: orderEvents.status, note: orderEvents.note, createdAt: orderEvents.createdAt })
           .from(orderEvents).where(inArray(orderEvents.orderId, orderIds)).orderBy(asc(orderEvents.createdAt)),
+        readOrderRatingsMap(db),
       ]);
       return authorized.map(order => ({
+        rating: ratingsMap[order.orderNumber] ?? null,
         orderNumber: order.orderNumber,
         status: order.status,
         subtotal: order.subtotal,
@@ -1438,6 +1456,40 @@ export const commerceRouter = router({
         db.select().from(orderEvents).where(sql`${orderEvents.orderId} in (${sql.join(orderIds, sql`, `)})`).orderBy(asc(orderEvents.createdAt)),
       ]);
       return rows.map(order => ({ ...order, items: items.filter(item => item.orderId === order.id), events: events.filter(event => event.orderId === order.id) }));
+    }),
+    submitRating: publicProcedure.input(z.object({
+      orderNumber: z.string().trim().min(1).max(40),
+      driverRating: z.number().int().min(1).max(5).optional(),
+      qualityRating: z.number().int().min(1).max(5),
+      tasteRating: z.number().int().min(1).max(5),
+      note: z.string().trim().max(500).optional(),
+    })).mutation(async ({ input }) => {
+      const db = await database();
+      const ord = (await db.select({
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        status: orders.status,
+        city: orders.city,
+        recipientName: orders.recipientName,
+        phone: orders.phone,
+      }).from(orders).where(eq(orders.orderNumber, input.orderNumber)).limit(1))[0];
+      if (!ord) throw new TRPCError({ code: "NOT_FOUND", message: "لم يتم العثور على الطلب." });
+      if (ord.status !== "delivered") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "يمكنك تقييم الطلب بعد استلامه فقط." });
+      const map = await readOrderRatingsMap(db);
+      const entry = {
+        orderNumber: ord.orderNumber,
+        customerName: ord.recipientName,
+        phone: ord.phone,
+        isPickup: ord.city === "استلام من البوفية",
+        driverRating: input.driverRating ?? 5,
+        qualityRating: input.qualityRating,
+        tasteRating: input.tasteRating,
+        note: (input.note || "").trim(),
+        createdAt: new Date().toISOString(),
+      };
+      map[ord.orderNumber] = entry;
+      await saveOrderRatingsMap(db, map);
+      return { success: true, rating: entry };
     }),
     place: publicProcedure.input(z.object({
       idempotencyKey: z.string().uuid(),
@@ -2679,11 +2731,12 @@ export const commerceRouter = router({
         const rows = await db.select().from(orders).orderBy(desc(orders.createdAt)).limit(500);
         if (!rows.length) return [];
         const ids = rows.map(order => sql`${order.id}`);
-        const [items, events] = await Promise.all([
+        const [items, events, ratingsMap] = await Promise.all([
           db.select().from(orderItems).where(sql`${orderItems.orderId} in (${sql.join(ids, sql`, `)})`),
           db.select().from(orderEvents).where(sql`${orderEvents.orderId} in (${sql.join(ids, sql`, `)})`).orderBy(asc(orderEvents.createdAt)),
+          readOrderRatingsMap(db),
         ]);
-        return rows.map(order => ({ ...order, items: items.filter(item => item.orderId === order.id), events: events.filter(event => event.orderId === order.id) }));
+        return rows.map(order => ({ ...order, rating: ratingsMap[order.orderNumber] ?? null, items: items.filter(item => item.orderId === order.id), events: events.filter(event => event.orderId === order.id) }));
       }),
       removeItem: requirePermission("orders.manage").use(async ({ next }) => { const res = await next(); clearCatalogCache(); return res; }).input(z.object({
         orderId: safeId,
