@@ -4134,134 +4134,179 @@ function OrdersPanel({ isOwner = false }: { isOwner?: boolean }) {
             ].filter(Boolean).join("\n");
 
             const isAdminOrdOpen = openAdminOrderId !== null ? openAdminOrderId === order.id : (isFocused || ordIdx === 0);
+            const isPickupOrder = order.city === "استلام من البوفية";
+            const orderTypeBadge = isPickupOrder
+              ? (String(order.district || "").includes("محلي") ? "🍽️ محلي" : "🛍️ سفري")
+              : "🛵 توصيل";
+
+            const oneTapNext =
+              order.status === "new"
+                ? { nextStatus: "preparing" as const, label: "✓ قبول وبدء التجهيز", bg: "#166534", color: "#ffffff", border: "#166534" }
+                : order.status === "preparing"
+                ? { nextStatus: "ready" as const, label: "✨ جاهز للتسليم", bg: "#b45309", color: "#ffffff", border: "#b45309" }
+                : order.status === "ready"
+                ? isPickupOrder
+                  ? { nextStatus: "delivered" as const, label: "✅ تم التسليم للزبون", bg: "#15803d", color: "#ffffff", border: "#15803d" }
+                  : { nextStatus: "out_for_delivery" as const, label: "🛵 خرج مع المندوب", bg: "#1d4ed8", color: "#ffffff", border: "#1d4ed8" }
+                : order.status === "out_for_delivery"
+                ? { nextStatus: "delivered" as const, label: "✅ تم التسليم بنجاح", bg: "#15803d", color: "#ffffff", border: "#15803d" }
+                : null;
+
             return (
-              <article className="admin-order-card" key={order.id} style={isFocused ? { border: "2px solid #870210", boxShadow: "0 12px 28px rgba(135, 2, 16, 0.14)" } : undefined}>
-                <div className="admin-order-top" onClick={() => setOpenAdminOrderId(isAdminOrdOpen ? -1 : order.id)} style={{ cursor: "pointer" }}>
-                  <div>
-                    <strong className="order-number">{order.orderNumber} · 👤 {order.recipientName}</strong>
-                    <small>{new Date(order.createdAt).toLocaleString("ar-YE")} · 💰 <b style={{ color: "#870210" }}>{money(order.total)}</b> ({order.items.length} أصناف)</small>
-                  </div>
-                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }} onClick={e => e.stopPropagation()}>
-                    <span className={"status-pill status-" + order.status}>{labels[order.status]}</span>
-                    <button type="button" className="small-button selected" onClick={() => setOpenAdminOrderId(isAdminOrdOpen ? -1 : order.id)}>
-                      {isAdminOrdOpen ? "إخفاء التفاصيل ▴" : "عرض التفاصيل ▾"}
-                    </button>
-                    <button type="button" className="small-button" onClick={() => printOrderInvoiceWindow(order)}>🖨️ طباعة</button>
-                    <button type="button" className="small-button danger-soft" onClick={() => { if (window.confirm("هل أنت متأكد من حذف الطلب «" + order.orderNumber + "» نهائياً؟")) deleteOrder.mutate({ id: order.id }); }}><Trash2 size={14} /></button>
-                  </div>
-                </div>
-                {isAdminOrdOpen && (<>
-
-                {(order.city === "استلام من البوفية" || !custSummary || custSummary.allTimeOrdersCount <= 1) && order.status === "new" && (
-                  <div style={{ marginTop: "6px", padding: "6px 10px", borderRadius: "9px", background: "#fffbeb", border: "1px solid #fde68a", fontSize: "11px", fontWeight: 800, color: "#92400e" }}>
-                    ⚠️ عميل جديد / استلام من البوفية — تأكد من جدية الطلب بالاتصال أو واتساب قبل البدء بالتجهيز
-                  </div>
-                )}
-                <div className="admin-order-customer">
-                  <strong>👤 {order.recipientName}</strong>
-                  <span dir="ltr">📞 {order.phone}</span>
-                  <span>📍 {order.city}، {order.district}</span>
-                  {order.addressDetails && <small>تفاصيل العنوان: {order.addressDetails}</small>}
-                  {order.customerNote && <small style={{ color: "#9c6509", fontWeight: 700 }}>📝 ملاحظة العميل: {order.customerNote}</small>}
-                </div>
-
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", margin: "6px 0 10px" }}>
-                  {order.phone && (
-                    <a href={"tel:" + order.phone} className="small-button" style={{ fontSize: "11.5px" }}>📞 اتصال بالعميل</a>
-                  )}
-                  {order.phone && (
-                    <a href={buildWhatsAppUrl(order.phone, customerWhatsAppText)} target="_blank" rel="noreferrer" className="small-button" style={{ background: "#fceee9", color: "#0f5c3a", borderColor: "#a8dfc0", fontWeight: 800, fontSize: "11.5px" }}>
-                      📲 إرسال الفاتورة للعميل واتساب
-                    </a>
-                  )}
-                  <a href={["ht", "tps://wa.me/?text="].join("") + encodeURIComponent(driverWhatsAppText)} target="_blank" rel="noreferrer" className="small-button" style={{ background: "#f2f6ff", color: "#1d4ed8", borderColor: "#bfd3fe", fontWeight: 800, fontSize: "11.5px" }}>
-                    🛵 إرسال بيانات التوصيل للمندوب واتساب
-                  </a>
-                  {order.phone && (
-                    blockedSet.has(order.phone.trim()) ? (
-                      <button type="button" className="small-button" onClick={() => unblockPhoneMut.mutate({ phone: order.phone })} style={{ fontSize: "11px" }}>
-                        ✓ فك حظر الرقم
-                      </button>
-                    ) : (
-                      <button type="button" className="small-button danger-soft" onClick={() => { if (window.confirm("حظر الرقم " + order.phone + " من إرسال أي طلبات مستقبلاً؟")) blockPhoneMut.mutate({ phone: order.phone }); }} style={{ fontSize: "11px" }}>
-                        🚫 حظر الرقم
-                      </button>
-                    )
-                  )}
-                </div>
-
-                {lastWhatsAppAlert && lastWhatsAppAlert.orderId === order.id && (
-                  <div style={{ padding: "10px 12px", borderRadius: "12px", background: "#fceee9", border: "1.5px solid #870210", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
-                    <span style={{ fontSize: "12px", fontWeight: 800, color: "#123b2a" }}>✅ تم تحديث الفاتورة وإشعار الزبون في الموقع! هل تود إرسال توضيح له عبر واتساب أيضاً؟</span>
-                    <div style={{ display: "flex", gap: "6px" }}>
-                      <a href={buildWhatsAppUrl(lastWhatsAppAlert.phone, lastWhatsAppAlert.message)} target="_blank" rel="noreferrer" className="small-button selected">📲 إرسال التوضيح عبر واتساب</a>
-                      <button type="button" className="small-button" onClick={() => setLastWhatsAppAlert(null)}><X size={13} /></button>
+              <article
+                className="admin-order-card"
+                key={order.id}
+                style={{
+                  padding: "13px",
+                  borderRadius: "16px",
+                  border: isFocused ? "2px solid #870210" : order.status === "new" ? "1.5px solid #e5a3a3" : "1px solid #e8ddd4",
+                  background: order.status === "new" ? "#fffdfb" : "#ffffff",
+                  display: "grid",
+                  gap: "10px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                  <div style={{ display: "grid", gap: "3px", minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                      <strong style={{ fontSize: "14.5px", color: "#870210", fontWeight: 900 }}>#{order.orderNumber}</strong>
+                      <strong style={{ fontSize: "13.5px", color: "#2b120f", fontWeight: 800 }}>{order.recipientName}</strong>
+                      <span style={{ fontSize: "10.5px", fontWeight: 800, padding: "2px 7px", borderRadius: "99px", background: "#fdf6f2", color: "#870210", border: "1px solid #ead8cc" }}>
+                        {orderTypeBadge}
+                      </span>
+                      <span className={"status-pill status-" + order.status}>{labels[order.status]}</span>
                     </div>
+                    <small style={{ fontSize: "10.5px", color: "#78645d" }}>
+                      {new Date(order.createdAt).toLocaleString("ar-YE")} · {order.items.length} أصناف
+                    </small>
+                  </div>
+                  <div style={{ textAlign: "left", flexShrink: 0 }}>
+                    <strong style={{ display: "block", fontSize: "15px", color: "#870210", fontWeight: 900 }}>{money(order.total)}</strong>
+                    <small style={{ fontSize: "9.5px", color: "#78645d" }}>توصيل {money(order.deliveryFee)}</small>
+                  </div>
+                </div>
+
+                {(isPickupOrder || !custSummary || custSummary.allTimeOrdersCount <= 1) && order.status === "new" && (
+                  <div style={{ padding: "6px 10px", borderRadius: "9px", background: "#fffbeb", border: "1px solid #fde68a", fontSize: "11px", fontWeight: 800, color: "#92400e" }}>
+                    ⚠️ عميل جديد / استلام من البوفية — تأكد من جدية الطلب بالاتصال أو واتساب قبل التجهيز
                   </div>
                 )}
 
-                <div style={{ display: "grid", gap: "6px", padding: "10px", borderRadius: "12px", background: "#f7faf8", border: "1px solid #dce7e0" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <strong style={{ fontSize: "12px", color: "#870210" }}>🛒 أصناف الفاتورة المعتمدة ({order.items.length}):</strong>
-                    {canModifyItems && <small style={{ fontSize: "11px", color: "#5c7365" }}>اضغط «إلغاء الصنف» لحذفه من الفاتورة وإبلاغ الزبون</small>}
+                {oneTapNext && (
+                  <div style={{ display: "flex", gap: "7px", alignItems: "center" }}>
+                    <button
+                      type="button"
+                      disabled={change.isPending}
+                      onClick={() => change.mutate({ id: order.id, status: oneTapNext.nextStatus })}
+                      style={{
+                        flex: 1,
+                        minHeight: "42px",
+                        borderRadius: "11px",
+                        border: "1px solid " + oneTapNext.border,
+                        background: oneTapNext.bg,
+                        color: oneTapNext.color,
+                        fontSize: "13px",
+                        fontWeight: 900,
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "6px",
+                        boxShadow: "0 3px 10px rgba(0,0,0,0.08)",
+                      }}
+                    >
+                      {change.isPending ? <LoaderCircle size={15} className="spin" /> : null}
+                      {oneTapNext.label}
+                    </button>
+                    {allowedStatuses.includes("cancelled") && (
+                      <button
+                        type="button"
+                        disabled={change.isPending}
+                        onClick={() => {
+                          if (window.confirm(`هل أنت متأكد من إلغاء الطلب #${order.orderNumber}؟`)) {
+                            change.mutate({ id: order.id, status: "cancelled" });
+                          }
+                        }}
+                        style={{
+                          minHeight: "42px",
+                          padding: "0 12px",
+                          borderRadius: "11px",
+                          border: "1px solid #fecaca",
+                          background: "#fff5f5",
+                          color: "#b91c1c",
+                          fontSize: "12px",
+                          fontWeight: 800,
+                          cursor: "pointer",
+                        }}
+                      >
+                        ✕ إلغاء
+                      </button>
+                    )}
                   </div>
+                )}
+
+                <div style={{ padding: "8px 10px", borderRadius: "10px", background: "#fcfaf8", border: "1px solid #eee4dc", display: "grid", gap: "4px", fontSize: "11.5px", color: "#4a352f" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 12px", alignItems: "center" }}>
+                    <span dir="ltr" style={{ fontWeight: 800, color: "#870210" }}>📞 {order.phone}</span>
+                    <span>📍 {order.city} — {order.district}{order.addressDetails ? (" (" + order.addressDetails + ")") : ""}</span>
+                  </div>
+                  {order.customerNote && (
+                    <div style={{ padding: "5px 8px", borderRadius: "8px", background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e", fontWeight: 800, fontSize: "11.5px" }}>
+                      📝 {order.customerNote}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: "grid", gap: "5px", padding: "8px 10px", borderRadius: "10px", background: "#f9f6f2", border: "1px solid #ece2d9" }}>
                   {order.items.map(item => {
                     const isEditingThisItem = cancellingItem?.orderId === order.id && cancellingItem?.itemId === item.id;
                     return (
-                      <div key={item.id} style={{ padding: "7px 10px", borderRadius: "10px", background: "#ffffff", border: "1px solid #e2ece5", display: "grid", gap: "6px" }}>
-                        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
-                          <span style={{ fontWeight: 800, fontSize: "13px", color: "#132a1f" }}>
-                            {item.productName} <span style={{ color: "#870210" }}>× {item.quantity}</span> · <b>{money(item.lineTotal)}</b>
+                      <div key={item.id} style={{ display: "grid", gap: "5px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "6px", background: "#ffffff", padding: "6px 9px", borderRadius: "8px", border: "1px solid #eae0d8" }}>
+                          <span style={{ fontWeight: 800, fontSize: "12.5px", color: "#2b120f" }}>
+                            {item.productName} <span style={{ color: "#870210" }}>× {item.quantity}</span>
                           </span>
-                          {canModifyItems && (
-                            <button
-                              type="button"
-                              className="small-button danger-soft"
-                              style={{ minHeight: "26px", padding: "2px 9px", fontSize: "11px", fontWeight: 800 }}
-                              onClick={() => {
-                                if (isEditingThisItem) {
-                                  setCancellingItem(null);
-                                } else {
-                                  setCancellingItem({ orderId: order.id, itemId: item.id, itemName: item.productName, maxQty: item.quantity, unitPrice: item.unitPrice });
-                                  setCancelQty(item.quantity);
-                                  setCancelReason("غير متوفر اليوم في المخزون وتم خصم مبلغه من الفاتورة");
-                                }
-                              }}
-                            >
-                              {isEditingThisItem ? "إغلاق" : "❌ إلغاء الصنف / تعديل"}
-                            </button>
-                          )}
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                            <strong style={{ fontSize: "12px", color: "#2b120f" }}>{money(item.lineTotal)}</strong>
+                            {canModifyItems && (
+                              <button
+                                type="button"
+                                className="small-button danger-soft"
+                                style={{ minHeight: "24px", padding: "0 7px", fontSize: "10.5px" }}
+                                onClick={() => {
+                                  if (isEditingThisItem) setCancellingItem(null);
+                                  else {
+                                    setCancellingItem({ orderId: order.id, itemId: item.id, itemName: item.productName, maxQty: item.quantity, unitPrice: item.unitPrice });
+                                    setCancelQty(item.quantity);
+                                    setCancelReason("غير متوفر اليوم في المخزون وتم خصم مبلغه من الفاتورة");
+                                  }
+                                }}
+                                title="حذف الصنف من الفاتورة"
+                              >
+                                {isEditingThisItem ? "إغلاق" : "✕"}
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         {isEditingThisItem && (
-                          <div style={{ padding: "10px", borderRadius: "10px", background: "#fff8f6", border: "1.5px solid #e8b4ab", display: "grid", gap: "8px" }}>
-                            <strong style={{ fontSize: "12px", color: "#8f3225" }}>إلغاء «{item.productName}» من الفاتورة وإبلاغ الزبون بالسبب:</strong>
+                          <div style={{ padding: "9px", borderRadius: "9px", background: "#fff8f6", border: "1px solid #e8b4ab", display: "grid", gap: "7px" }}>
+                            <strong style={{ fontSize: "11.5px", color: "#8f3225" }}>إلغاء «{item.productName}» من الفاتورة:</strong>
                             {item.quantity > 1 && (
-                              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontWeight: 700 }}>
-                                <span>الكمية المراد إلغاؤها (من أصل {item.quantity}):</span>
-                                <input type="number" min={1} max={item.quantity} value={cancelQty} onChange={e => setCancelQty(Math.max(1, Math.min(item.quantity, Number(e.target.value) || 1)))} style={{ width: "75px", padding: "4px 8px", borderRadius: "8px", background: "#fff" }} />
-                                <small style={{ color: "#8f3225" }}>(سيُخصم {money(cancelQty * item.unitPrice)})</small>
+                              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "11px", fontWeight: 700 }}>
+                                <span>الكمية الملغاة (من {item.quantity}):</span>
+                                <input type="number" min={1} max={item.quantity} value={cancelQty} onChange={e => setCancelQty(Math.max(1, Math.min(item.quantity, Number(e.target.value) || 1)))} style={{ width: "68px", padding: "3px 7px", borderRadius: "7px" }} />
                               </label>
                             )}
-                            <label style={{ display: "grid", gap: "4px", fontSize: "11.5px", fontWeight: 700, color: "#5e2922" }}>
-                              <span>رسالة التوضيح للزبون (تصل للزبون وتُحفظ في التقارير):</span>
-                              <input value={cancelReason} onChange={e => setCancelReason(e.target.value)} placeholder="اكتب سبب الإلغاء للزبون..." style={{ padding: "7px 10px", borderRadius: "8px", background: "#fff", border: "1px solid #dfa49a" }} />
-                            </label>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
+                            <input value={cancelReason} onChange={e => setCancelReason(e.target.value)} placeholder="سبب الإلغاء للزبون..." style={{ padding: "6px 9px", borderRadius: "8px", fontSize: "11.5px" }} />
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
                               {cancelReasonPresets.map(pr => (
-                                <button key={pr} type="button" className="small-button" style={{ fontSize: "10px", minHeight: "24px", padding: "2px 8px", background: "#fff" }} onClick={() => setCancelReason(pr)}>{pr}</button>
+                                <button key={pr} type="button" className="small-button" style={{ fontSize: "9.5px", minHeight: "22px", padding: "0 7px" }} onClick={() => setCancelReason(pr)}>{pr}</button>
                               ))}
                             </div>
                             <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
                               <button type="button" className="small-button" onClick={() => setCancellingItem(null)}>تراجع</button>
-                              <button
-                                type="button"
-                                className="small-button selected"
-                                style={{ background: "#9b3b2e", borderColor: "#9b3b2e", color: "#fff" }}
-                                disabled={removeItemMut.isPending || !cancelReason.trim()}
-                                onClick={() => removeItemMut.mutate({ orderId: order.id, itemId: item.id, cancelQty, reason: cancelReason.trim() })}
-                              >
-                                {removeItemMut.isPending ? <LoaderCircle size={13} className="spin" /> : <Check size={13} />} تأكيد الحذف من الفاتورة وإشعار الزبون
+                              <button type="button" className="small-button" style={{ background: "#9b3b2e", borderColor: "#9b3b2e", color: "#fff" }} disabled={removeItemMut.isPending || !cancelReason.trim()} onClick={() => removeItemMut.mutate({ orderId: order.id, itemId: item.id, cancelQty, reason: cancelReason.trim() })}>
+                                {removeItemMut.isPending ? "جارٍ الحذف..." : "تأكيد الحذف وإشعار الزبون"}
                               </button>
                             </div>
                           </div>
@@ -4272,113 +4317,94 @@ function OrdersPanel({ isOwner = false }: { isOwner?: boolean }) {
                 </div>
 
                 {cancelledEvents.length > 0 && (
-                  <div style={{ marginTop: "8px", padding: "10px 12px", borderRadius: "12px", background: "#fff5f4", border: "1px solid #f0c4bc", display: "grid", gap: "4px" }}>
-                    <strong style={{ fontSize: "12px", color: "#8f3225" }}>🚫 أصناف تم إلغاؤها وخصمها من هذه الفاتورة ({cancelledEvents.length}):</strong>
-                    {cancelledEvents.map(ev => (
-                      <div key={ev.id} style={{ fontSize: "11.5px", color: "#5e251d", lineHeight: 1.5 }}>• {ev.note}</div>
-                    ))}
+                  <div style={{ padding: "7px 10px", borderRadius: "9px", background: "#fff5f4", border: "1px solid #f0c4bc", fontSize: "11px", color: "#8f3225" }}>
+                    {cancelledEvents.map(ev => <div key={ev.id}>• {ev.note}</div>)}
                   </div>
                 )}
 
-                <div className="admin-order-total">
-                  <span>فرعي {money(order.subtotal)} · توصيل {money(order.deliveryFee)}{order.discount ? " · خصم " + money(order.discount) : ""}</span>
-                  <strong>الإجمالي النهائي: {money(order.total)}</strong>
-                </div>
-
-                <div className="admin-order-controls">
-                  <label>حالة الطلب
-                    <select value={order.status} disabled={order.status === "delivered" || order.status === "cancelled" || change.isPending} onChange={e => change.mutate({ id: order.id, status: e.target.value as "new" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "cancelled", note: noteVal.trim() || undefined }, { onSuccess: () => setDeliveryNotes(current => ({ ...current, [order.id]: "" })) })}>
-                      {Object.entries(labels).filter(([value]) => allowedStatuses.includes(value)).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                    </select>
-                  </label>
-                  <span className="cod-note small"><Truck size={15} /> نقدًا عند الاستلام</span>
-                </div>
-
-                <div className="admin-order-delivery-note" style={{ display: "grid", gap: "6px", marginTop: "8px" }}>
-                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#870210" }}>💬 التحدث مع العميل / إرسال توضيح أو إشعار فوري لجواله:</span>
-                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                    <input maxLength={500} value={noteVal} onChange={e => setDeliveryNotes(current => ({ ...current, [order.id]: e.target.value }))} placeholder="اكتب رسالتك أو توضيحك للعميل..." style={{ flex: "1 1 200px" }} />
-                    <button type="button" className="small-button selected" disabled={!noteVal.trim() || sendNoteMut.isPending} onClick={() => sendNoteMut.mutate({ id: order.id, note: noteVal.trim() })}><BellRing size={14} /> إرسال إشعار فوري</button>
-                    {order.phone && noteVal.trim() && (
-                      <a href={buildWhatsAppUrl(order.phone, "مرحباً " + order.recipientName + " 🌿\nبخصوص طلبك رقم " + order.orderNumber + ":\n" + noteVal.trim())} target="_blank" rel="noreferrer" className="small-button" style={{ background: "#fceee9", color: "#0f5c3a", fontWeight: 800 }}>
-                        📲 إرسالها واتساب أيضاً
-                      </a>
-                    )}
+                {lastWhatsAppAlert && lastWhatsAppAlert.orderId === order.id && (
+                  <div style={{ padding: "8px 10px", borderRadius: "10px", background: "#ecfdf3", border: "1px solid #bbf7d0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 800, color: "#166534" }}>✅ تم تحديث الفاتورة! أرسل التوضيح واتساب؟</span>
+                    <div style={{ display: "flex", gap: "5px" }}>
+                      <a href={buildWhatsAppUrl(lastWhatsAppAlert.phone, lastWhatsAppAlert.message)} target="_blank" rel="noreferrer" className="small-button selected">📲 واتساب</a>
+                      <button type="button" className="small-button" onClick={() => setLastWhatsAppAlert(null)}><X size={12} /></button>
+                    </div>
                   </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
-                    {quickNotes.map(qn => (
-                      <button key={qn} type="button" className="small-button" style={{ fontSize: "10px", minHeight: "26px", padding: "0 8px" }} onClick={() => setDeliveryNotes(current => ({ ...current, [order.id]: qn }))}>{qn}</button>
-                    ))}
-                  </div>
+                )}
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "6px" }}>
+                  {order.phone ? (
+                    <a href={"tel:" + order.phone} className="small-button" style={{ justifyContent: "center", padding: "0 4px", fontSize: "11px" }}>📞 اتصال</a>
+                  ) : <span />}
+                  {order.phone ? (
+                    <a href={buildWhatsAppUrl(order.phone, customerWhatsAppText)} target="_blank" rel="noreferrer" className="small-button" style={{ justifyContent: "center", padding: "0 4px", fontSize: "11px", background: "#e8f8ee", color: "#128C7E", borderColor: "#a7e3c0", fontWeight: 800 }}>
+                      💬 للعميل
+                    </a>
+                  ) : <span />}
+                  <a href={["ht", "tps://wa.me/?text="].join("") + encodeURIComponent(driverWhatsAppText)} target="_blank" rel="noreferrer" className="small-button" style={{ justifyContent: "center", padding: "0 4px", fontSize: "11px", background: "#eff6ff", color: "#1d4ed8", borderColor: "#bfdbfe", fontWeight: 800 }}>
+                    🛵 للمندوب
+                  </a>
+                  {order.phone ? (
+                    blockedSet.has(order.phone.trim()) ? (
+                      <button type="button" className="small-button" onClick={() => unblockPhoneMut.mutate({ phone: order.phone })} style={{ justifyContent: "center", padding: "0 4px", fontSize: "10.5px", background: "#ecfdf3", color: "#166534", borderColor: "#bbf7d0" }}>
+                        ✓ فك حظر
+                      </button>
+                    ) : (
+                      <button type="button" className="small-button danger-soft" onClick={() => { if (window.confirm("حظر الرقم " + order.phone + " من إرسال أي طلبات مستقبلاً؟")) blockPhoneMut.mutate({ phone: order.phone }); }} style={{ justifyContent: "center", padding: "0 4px", fontSize: "10.5px" }}>
+                        🚫 حظر
+                      </button>
+                    )
+                  ) : <span />}
                 </div>
 
-                {custSummary && (
-                  <details className="order-history" style={{ marginTop: "10px", background: "#fdf6f0", border: "1.5px solid #c5dfd0", borderRadius: "12px", padding: "10px 12px" }}>
-                    <summary style={{ cursor: "pointer", fontWeight: 900, fontSize: "12.5px", color: "#144530", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
-                      <span>📊 ملخص الطلبات الأسبوعي والشامل للزبون: {order.recipientName} (<b dir="ltr">{order.phone}</b>)</span>
-                      <span style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "99px", background: "#870210", color: "#f1d897" }}>
-                        هذا الأسبوع: {custSummary.weekOrdersCount} طلب ({money(custSummary.weekSpent)}) · الكلي: {custSummary.allTimeOrdersCount} طلب
-                      </span>
-                    </summary>
-                    <div style={{ marginTop: "10px", display: "grid", gap: "10px", fontSize: "12px", color: "#1d3b2b" }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "8px" }}>
-                        <div style={{ padding: "8px 10px", borderRadius: "10px", background: "#ffffff", border: "1px solid #d4e6db" }}>
-                          <small style={{ color: "#536e5f", display: "block" }}>طلبات هذا الأسبوع (7 أيام)</small>
-                          <strong style={{ fontSize: "14px", color: "#870210" }}>{custSummary.weekOrdersCount} طلب · {money(custSummary.weekSpent)}</strong>
-                        </div>
-                        <div style={{ padding: "8px 10px", borderRadius: "10px", background: "#ffffff", border: "1px solid #d4e6db" }}>
-                          <small style={{ color: "#536e5f", display: "block" }}>إجمالي مشتريات الزبون الكلي</small>
-                          <strong style={{ fontSize: "14px", color: "#870210" }}>{custSummary.allTimeOrdersCount} طلب · {money(custSummary.allTimeSpent)}</strong>
-                        </div>
-                        <div style={{ padding: "8px 10px", borderRadius: "10px", background: "#ffffff", border: "1px solid #d4e6db" }}>
-                          <small style={{ color: "#536e5f", display: "block" }}>الطلبات الملغاة بالكامل</small>
-                          <strong style={{ fontSize: "14px", color: "#8f3225" }}>{custSummary.allTimeCancelledOrders} طلب ملغي</strong>
-                        </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "6px" }}>
+                  <button type="button" className="small-button selected" onClick={() => void downloadOrderInvoiceImage(order)} style={{ justifyContent: "center", fontWeight: 800 }}>
+                    🖼️ حفظ الفاتورة صورة
+                  </button>
+                  <button type="button" className="small-button" onClick={() => printOrderInvoiceWindow(order)}>
+                    🖨️ طباعة
+                  </button>
+                  <button type="button" className="small-button danger-soft" onClick={() => { if (window.confirm("هل أنت متأكد من حذف الطلب #" + order.orderNumber + " نهائياً؟")) deleteOrder.mutate({ id: order.id }); }}>
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+
+                <details className="order-history" open={isFocused} style={{ marginTop: "2px", paddingTop: "8px" }}>
+                  <summary style={{ fontSize: "11.5px", color: "#6e5a53", fontWeight: 800 }}>
+                    💬 إرسال رسالة للعميل · ملخص الطلبات ({custSummary?.allTimeOrdersCount || 1}) · السجل ({order.events.length})
+                  </summary>
+                  <div style={{ display: "grid", gap: "10px", marginTop: "10px" }}>
+                    <div style={{ display: "grid", gap: "6px" }}>
+                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                        <input maxLength={500} value={noteVal} onChange={e => setDeliveryNotes(current => ({ ...current, [order.id]: e.target.value }))} placeholder="اكتب رسالة أو إشعار فوري للعميل..." style={{ flex: "1 1 180px" }} />
+                        <button type="button" className="small-button selected" disabled={!noteVal.trim() || sendNoteMut.isPending} onClick={() => sendNoteMut.mutate({ id: order.id, note: noteVal.trim() })}><BellRing size={13} /> إرسال إشعار</button>
                       </div>
-
-                      <div style={{ padding: "9px 10px", borderRadius: "10px", background: "#ffffff", border: "1px solid #d4e6db" }}>
-                        <strong style={{ display: "block", marginBottom: "5px", color: "#870210" }}>🛍️ كل الأصناف التي اشتراها هذا الزبون خلال الأسبوع:</strong>
-                        {!custSummary.weekItems.length ? <small style={{ color: "#6c7f73" }}>لا توجد أصناف مشتراة خلال آخر 7 أيام.</small> : (
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                            {custSummary.weekItems.map(wi => (
-                              <span key={wi.name} style={{ padding: "4px 9px", borderRadius: "8px", background: "#eef6f1", border: "1px solid #cbe0d2", fontWeight: 700, fontSize: "11.5px" }}>
-                                {wi.name} × {wi.qty} ({money(wi.total)})
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {custSummary.weekCancelledNotes.length > 0 && (
-                        <div style={{ padding: "9px 10px", borderRadius: "10px", background: "#fff6f5", border: "1px solid #f0c8c0" }}>
-                          <strong style={{ display: "block", marginBottom: "4px", color: "#8f3225" }}>🚫 الأصناف التي أُلغيت لهذا الزبون:</strong>
-                          {custSummary.weekCancelledNotes.map((cn, idx) => (
-                            <div key={idx} style={{ fontSize: "11px", color: "#63261e" }}>• {cn}</div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div style={{ padding: "9px 10px", borderRadius: "10px", background: "#ffffff", border: "1px solid #d4e6db" }}>
-                        <strong style={{ display: "block", marginBottom: "5px", color: "#870210" }}>📋 فواتير وطلبات هذا الزبون ({custSummary.recentOrderNumbers.length}):</strong>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                          {custSummary.recentOrderNumbers.slice(0, 10).map(ro => (
-                            <span key={ro.orderNumber} style={{ padding: "3px 8px", borderRadius: "7px", background: "#f5f8f6", border: "1px solid #d5e2da", fontSize: "11px" }}>
-                              <b>{ro.orderNumber}</b> · {money(ro.total)} · {labels[ro.status]} ({new Date(ro.createdAt).toLocaleDateString("ar-YE")})
-                            </span>
-                          ))}
-                        </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                        {quickNotes.map(qn => (
+                          <button key={qn} type="button" className="small-button" style={{ fontSize: "10px", minHeight: "25px", padding: "0 8px" }} onClick={() => setDeliveryNotes(current => ({ ...current, [order.id]: qn }))}>{qn}</button>
+                        ))}
                       </div>
                     </div>
-                  </details>
-                )}
 
-                {order.events.length ? (
-                  <details className="order-history" open={isFocused}>
-                    <summary>سجل تغييرات الحالة والإشعارات ({order.events.length})</summary>
-                    <ol>{order.events.map(event => <li key={event.id}><span className={"status-pill status-" + event.status}>{labels[event.status]}</span><time>{new Date(event.createdAt).toLocaleString("ar-YE")}</time>{event.note && <small>{event.note}</small>}</li>)}</ol>
-                  </details>
-                ) : null}
-                </>)}
+                    {custSummary && (
+                      <div style={{ padding: "8px 10px", borderRadius: "10px", background: "#fcfaf8", border: "1px solid #eadfd6", fontSize: "11px", color: "#4a352f" }}>
+                        <strong>📊 ملخص العميل:</strong> هذا الأسبوع {custSummary.weekOrdersCount} طلب ({money(custSummary.weekSpent)}) · الإجمالي الكلي: {custSummary.allTimeOrdersCount} طلب ({money(custSummary.allTimeSpent)})
+                      </div>
+                    )}
+
+                    {order.events.length > 0 && (
+                      <ol style={{ margin: 0, paddingRight: "16px", fontSize: "11px" }}>
+                        {order.events.map(event => (
+                          <li key={event.id}>
+                            <span className={"status-pill status-" + event.status}>{labels[event.status]}</span>
+                            <time>{new Date(event.createdAt).toLocaleString("ar-YE")}</time>
+                            {event.note && <small>{event.note}</small>}
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </div>
+                </details>
               </article>
             );
           })}
