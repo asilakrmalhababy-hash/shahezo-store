@@ -1173,19 +1173,34 @@ button, a, input, select, textarea, summary, [role="button"] { touch-action: man
 /* === SHAHEZO_OFFERS_AND_BUNDLES_START === */
 .offer-corner-badge {
   position: absolute;
-  top: 7px;
-  left: 7px;
+  bottom: 7px;
+  right: 7px;
   z-index: 3;
-  background: linear-gradient(135deg, #d90429 0%, #870210 100%);
-  color: #ffffff;
+  background: rgba(135, 2, 16, 0.92);
+  color: #ffe8b3;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 800;
   padding: 3px 8px;
-  border-radius: 999px;
-  box-shadow: 0 4px 10px rgba(135, 2, 16, 0.28);
-  border: 1px solid rgba(255, 230, 167, 0.7);
+  border-radius: 8px;
+  box-shadow: 0 3px 8px rgba(43, 18, 15, 0.22);
+  backdrop-filter: blur(4px);
   pointer-events: none;
   white-space: nowrap;
+}
+.offers-horizontal-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 2px 2px 8px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.offers-horizontal-strip::-webkit-scrollbar { display: none; }
+.offers-horizontal-strip > .product-card {
+  flex: 0 0 166px;
+  width: 166px;
+  scroll-snap-align: start;
 }
 .price-with-offer {
   display: flex;
@@ -1205,27 +1220,12 @@ button, a, input, select, textarea, summary, [role="button"] { touch-action: man
   padding: 0 2px;
 }
 .old-price-x s {
-  text-decoration: none;
-  position: relative;
-  display: inline-block;
+  text-decoration: line-through;
+  color: #9e8c85;
+  font-size: 10.5px;
+  font-weight: 600;
 }
-.old-price-x s::after {
-  content: "";
-  position: absolute;
-  left: -3px;
-  right: -3px;
-  top: 50%;
-  height: 1.3px;
-  background: rgba(200, 30, 30, 0.55);
-  transform: rotate(-8deg);
-}
-.old-price-x i {
-  font-style: normal;
-  font-size: 9.5px;
-  color: rgba(200, 30, 30, 0.68);
-  font-weight: 700;
-  line-height: 1;
-}
+.old-price-x i { display: none; }
 .new-offer-price {
   color: #870210 !important;
   font-size: 14px !important;
@@ -2230,3 +2230,7 @@ img, svg, video, canvas, a {
   box-shadow: none !important;
 }
 /* === SHAHEZO_TOPBAR_V19_END === */
+
+/* Clean compact product title without duplicate unit */
+.product-title-button { min-height: 30px !important; padding: 8px 4px 2px !important; }
+.product-title-button strong { font-size: 12.5px !important; font-weight: 800 !important; color: #2b120f !important; }

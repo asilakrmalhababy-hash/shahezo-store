@@ -1117,7 +1117,7 @@ function ProductCard({ product, onOpen, onAiRecipe, priority = false }: { produc
         {hasOffer && !disabled && <span className="offer-corner-badge">{isBundle ? "🎁 تجميعة توفيرية" : ("🔥 وفّر " + formatPrice(oldPrice - product.price))}</span>}
         {disabled && <span className="product-sold-out">غير متوفر</span>}
       </div>
-      <button type="button" className="product-title-button" onClick={onOpen}><strong>{product.name}</strong><span>{product.unit}</span></button>
+      <button type="button" className="product-title-button" onClick={onOpen}><strong>{product.name}</strong></button>
       {isBundle && bundleItems.length > 0 && <div className="bundle-items-chip" onClick={onOpen}>🎁 يشمل: {bundleItems.join(" + ")}</div>}
       <div className="product-card-bottom">{hasOffer ? (<div className="price-with-offer"><span className="old-price-x" title="السعر قبل الخصم"><s>{formatPrice(oldPrice)}</s><i aria-hidden="true">✕</i></span><div><b className="new-offer-price">{formatPrice(product.price)}</b><small> / {product.unit}</small></div></div>) : (<div><b>{formatPrice(product.price)}</b><small> / {product.unit}</small></div>)}<button type="button" className="add-button" disabled={disabled} onClick={e => handleAddClick(e)} aria-label={"إضافة " + product.name + " للسلة"}><Plus size={18} /></button></div>
     </article>
@@ -1335,7 +1335,11 @@ function HomePage({ data, onOpen, onAiRecipe }: { data: HomeData; onOpen: (id: n
             </div>
             <Link className="text-link" href="/products?offers=1">عرض كل العروض <ArrowLeft size={15} /></Link>
           </div>
-          <ProductGrid items={offerItems.slice(0, 8)} onOpen={onOpen} onAiRecipe={onAiRecipe} />
+          <div className="offers-horizontal-strip">
+            {offerItems.slice(0, 10).map((product, idx) => (
+              <ProductCard key={product.id} product={product} priority={idx < 4} onOpen={() => onOpen(product.id)} onAiRecipe={onAiRecipe} />
+            ))}
+          </div>
         </section>
       );
     })()}
