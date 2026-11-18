@@ -1,4 +1,4 @@
-const CACHE = "shahezo-shell-v18";
+const CACHE = "shahezo-shell-v19";
 const PRECACHE = ["/", "/offline.html", "/manifest-v9.webmanifest", "/manifest-admin.webmanifest", "/app-icon-192-v8.png", "/chef-hat.png", "/notif-icon-v8.png", "/notif-badge-v8.png"];
 
 self.addEventListener("install", event => {
@@ -19,9 +19,25 @@ self.addEventListener("fetch", event => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (url.pathname === "/api/trpc/commerce.catalog.home") {
+    event.respondWith(
+      fetch(request).then(resp => {
+        if (resp && resp.status === 200) {
+          const copy = resp.clone();
+          caches.open(CACHE).then(c => c.put(request, copy)).catch(() => {});
+        }
+        return resp;
+      }).catch(() => caches.match(request))
+    );
+    return;
+  }
   if (url.pathname.startsWith("/api/")) return;
 
-  if (url.pathname.startsWith("/assets/") || url.pathname.endsWith(".png") || url.pathname.endsWith(".webp") || url.pathname.endsWith(".webmanifest")) {
+  if (
+    url.pathname.startsWith("/assets/") ||
+    url.pathname.startsWith("/uploads/") ||
+    /\.(png|webp|jpg|jpeg|svg|woff2|webmanifest)$/i.test(url.pathname)
+  ) {
     event.respondWith(
       caches.match(request).then(cached => {
         if (cached) return cached;

@@ -1,5 +1,48 @@
 
 const INSTANT_CATALOG_KEY = "shahezo-instant-catalog-v1";
+const IDB_NAME = "shahezo-offline-db";
+const IDB_STORE = "kv";
+
+function saveOfflineCatalogIdb(data: HomeData) {
+  try {
+    if (typeof indexedDB === "undefined") return;
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains(IDB_STORE)) req.result.createObjectStore(IDB_STORE);
+    };
+    req.onsuccess = () => {
+      try {
+        const tx = req.result.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).put(data, INSTANT_CATALOG_KEY);
+      } catch {}
+    };
+  } catch {}
+}
+
+function loadOfflineCatalogIdb(): Promise<HomeData | null> {
+  return new Promise(resolve => {
+    try {
+      if (typeof indexedDB === "undefined") return resolve(null);
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains(IDB_STORE)) req.result.createObjectStore(IDB_STORE);
+      };
+      req.onsuccess = () => {
+        try {
+          const tx = req.result.transaction(IDB_STORE, "readonly");
+          const getReq = tx.objectStore(IDB_STORE).get(INSTANT_CATALOG_KEY);
+          getReq.onsuccess = () => {
+            const val = getReq.result;
+            resolve(val && Array.isArray(val.products) ? val : null);
+          };
+          getReq.onerror = () => resolve(null);
+        } catch { resolve(null); }
+      };
+      req.onerror = () => resolve(null);
+    } catch { resolve(null); }
+  });
+}
+
 function getInstantLocalCatalog(): HomeData {
   try {
     const raw = localStorage.getItem(INSTANT_CATALOG_KEY);
@@ -9,6 +52,21 @@ function getInstantLocalCatalog(): HomeData {
     }
   } catch {}
   return { categories: [], products: [], banners: [], offers: [], settings: {} };
+}
+
+function useOnlineStatus(): boolean {
+  const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine !== false));
+  useEffect(() => {
+    const onOnline = () => setOnline(true);
+    const onOffline = () => setOnline(false);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
+  return online;
 }
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
@@ -2211,6 +2269,7 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
     offerCode: "",
   }));
   const items = useMemo(() => cart.map(item => ({ productId: item.id, quantity: item.quantity, name: item.name, ...(item.variant ? { variant: item.variant } : {}), ...(item.customAmount ? { customAmount: item.customAmount } : {}) })), [cart]);
+  const isOnline = useOnlineStatus();
   const [orderType, setOrderType] = useState<"delivery" | "takeaway" | "dine_in">("delivery");
   const signature = JSON.stringify({ form, items, orderType });
   const keyRef = useRef<{ signature: string; key: string }>({ signature: "", key: "" });
@@ -2337,6 +2396,7 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!isOnline) { toast.error("لا يوجد اتصال بالإنترنت حالياً — يرجى الاتصال بالإنترنت لتأكيد الطلب"); return; }
     if (mutation.isPending || quoteMutation.isPending) return;
     if (form.recipientName.trim().length < 2) {
       toast.error("يرجى إدخال اسم المستلم.");
@@ -2577,9 +2637,14 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
 
           <div className="modal-footer" style={{ marginTop: "2px" }}>
             <button type="button" className="button button-quiet" onClick={onClose}>رجوع</button>
-            <button type="submit" className="button button-primary" disabled={mutation.isPending} style={{ flex: 1, fontSize: "14px", fontWeight: 800 }}>
+            {!isOnline && (
+              <div style={{ width: "100%", background: "#fff4e5", border: "1px solid #f59e0b", color: "#92400e", borderRadius: "12px", padding: "10px 12px", fontSize: "12.5px", fontWeight: 700, marginBottom: "8px", textAlign: "center" }}>
+                ⚠️ لا يوجد اتصال بالإنترنت حالياً — يمكنك الاحتفاظ بسلتك، وسيتم تفعيل «تأكيد الطلب» فور عودة النت.
+              </div>
+            )}
+            <button type="submit" className="button button-primary" disabled={mutation.isPending || !isOnline} style={{ flex: 1, fontSize: "14px", fontWeight: 800, opacity: !isOnline ? 0.55 : 1 }}>
               {mutation.isPending ? <LoaderCircle className="spin" size={17} /> : null}
-              {mutation.isPending ? "جارٍ إرسال الطلب..." : "تأكيد الطلب"}
+              {!isOnline ? "غير متصل — بانتظار الإنترنت" : mutation.isPending ? "جارٍ إرسال الطلب..." : "تأكيد الطلب"}
             </button>
           </div>
         </form>
@@ -4748,7 +4813,17 @@ export default function Home() {
   const [activeAiProduct, setActiveAiProduct] = useState<PublicProduct | null>(null);
   useGuestPushSubscriptionSync();
   const [location, navigate] = useLocation();
+  const isOnline = useOnlineStatus();
   const [instantStoreData, setInstantStoreData] = useState<HomeData>(getInstantLocalCatalog);
+  useEffect(() => {
+    let active = true;
+    void loadOfflineCatalogIdb().then(cached => {
+      if (active && cached && cached.products.length > 0 && (!instantStoreData.products || instantStoreData.products.length === 0)) {
+        setInstantStoreData(cached);
+      }
+    });
+    return () => { active = false; };
+  }, []);
   const home = trpc.commerce.catalog.home.useQuery(undefined, {
     retry: 1,
     staleTime: 60000, refetchInterval: 120000, refetchIntervalInBackground: false,
@@ -4757,6 +4832,7 @@ export default function Home() {
   useEffect(() => {
     if (home.data && Array.isArray(home.data.products)) {
       setInstantStoreData(home.data as HomeData);
+      saveOfflineCatalogIdb(home.data as HomeData);
       try { localStorage.setItem(INSTANT_CATALOG_KEY, JSON.stringify(home.data)); } catch {}
     }
   }, [home.data]);
@@ -4777,6 +4853,12 @@ export default function Home() {
     if (location === "/assistant") return <AssistantPage />;
     return <HomePage data={data} onOpen={openProduct} onAiRecipe={setActiveAiProduct} />;
   }, [location, productId, productPath, data]);
-  return <div className="store-app" dir="rtl"><Header data={data} onSearch={text => navigate(`/products${text ? `?search=${encodeURIComponent(text)}` : ""}`)} /><GamifiedRewardBar settings={data.settings} location={location} />{home.isError && <div className="connection-strip"><span>الاتصال بالخدمة غير متاح مؤقتًا</span><button onClick={() => void home.refetch()}>إعادة المحاولة</button></div>}{home.isError && !home.data ? <main className="page-shell inner-page"><LoadError onRetry={() => void home.refetch()} /></main> : content}<footer className="store-footer"><div className="footer-brand"><span className={`brand-mark ${data.settings.storeIconUrl ? "has-brand-image" : ""}`}>{data.settings.storeIconUrl ? <img src={data.settings.storeIconUrl} alt="" /> : <img src="/chef-hat.svg" alt="شهيزو" style={{ padding: 0, objectFit: "cover" }} />}</span><span><b>شهيزو – SHAHEZO</b><small>{data.settings.storeName === "شهيزو – SHAHEZO" || !data.settings.storeName ? "شهي ولذيذ · شاورما • فلافل • عصائر" : data.settings.storeName}</small></span></div>{shouldShowFooterDescription(data.settings.storeDescription) && <span>{data.settings.storeDescription}</span>}<small>© {new Date().getFullYear()} {data.settings.storeName || "شهيزو – SHAHEZO"}</small></footer>{activeAiProduct && <AiRecipeModal product={activeAiProduct} onClose={() => setActiveAiProduct(null)} />}
+  return <div className="store-app" dir="rtl"><Header data={data} onSearch={text => navigate(`/products${text ? `?search=${encodeURIComponent(text)}` : ""}`)} /><GamifiedRewardBar settings={data.settings} location={location} />{(!isOnline || (home.isError && !home.data)) && (
+  <div className="connection-strip">
+    <span>{data.products.length > 0 ? "📡 تتصفح النسخة المحفوظة (بدون إنترنت) — تصفح وأضف للسلة، وتأكيد الطلب يتفعل فور عودة النت" : "الاتصال بالخدمة غير متاح مؤقتًا"}</span>
+    <button onClick={() => void home.refetch()}>تحديث</button>
+  </div>
+)}
+{home.isError && !home.data && data.products.length === 0 ? <main className="page-shell inner-page"><LoadError onRetry={() => void home.refetch()} /></main> : content}<footer className="store-footer"><div className="footer-brand"><span className={`brand-mark ${data.settings.storeIconUrl ? "has-brand-image" : ""}`}>{data.settings.storeIconUrl ? <img src={data.settings.storeIconUrl} alt="" /> : <img src="/chef-hat.svg" alt="شهيزو" style={{ padding: 0, objectFit: "cover" }} />}</span><span><b>شهيزو – SHAHEZO</b><small>{data.settings.storeName === "شهيزو – SHAHEZO" || !data.settings.storeName ? "شهي ولذيذ · شاورما • فلافل • عصائر" : data.settings.storeName}</small></span></div>{shouldShowFooterDescription(data.settings.storeDescription) && <span>{data.settings.storeDescription}</span>}<small>© {new Date().getFullYear()} {data.settings.storeName || "شهيزو – SHAHEZO"}</small></footer>{activeAiProduct && <AiRecipeModal product={activeAiProduct} onClose={() => setActiveAiProduct(null)} />}
     <ShahezoWhatsAppBar /><BottomNav active={currentNav} /></div>;
 }
