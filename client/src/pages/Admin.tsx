@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Children, isValidElement, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
   AlertTriangle, ArrowLeft, BadgePercent, BellRing, Box, Check, ChevronDown, CircleUserRound, ClipboardList,
@@ -12,6 +12,167 @@ import { startLogin, submitAdminCredentials } from "@/const";
 import { PERMISSION_KEYS, PERMISSION_LABELS, ROLE_DEFINITIONS, type AdminRoleKey, type PermissionKey } from "@shared/rbac";
 import ImageEditor from "@/components/ImageEditor";
 import { ensureBrowserPushSubscription, getExistingBrowserPushSubscription, getPushPermissionState, requestPushPermission } from "@/lib/pushNotifications";
+
+
+function AdminSelect({
+  value,
+  onChange,
+  children,
+  className,
+  style,
+  disabled,
+  required: _req,
+  "aria-label": ariaLabel,
+}: {
+  value?: string | number | readonly string[];
+  onChange?: (e: { target: { value: string }; currentTarget: { value: string } }) => void;
+  children?: ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+  disabled?: boolean;
+  required?: boolean;
+  "aria-label"?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  const options: Array<{ value: string; label: string; disabled?: boolean }> = [];
+  const collect = (nodes: ReactNode) => {
+    Children.forEach(nodes, child => {
+      if (!child) return;
+      if (Array.isArray(child)) { collect(child); return; }
+      if (isValidElement(child)) {
+        const props = child.props as any;
+        if (child.type === "option") {
+          const val = props.value !== undefined ? String(props.value) : String(props.children ?? "");
+          const lbl = Array.isArray(props.children) ? props.children.map((c: any) => String(c ?? "")).join("") : String(props.children ?? val);
+          options.push({ value: val, label: lbl, disabled: Boolean(props.disabled) });
+        } else if (props?.children) {
+          collect(props.children);
+        }
+      }
+    });
+  };
+  collect(children);
+
+  const strVal = value !== undefined && value !== null ? String(value) : "";
+  const selectedOpt = options.find(o => o.value === strVal) || options[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={wrapRef} className={className} style={{ position: "relative", width: "100%", ...style, padding: 0, border: 0, background: "transparent" }}>
+      <button
+        type="button"
+        disabled={disabled}
+        aria-label={ariaLabel}
+        aria-expanded={open}
+        onClick={() => !disabled && setOpen(p => !p)}
+        style={{
+          width: "100%",
+          minHeight: style?.height || "40px",
+          padding: "7px 11px",
+          borderRadius: "10px",
+          border: open ? "1.5px solid #870210" : "1px solid #e2d4c8",
+          background: disabled ? "#f5f1ed" : "#ffffff",
+          color: "#2b120f",
+          fontSize: "12.5px",
+          fontWeight: 700,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "8px",
+          cursor: disabled ? "not-allowed" : "pointer",
+          textAlign: "right",
+        }}
+      >
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {selectedOpt?.label || "اختر..."}
+        </span>
+        <ChevronDown
+          size={15}
+          style={{
+            color: "#870210",
+            flexShrink: 0,
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 0.15s ease",
+          }}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            right: 0,
+            left: 0,
+            minWidth: "180px",
+            maxHeight: "230px",
+            overflowY: "auto",
+            background: "#ffffff",
+            border: "1px solid #e2d4c8",
+            borderRadius: "12px",
+            boxShadow: "0 10px 26px rgba(43, 18, 15, 0.14)",
+            padding: "4px",
+            zIndex: 80,
+            display: "grid",
+            gap: "2px",
+          }}
+        >
+          {options.map((opt, idx) => {
+            const active = opt.value === strVal;
+            return (
+              <button
+                key={opt.value + "::" + idx}
+                type="button"
+                disabled={opt.disabled}
+                onClick={() => {
+                  setOpen(false);
+                  if (onChange) onChange({ target: { value: opt.value }, currentTarget: { value: opt.value } });
+                }}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: "8px",
+                  border: 0,
+                  background: active ? "#fdf3ed" : "transparent",
+                  color: active ? "#870210" : opt.disabled ? "#b0a29b" : "#2b120f",
+                  fontSize: "12.5px",
+                  fontWeight: active ? 800 : 600,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "8px",
+                  textAlign: "right",
+                  cursor: opt.disabled ? "not-allowed" : "pointer",
+                }}
+              >
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opt.label}</span>
+                {active && <Check size={14} strokeWidth={2.5} style={{ color: "#870210", flexShrink: 0 }} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const money = (value: number) => `${Number(value || 0).toLocaleString("en-US")} ر.ي`;
 const labels: Record<string, string> = { new: "جديد", preparing: "قيد التجهيز", ready: "جاهز للتوصيل", out_for_delivery: "خرج للتوصيل", delivered: "تم التسليم", cancelled: "ملغي" };
@@ -982,7 +1143,7 @@ function SmartBulkProductsStudio({
                   )}
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
-                  <select
+                  <AdminSelect
                     value={defaultCatId ?? ""}
                     onChange={e => {
                       const val = e.target.value ? Number(e.target.value) : null;
@@ -994,7 +1155,7 @@ function SmartBulkProductsStudio({
                   >
                     <option value="">تصنيف تلقائي لكل منتج...</option>
                     {categories.map(c => <option key={c.id} value={c.id}>تعيين الكل: {c.name}</option>)}
-                  </select>
+                  </AdminSelect>
                   <button
                     type="button"
                     className="small-button"
@@ -1147,14 +1308,14 @@ function SmartBulkProductsStudio({
                           style={{ padding: "6px 10px", borderRadius: "9px", border: "1px solid #d8e3dc", fontSize: "12px", color: "#3c5245" }}
                         />
 
-                        <select
+                        <AdminSelect
                           value={item.categoryId ?? ""}
                           onChange={e => updateItem(item.uid, { categoryId: e.target.value ? Number(e.target.value) : null })}
                           style={{ padding: "6px 8px", borderRadius: "9px", border: "1px solid #cad8cf", fontSize: "12px", background: "#f9fbf9" }}
                         >
                           <option value="">بلا قسم (اختر قسماً...)</option>
                           {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
+                        </AdminSelect>
 
                         <div style={{ display: "flex", gap: "4px" }}>
                           <button
@@ -1456,7 +1617,7 @@ function ProductsPanel({ isOwner = true, permissions = [], allowedCategoryIds = 
               <label className="field-wide">اسم المنتج *<input required maxLength={180} value={form.name} onChange={e => setField("name", e.target.value)} placeholder="مثلاً: شاورما عربي، ساندوتش فلافل، عصير مانجو، صحن مقبلات..." /></label>
               <label>{form.weightEnabled ? "سعر الكيلو (ر.ي) *" : "السعر الحالي (ر.ي) *"}<input ref={singlePriceInputRef} required type="number" min="0" value={form.price} onChange={e => setField("price", e.target.value)} placeholder={form.weightEnabled ? "مثلاً: 4000 (سعر الكيلو)" : "مثلاً: 1800"} /></label>
               <label>السعر قبل الخصم (اختياري للعروض)<input type="number" min="0" value={form.oldPrice} onChange={e => setField("oldPrice", e.target.value)} placeholder="مثلاً: 2000 (يظهر مشطوباً بعلامة ✕)" /></label>
-              <label>القسم<select value={form.categoryId ?? ""} onChange={e => setField("categoryId", e.target.value ? Number(e.target.value) : null)}><option value="">اختر القسم...</option>{cats.data?.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+              <label>القسم<AdminSelect value={form.categoryId ?? ""} onChange={e => setField("categoryId", e.target.value ? Number(e.target.value) : null)}><option value="">اختر القسم...</option>{cats.data?.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</AdminSelect></label>
               <label className="field-wide">الوصف (اختياري)<textarea rows={2} value={form.description} onChange={e => setField("description", e.target.value)} placeholder="وصف مختصر للمنتج..." /></label>
 
               <div className="field-wide" style={{ display: "flex", flexWrap: "wrap", gap: "8px", paddingTop: "4px" }}>
@@ -1692,17 +1853,17 @@ function ProductsPanel({ isOwner = true, permissions = [], allowedCategoryIds = 
             <div style={{ marginTop: "8px", padding: "14px", borderRadius: "14px", background: "#f6faf7", border: "1.5px solid #bfd6c7", display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "flex-end" }}>
               <label style={{ display: "grid", gap: "4px", fontSize: "12px", fontWeight: 800, color: "#870210" }}>
                 <span>القسم المستهدف:</span>
-                <select value={bulkPriceCatId} onChange={e => setBulkPriceCatId(e.target.value)} style={{ padding: "7px 10px", borderRadius: "10px", background: "#fff" }}>
+                <AdminSelect value={bulkPriceCatId} onChange={e => setBulkPriceCatId(e.target.value)} style={{ padding: "7px 10px", borderRadius: "10px", background: "#fff" }}>
                   <option value="all">{isCategoryRestricted ? "كل الأقسام المسموحة لي" : "كل منتجات المتجر"}</option>
                   {cats.data?.map(c => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
-                </select>
+                </AdminSelect>
               </label>
               <label style={{ display: "grid", gap: "4px", fontSize: "12px", fontWeight: 800, color: "#870210" }}>
                 <span>طريقة التعديل:</span>
-                <select value={bulkPriceMode} onChange={e => setBulkPriceMode(e.target.value as any)} style={{ padding: "7px 10px", borderRadius: "10px", background: "#fff" }}>
+                <AdminSelect value={bulkPriceMode} onChange={e => setBulkPriceMode(e.target.value as any)} style={{ padding: "7px 10px", borderRadius: "10px", background: "#fff" }}>
                   <option value="percent">نسبة مئوية % (مثلاً +10 أو -5)</option>
                   <option value="fixed">مبلغ ثابت بالريال (مثلاً +100 أو -50)</option>
-                </select>
+                </AdminSelect>
               </label>
               <label style={{ display: "grid", gap: "4px", fontSize: "12px", fontWeight: 800, color: "#870210" }}>
                 <span>المقدار (موجب للزيادة أو سالب للتخفيض):</span>
@@ -1728,18 +1889,18 @@ function ProductsPanel({ isOwner = true, permissions = [], allowedCategoryIds = 
       <div className="filter-bar" style={{ marginBottom: "14px" }}>
         <label className="filter-search"><input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="ابحث باسم المنتج..." /></label>
         <label className="filter-select">
-          <select value={catFilter} onChange={e => setCatFilter(e.target.value)}>
+          <AdminSelect value={catFilter} onChange={e => setCatFilter(e.target.value)}>
             <option value="all">كل الأقسام</option>
             <option value="none">بلا قسم</option>
             {cats.data?.map(c => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
-          </select>
+          </AdminSelect>
         </label>
         <label className="filter-select">
-          <select value={pubFilter} onChange={e => setPubFilter(e.target.value as any)}>
+          <AdminSelect value={pubFilter} onChange={e => setPubFilter(e.target.value as any)}>
             <option value="all">كل الحالات</option>
             <option value="published">منشور في المتجر</option>
             <option value="hidden">مخفي / مسودة</option>
-          </select>
+          </AdminSelect>
         </label>
       </div>
 
@@ -2972,36 +3133,36 @@ function BannersPanel() {
               </label>
               <label>
                 مكان ظهور الإعلان في الموقع
-                <select value={cfg.placement} onChange={e => setCfg({ ...cfg, placement: e.target.value as AdminBannerCfg["placement"] })}>
+                <AdminSelect value={cfg.placement} onChange={e => setCfg({ ...cfg, placement: e.target.value as AdminBannerCfg["placement"] })}>
                   <option value="top">أعلى الصفحة الرئيسية (السلايدر الرئيسي)</option>
                   <option value="middle">وسط الصفحة (بين الأقسام والمنتجات)</option>
                   <option value="bottom">أسفل الصفحة (بعد المنتجات)</option>
                   <option value="popup">نافذة منبثقة أول ما يفتح الزبون الموقع (Popup)</option>
-                </select>
+                </AdminSelect>
               </label>
               <label>
                 حجم الإعلان على الشاشة
-                <select value={cfg.size} onChange={e => setCfg({ ...cfg, size: e.target.value as AdminBannerCfg["size"] })}>
+                <AdminSelect value={cfg.size} onChange={e => setCfg({ ...cfg, size: e.target.value as AdminBannerCfg["size"] })}>
                   <option value="auto">المقاس الكامل الطبيعي للصورة (بدون قص أي جزء)</option>
                   <option value="medium">متوسط متناسق (القياسي)</option>
                   <option value="large">كبير وبارز</option>
                   <option value="small">صغير مدمج (شريط إعلاني)</option>
-                </select>
+                </AdminSelect>
               </label>
               <label>
                 طريقة تفاعل الزبون عند لمس الإعلان
-                <select value={cfg.clickMode} onChange={e => setCfg({ ...cfg, clickMode: e.target.value as AdminBannerCfg["clickMode"] })}>
+                <AdminSelect value={cfg.clickMode} onChange={e => setCfg({ ...cfg, clickMode: e.target.value as AdminBannerCfg["clickMode"] })}>
                   <option value="full">الضغط على أي مكان في صورة الإعلان بالكامل</option>
                   <option value="hotspot">تحديد مكان الزر المرسوم داخل الصورة فقط (مثل: اطلب الآن)</option>
                   <option value="none">بدون ضغط (عرض الصورة فقط)</option>
-                </select>
+                </AdminSelect>
               </label>
 
               {cfg.clickMode !== "none" && (
                 <>
                   <label>
                     عند الضغط يتوجه الزبون إلى:
-                    <select
+                    <AdminSelect
                       value={destType}
                       onChange={e => {
                         const next = e.target.value as typeof destType;
@@ -3017,32 +3178,32 @@ function BannersPanel() {
                       <option value="all_products">صفحة جميع المنتجات</option>
                       <option value="assistant">المساعد الذكي والشيف</option>
                       <option value="custom">رابط مخصص</option>
-                    </select>
+                    </AdminSelect>
                   </label>
 
                   {destType === "category" && (
                     <label>
                       اختر القسم الذي يفتحه الإعلان
-                      <select
+                      <AdminSelect
                         value={form.targetUrl.replace("/products?category=", "")}
                         onChange={e => setForm({ ...form, targetUrl: e.target.value ? "/products?category=" + e.target.value : "/products" })}
                       >
                         <option value="">-- اختر القسم --</option>
                         {cats.data?.map(c => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
-                      </select>
+                      </AdminSelect>
                     </label>
                   )}
 
                   {destType === "product" && (
                     <label>
                       اختر المنتج الذي يفتحه الإعلان
-                      <select
+                      <AdminSelect
                         value={form.targetUrl.replace("/product/", "")}
                         onChange={e => setForm({ ...form, targetUrl: e.target.value ? "/product/" + e.target.value : "/products" })}
                       >
                         <option value="">-- اختر المنتج --</option>
                         {prods.data?.map(p => <option key={p.id} value={String(p.id)}>{p.name} ({money(p.price)})</option>)}
-                      </select>
+                      </AdminSelect>
                     </label>
                   )}
 
@@ -3414,12 +3575,12 @@ function OffersPanel() {
           <div className="form-fields-grid">
             <label className="field-wide">
               اختر المنتج من المتجر *
-              <select required value={selectedProdId} onChange={e => handleSelectProductForOffer(e.target.value)}>
+              <AdminSelect required value={selectedProdId} onChange={e => handleSelectProductForOffer(e.target.value)}>
                 <option value="">-- اختر المنتج لعمل عرض عليه --</option>
                 {allProducts.filter(p => !unpackProductVariants(p.description).isBundle).map(p => (
                   <option key={p.id} value={p.id}>{p.name} — (السعر الحالي: {money(p.price)})</option>
                 ))}
-              </select>
+              </AdminSelect>
             </label>
             <label>
               السعر قبل الخصم (مشطوب ✕) *
@@ -3559,10 +3720,10 @@ function OffersPanel() {
                 </label>
                 <label>
                   القسم (اختياري)
-                  <select value={bundleCategoryId ?? ""} onChange={e => setBundleCategoryId(e.target.value ? Number(e.target.value) : null)}>
+                  <AdminSelect value={bundleCategoryId ?? ""} onChange={e => setBundleCategoryId(e.target.value ? Number(e.target.value) : null)}>
                     <option value="">قسم العروضات + القسم الافتراضي</option>
                     {catsQuery.data?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  </AdminSelect>
                 </label>
                 <label>
                   وصف إضافي للتجميعة (اختياري)
@@ -3621,7 +3782,7 @@ function OffersPanel() {
 
       <section className="admin-form-card">
         <div className="form-card-heading"><span className="form-card-number">{editing ? "✳" : "03"}</span><div><h2>{editing ? "تعديل كوبون الخصم" : "🎟️ إنشاء كود خصم للسلة (كوبون)"}</h2><p>أضف شروط الكوبون ورمز الخصم عند إتمام الطلب.</p></div>{editing && <button type="button" className="small-button" onClick={reset}>إلغاء التعديل<X size={14} /></button>}</div>
-        <form className="admin-form" onSubmit={submit}><div className="form-fields-grid"><label>اسم العرض<input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></label><label>رمز الخصم<input required value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} /></label><label className="field-wide">وصف العرض<textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></label><label>نوع الخصم<select value={form.discountType} onChange={e => setForm({ ...form, discountType: e.target.value as "percent" | "fixed" })}><option value="percent">نسبة مئوية</option><option value="fixed">قيمة ثابتة</option></select></label><label>{form.discountType === "percent" ? "النسبة %" : "قيمة الخصم ر.ي"}<input type="number" min="1" max={form.discountType === "percent" ? "100" : undefined} required value={form.discountValue} onChange={e => setForm({ ...form, discountValue: e.target.value })} /></label><label>الحد الأدنى للطلب ر.ي<input type="number" min="0" step="1" value={form.minimumOrder} onChange={e => setForm({ ...form, minimumOrder: e.target.value })} /></label><label>يبدأ العرض<input type="datetime-local" value={form.startsAt} onChange={e => setForm({ ...form, startsAt: e.target.value })} /></label><label>ينتهي العرض<input type="datetime-local" value={form.endsAt} onChange={e => setForm({ ...form, endsAt: e.target.value })} /></label><label className="toggle-field"><input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} /> العرض فعّال</label></div><div className="form-submit-row"><button type="submit" className="button button-primary" disabled={create.isPending || update.isPending}>{create.isPending || update.isPending ? <LoaderCircle className="spin" size={16} /> : editing ? <Save size={16} /> : <Plus size={16} />}{editing ? "حفظ تعديل الكوبون" : "إنشاء الكوبون"}</button></div></form>
+        <form className="admin-form" onSubmit={submit}><div className="form-fields-grid"><label>اسم العرض<input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></label><label>رمز الخصم<input required value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} /></label><label className="field-wide">وصف العرض<textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></label><label>نوع الخصم<AdminSelect value={form.discountType} onChange={e => setForm({ ...form, discountType: e.target.value as "percent" | "fixed" })}><option value="percent">نسبة مئوية</option><option value="fixed">قيمة ثابتة</option></AdminSelect></label><label>{form.discountType === "percent" ? "النسبة %" : "قيمة الخصم ر.ي"}<input type="number" min="1" max={form.discountType === "percent" ? "100" : undefined} required value={form.discountValue} onChange={e => setForm({ ...form, discountValue: e.target.value })} /></label><label>الحد الأدنى للطلب ر.ي<input type="number" min="0" step="1" value={form.minimumOrder} onChange={e => setForm({ ...form, minimumOrder: e.target.value })} /></label><label>يبدأ العرض<input type="datetime-local" value={form.startsAt} onChange={e => setForm({ ...form, startsAt: e.target.value })} /></label><label>ينتهي العرض<input type="datetime-local" value={form.endsAt} onChange={e => setForm({ ...form, endsAt: e.target.value })} /></label><label className="toggle-field"><input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} /> العرض فعّال</label></div><div className="form-submit-row"><button type="submit" className="button button-primary" disabled={create.isPending || update.isPending}>{create.isPending || update.isPending ? <LoaderCircle className="spin" size={16} /> : editing ? <Save size={16} /> : <Plus size={16} />}{editing ? "حفظ تعديل الكوبون" : "إنشاء الكوبون"}</button></div></form>
       </section>
       <div className="admin-section-heading"><div><h2>الكوبونات الحالية</h2><p>رموز العرض تُفحص عند إرسال الطلب.</p></div></div>
       {!query.data?.length ? <AdminEmpty title="لا توجد كوبونات مضافة" text="يمكنك إضافة رمز خصم متى أردت." /> : <div className="entity-list">{query.data.map(item => <article className="entity-row" key={item.id}><div className="entity-image offer-art"><BadgePercent size={20} /></div><div className="entity-main"><strong>{item.title}</strong><small>{item.code} · {item.discountType === "percent" ? item.discountValue + "%" : money(item.discountValue)} · حد أدنى {money(item.minimumOrder)} · {item.startsAt ? new Date(item.startsAt).toLocaleDateString("ar-YE") : "دون بداية محددة"} — {item.endsAt ? new Date(item.endsAt).toLocaleDateString("ar-YE") : "دون انتهاء محدد"}</small></div><label className="toggle-field compact-toggle"><input type="checkbox" checked={item.isActive} onChange={e => update.mutate({ id: item.id, values: { isActive: e.target.checked } })} /> فعّال</label><div className="entity-actions"><button type="button" className="small-button" onClick={() => edit(item)}>تعديل</button><button type="button" className="small-button danger-soft" onClick={() => { if (window.confirm("هل أنت متأكد من حذف العرض «" + item.title + "» نهائياً؟")) remove.mutate({ id: item.id }); }}><Trash2 size={14} /> حذف</button></div></article>)}</div>}
@@ -4113,7 +4274,7 @@ function OrdersPanel({ isOwner = false }: { isOwner?: boolean }) {
           <input value={orderSearch} onChange={e => setOrderSearch(e.target.value)} placeholder="ابحث برقم الطلب، اسم الزبون، رقم الهاتف، أو اسم الصنف..." />
         </label>
         <label className="filter-select">
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <AdminSelect value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
             <option value="all">كل الطلبات ({allOrders.length})</option>
             <option value="active">طلبات قيد المتابعة الآن</option>
             <option value="new">جديد</option>
@@ -4122,7 +4283,7 @@ function OrdersPanel({ isOwner = false }: { isOwner?: boolean }) {
             <option value="out_for_delivery">خرج للتوصيل</option>
             <option value="delivered">تم التسليم</option>
             <option value="cancelled">ملغي</option>
-          </select>
+          </AdminSelect>
         </label>
         {filteredOrders.length > 0 && (
           <button type="button" className="small-button" onClick={exportOrders}><Download size={15} /> تصدير تقرير CSV ({filteredOrders.length})</button>
@@ -5026,12 +5187,12 @@ function SettingsPanel() {
         </div>
 
         <label>🎯 نوع المكافأة عند بلوغ المبلغ
-          <select value={rcfg.rewardMode} onChange={e => updateRcfg("rewardMode", e.target.value as AdminRewardCfg["rewardMode"])}>
+          <AdminSelect value={rcfg.rewardMode} onChange={e => updateRcfg("rewardMode", e.target.value as AdminRewardCfg["rewardMode"])}>
             <option value="custom_gift">🎁 هدية مجانية يحددها المتجر (تُضاف تلقائياً لفاتورة الطلب)</option>
             <option value="free_delivery">🛵 توصيل مجاني بالكامل (+ هدية اختيارية)</option>
             <option value="discount_percent">🏷️ خصم نسبة مئوية % من السلة (+ هدية اختيارية)</option>
             <option value="discount_fixed">💸 خصم مبلغ نقدي ثابت بالريال (+ هدية اختيارية)</option>
-          </select>
+          </AdminSelect>
         </label>
 
         {rcfg.rewardMode === "discount_percent" && (
@@ -5074,21 +5235,21 @@ function SettingsPanel() {
         </div>
 
         <label>👥 لمن يظهر هذا العرض؟
-          <select value={rcfg.audience} onChange={e => updateRcfg("audience", e.target.value as AdminRewardCfg["audience"])}>
+          <AdminSelect value={rcfg.audience} onChange={e => updateRcfg("audience", e.target.value as AdminRewardCfg["audience"])}>
             <option value="all">🌟 جميع زوار المتجر (الكل)</option>
             <option value="new_customers">🆕 الزبائن الجدد فقط (من لم يطلبوا سابقاً)</option>
             <option value="returning_customers">💎 الزبائن الدائمون فقط (من لديهم طلب سابق أو أكثر)</option>
             <option value="vip_customers">👑 كبار العملاء VIP (من لديهم 3 طلبات فأكثر)</option>
             <option value="specific_phones">📱 أرقام هواتف محددة فقط</option>
-          </select>
+          </AdminSelect>
         </label>
 
         <label>📍 مكان ظهور الشريط التفاعلي
-          <select value={rcfg.placement} onChange={e => updateRcfg("placement", e.target.value as AdminRewardCfg["placement"])}>
+          <AdminSelect value={rcfg.placement} onChange={e => updateRcfg("placement", e.target.value as AdminRewardCfg["placement"])}>
             <option value="everywhere">🔥 في كل مكان (أعلى المتجر + المنتجات + السلة + شريط عائم سفلي)</option>
             <option value="home_and_cart">🏠 الصفحة الرئيسية + السلة فقط</option>
             <option value="cart_only">🛒 صفحة السلة فقط</option>
-          </select>
+          </AdminSelect>
         </label>
 
         {rcfg.audience === "specific_phones" && (
@@ -5645,13 +5806,13 @@ function StaffManagementPanel({ actorIsOwner, actorPermissions, actorStaffId }: 
             )}
             <label>
               الدور الوظيفي الأساسي
-              <select value={roleKey} onChange={e => handleRoleChange(e.target.value as any)}>
+              <AdminSelect value={roleKey} onChange={e => handleRoleChange(e.target.value as any)}>
                 <option value="general_manager">مدير عام — {ROLE_DEFINITIONS.general_manager.description}</option>
                 <option value="product_manager">مدير منتجات — {ROLE_DEFINITIONS.product_manager.description}</option>
                 <option value="order_manager">مدير طلبات — {ROLE_DEFINITIONS.order_manager.description}</option>
                 <option value="content_manager">مدير محتوى وعروض — {ROLE_DEFINITIONS.content_manager.description}</option>
                 <option value="staff">موظف / مشرف — {ROLE_DEFINITIONS.staff.description}</option>
-              </select>
+              </AdminSelect>
             </label>
             {!editingId && (
               <label className="toggle-field field-wide">
@@ -5797,21 +5958,21 @@ function StaffManagementPanel({ actorIsOwner, actorPermissions, actorStaffId }: 
       <div className="filter-bar" style={{ marginBottom: "14px" }}>
         <label className="filter-search"><input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث بالاسم أو اسم المستخدم..." /></label>
         <label className="filter-select">
-          <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
+          <AdminSelect value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
             <option value="all">كل الأدوار</option>
             <option value="general_manager">مدير عام</option>
             <option value="product_manager">مدير منتجات</option>
             <option value="order_manager">مدير طلبات</option>
             <option value="content_manager">مدير محتوى وعروض</option>
             <option value="staff">موظف / مشرف</option>
-          </select>
+          </AdminSelect>
         </label>
         <label className="filter-select">
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)}>
+          <AdminSelect value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)}>
             <option value="all">كل الحالات</option>
             <option value="active">نشط فقط</option>
             <option value="disabled">معطل فقط</option>
-          </select>
+          </AdminSelect>
         </label>
       </div>
 
@@ -5942,7 +6103,7 @@ function StaffManagementPanel({ actorIsOwner, actorPermissions, actorStaffId }: 
           <h2>📋 سجل الرقابة الشامل لنشاط المشرفين (باللغة العربية)</h2>
           <p>يعرض بالتفصيل ماذا فعل كل أدمن، وأي قسم دخله وشاهده، وماذا أضاف أو عدّل أو حذف مع الوقت والتاريخ.</p>
         </div>
-        <select
+        <AdminSelect
           value={logActorFilter}
           onChange={e => setLogActorFilter(e.target.value)}
           style={{ minHeight: "36px", padding: "0 12px", borderRadius: "10px", border: "1px solid #cfe0d4", background: "#ffffff", color: "#870210", fontSize: "12px", fontWeight: 700 }}
@@ -5951,7 +6112,7 @@ function StaffManagementPanel({ actorIsOwner, actorPermissions, actorStaffId }: 
           {Array.from(new Set((logsQuery.data ?? []).map(l => l.actorName))).map(name => (
             <option key={name} value={name}>👤 نشاط: {name}</option>
           ))}
-        </select>
+        </AdminSelect>
       </div>
       {!logsQuery.data?.length ? (
         <AdminEmpty title="لا توجد سجلات نشاط بعد" text="ستظهر هنا جميع تحركات وعمليات المشرفين باللغة العربية فور حدوثها." />
@@ -6233,11 +6394,11 @@ function BroadcastPanel() {
           </label>
           <label className="field-wide">
             الوجهة عند ضغط الزبون على الإشعار
-            <select value={targetUrl} onChange={e => setTargetUrl(e.target.value)} style={{ height: "42px", borderRadius: "11px", border: "1px solid #d8e2dc", padding: "0 12px", fontWeight: 700 }}>
+            <AdminSelect value={targetUrl} onChange={e => setTargetUrl(e.target.value)} style={{ height: "42px", borderRadius: "11px", border: "1px solid #d8e2dc", padding: "0 12px", fontWeight: 700 }}>
               <option value="/products?offers=1">🔥 فتح قسم العروضات والخصومات (/products?offers=1)</option>
               <option value="/products">🛍️ فتح قائمة جميع الوجبات (/products)</option>
               <option value="/">🏠 فتح الصفحة الرئيسية للمتجر (/)</option>
-            </select>
+            </AdminSelect>
           </label>
         </div>
 
