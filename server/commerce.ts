@@ -1464,6 +1464,148 @@ export const commerceRouter = router({
       ]);
       return rows.map(order => ({ ...order, items: items.filter(item => item.orderId === order.id), events: events.filter(event => event.orderId === order.id) }));
     }),
+    customerEdit: publicProcedure.input(z.object({
+      orderNumber: z.string().trim().min(1).max(40),
+      idempotencyKey: z.string().uuid(),
+      orderType: z.enum(["delivery", "takeaway", "dine_in"]).optional(),
+      city: z.string().trim().max(100).optional(),
+      district: z.string().trim().max(120).optional(),
+      addressDetails: z.string().trim().max(1000).optional(),
+      addProductId: safeId.optional(),
+      addQuantity: z.number().int().min(1).max(50).optional(),
+      removeItemId: safeId.optional(),
+    })).mutation(async ({ input }) => {
+      const db = await database();
+      const settings = await readSettings(db);
+      const res = await db.transaction(async tx => {
+        const ord = (await tx.select().from(orders).where(eq(orders.orderNumber, input.orderNumber)).limit(1).for("update"))[0];
+        if (!ord) throw new TRPCError({ code: "NOT_FOUND", message: "لم يتم العثور على الطلب." });
+        if (!matchesGuestOrderKey(input.idempotencyKey, ord.idempotencyKey)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح بتعديل هذا الطلب من هذا الجهاز." });
+        }
+        if (ord.status === "out_for_delivery" || ord.status === "delivered" || ord.status === "cancelled") {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "لا يمكن تعديل الطلب بعد خروجه للتوصيل أو تسليمه." });
+        }
+
+        const notes: string[] = [];
+        let nextCity = ord.city;
+        let nextDistrict = ord.district;
+        let nextDetails = ord.addressDetails;
+        let nextDeliveryFee = ord.deliveryFee;
+
+        if (input.orderType) {
+          if (input.orderType === "takeaway") {
+            nextCity = "استلام من البوفية";
+            nextDistrict = "استلام سفري مغلف";
+            nextDeliveryFee = 0;
+            notes.push("تغيير نوع الطلب إلى: استلام سفري من البوفية");
+          } else if (input.orderType === "dine_in") {
+            nextCity = "استلام من البوفية";
+            nextDistrict = "أكل محلي في البوفية";
+            nextDeliveryFee = 0;
+            notes.push("تغيير نوع الطلب إلى: أكل محلي في البوفية");
+          } else if (input.orderType === "delivery") {
+            if (!input.city?.trim() || !input.district?.trim()) {
+              throw new TRPCError({ code: "BAD_REQUEST", message: "يرجى اختيار منطقة التوصيل لتغيير الطلب إلى توصيل للمنزل." });
+            }
+            const fee = deliveryFeeForCity(settings, input.city.trim(), input.district.trim(), ord.phone, ord.subtotal);
+            if (fee === null) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "منطقة التوصيل غير مدعومة." });
+            nextCity = input.city.trim();
+            nextDistrict = input.district.trim();
+            nextDetails = (input.addressDetails || "").trim() || ord.addressDetails;
+            nextDeliveryFee = fee;
+            notes.push("تغيير نوع الطلب إلى: توصيل (" + nextCity + " — " + nextDistrict + ")");
+          }
+        }
+
+        if (input.removeItemId) {
+          if (ord.status === "ready") {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "تم تجهيز الأصناف بالفعل — لا يمكن حذف الأصناف الآن، لكن يمكنك إضافة صنف جديد أو تغيير طريقة الاستلام." });
+          }
+          const currentItems = await tx.select().from(orderItems).where(eq(orderItems.orderId, ord.id));
+          if (currentItems.length <= 1) {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "لا يمكن حذف آخر صنف في الطلب." });
+          }
+          const target = currentItems.find(it => it.id === input.removeItemId);
+          if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "الصنف غير موجود في الطلب." });
+          if (target.productId !== null) {
+            const prod = (await tx.select({ stock: products.stock }).from(products).where(eq(products.id, target.productId)).limit(1).for("update"))[0];
+            if (prod && prod.stock !== null) {
+              await tx.update(products).set({ stock: prod.stock + target.quantity }).where(eq(products.id, target.productId));
+            }
+          }
+          await tx.delete(orderItems).where(eq(orderItems.id, target.id));
+          notes.push("حذف صنف: " + target.productName);
+        }
+
+        if (input.addProductId) {
+          const qty = input.addQuantity ?? 1;
+          const prod = (await tx.select().from(products).where(and(eq(products.id, input.addProductId), eq(products.isPublished, true), eq(products.isAvailable, true))).limit(1).for("update"))[0];
+          if (!prod) throw new TRPCError({ code: "NOT_FOUND", message: "الصنف المضاف غير متوفر حالياً." });
+          if (prod.stock !== null && prod.stock < qty) {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "الكمية المتوفرة من «" + prod.name + "» لا تكفي." });
+          }
+          if (prod.stock !== null) {
+            await tx.update(products).set({ stock: prod.stock - qty }).where(eq(products.id, prod.id));
+          }
+          const lineTotal = prod.price * qty;
+          await tx.insert(orderItems).values({
+            orderId: ord.id,
+            productId: prod.id,
+            productName: prod.name,
+            unitPrice: prod.price,
+            quantity: qty,
+            lineTotal,
+          });
+          notes.push("➕ إضافة صنف: " + prod.name + " × " + qty);
+        }
+
+        const updatedItems = await tx.select().from(orderItems).where(eq(orderItems.orderId, ord.id));
+        const newSubtotal = updatedItems.reduce((s, it) => s + Number(it.lineTotal || 0), 0);
+        if (nextCity !== "استلام من البوفية") {
+          const recalcFee = deliveryFeeForCity(settings, nextCity, nextDistrict, ord.phone, newSubtotal);
+          if (recalcFee !== null) nextDeliveryFee = recalcFee;
+        } else {
+          nextDeliveryFee = 0;
+        }
+        const newTotal = Math.max(0, newSubtotal + nextDeliveryFee - Number(ord.discount || 0));
+        await tx.update(orders).set({
+          city: nextCity,
+          district: nextDistrict,
+          addressDetails: nextDetails,
+          subtotal: newSubtotal,
+          deliveryFee: nextDeliveryFee,
+          total: newTotal,
+        }).where(eq(orders.id, ord.id));
+
+        const summaryNote = "✏️ تعديل من الزبون: " + (notes.join(" · ") || "تحديث بيانات الطلب");
+        await tx.insert(orderEvents).values({
+          orderId: ord.id,
+          status: ord.status,
+          note: summaryNote,
+          changedByUserId: null,
+        });
+        return { orderId: ord.id, orderNumber: ord.orderNumber, newTotal, summaryNote };
+      });
+
+      void (async () => {
+        try {
+          const targets = await getAllAdminPushTargets(db);
+          if (!targets.length) return;
+          await deliverPushRows(targets, {
+            title: "✏️ تعديل على الطلب #" + res.orderNumber,
+            body: res.summaryNote + " — الإجمالي الجديد: " + res.newTotal.toLocaleString("en-US") + " ر.ي",
+            url: "/admin/orders?order=" + encodeURIComponent(res.orderNumber),
+            tag: "shahezo-admin-edit-" + res.orderId,
+          }, async (id, endpointHash) => {
+            if (id > 0) await db.delete(ownerPushSubscriptions).where(eq(ownerPushSubscriptions.id, id)).catch(() => {});
+            if (endpointHash) await removeBackupAdminSubscription(db, endpointHash);
+          });
+        } catch {}
+      })();
+      clearCatalogCache();
+      return { success: true, newTotal: res.newTotal };
+    }),
     submitRating: publicProcedure.input(z.object({
       orderNumber: z.string().trim().min(1).max(40),
       driverRating: z.number().int().min(1).max(5).optional(),

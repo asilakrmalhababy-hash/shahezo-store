@@ -1758,6 +1758,16 @@ function CategoriesPage({ data }: { data: HomeData }) {
           })}
         </div>
       )}
+      {editingOrder && (
+        <CustomerOrderEditModal
+          order={editingOrder}
+          idempotencyKey={refs.find(r => r.orderNumber === editingOrder.orderNumber)?.idempotencyKey || refs[0]?.idempotencyKey || ""}
+          allProducts={allProducts}
+          settings={settings}
+          onClose={() => setEditingOrder(null)}
+          onSaved={() => { setEditingOrder(null); void query.refetch(); }}
+        />
+      )}
     </main>
   );
 }
@@ -2670,6 +2680,8 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
   const [orderType, setOrderType] = useState<"delivery" | "takeaway" | "dine_in">("delivery");
   const signature = JSON.stringify({ form, items, orderType });
   const keyRef = useRef<{ signature: string; key: string }>({ signature: "", key: "" });
+  const submittedKeyRef = useRef<string>("");
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   if (keyRef.current.signature !== signature) keyRef.current = { signature, key: getPendingOrderIdempotencyKey(signature) };
   const [quoteSignature, setQuoteSignature] = useState("");
 
@@ -2732,7 +2744,8 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
 
   const mutation = trpc.commerce.orders.place.useMutation({
     onSuccess: result => {
-      const idempotencyKey = keyRef.current.key;
+      setIsSubmittingOrder(false);
+      const idempotencyKey = submittedKeyRef.current || keyRef.current.key;
       customer.rememberOrder({ orderNumber: result.orderNumber, idempotencyKey, createdAt: new Date().toISOString() });
       recordMyOrderedItems(items);
       clearPendingOrderIdempotencyKey(idempotencyKey);
@@ -2764,7 +2777,7 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
       onClose();
       navigate("/orders?order=" + encodeURIComponent(result.orderNumber) + "&justOrdered=1");
     },
-    onError: error => { setQuoteSignature(""); quoteMutation.reset(); handleUnavailableOrderError(error.message || "تعذر إرسال الطلب. راجع البيانات وحاول مجدداً."); },
+    onError: error => { setIsSubmittingOrder(false); setQuoteSignature(""); quoteMutation.reset(); handleUnavailableOrderError(error.message || "تعذر إرسال الطلب. راجع البيانات وحاول مجدداً."); },
   });
 
   const selectAddress = (id: string) => {
@@ -2796,7 +2809,7 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!isOnline) { toast.error("لا يوجد اتصال بالإنترنت حالياً — يرجى الاتصال بالإنترنت لتأكيد الطلب"); return; }
-    if (mutation.isPending || quoteMutation.isPending) return;
+    if (isSubmittingOrder || mutation.isPending || quoteMutation.isPending) return;
     if (form.recipientName.trim().length < 2) {
       toast.error("يرجى إدخال اسم المستلم.");
       return;
@@ -2818,6 +2831,8 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
     const effCity = orderType === "delivery" ? form.city : "استلام من البوفية";
     const effDistrict = orderType === "takeaway" ? "استلام سفري مغلف" : orderType === "dine_in" ? "أكل محلي في البوفية" : form.district;
     const effDetails = orderType === "delivery" ? form.addressDetails : (orderType === "dine_in" ? ("🍽️ أكل محلي في البوفية" + (form.addressDetails ? " · " + form.addressDetails : "")) : ("🛍️ استلام سفري من البوفية" + (form.addressDetails ? " · " + form.addressDetails : "")));
+    setIsSubmittingOrder(true);
+    submittedKeyRef.current = keyRef.current.key;
     try {
       const activeQuote = quote ?? await quoteMutation.mutateAsync({ items, city: effCity, district: effDistrict, phone: cleanYemeniPhone(form.phone), offerCode: form.offerCode || undefined, orderType } as any);
       const savedPrefs = (() => { try { return (localStorage.getItem("shahezo-customer-food-prefs-v1") || "").trim(); } catch { return ""; } })();
@@ -2839,7 +2854,7 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
         offerCode: form.offerCode || undefined,
         items,
       } as any);
-    } catch {}
+    } catch { setIsSubmittingOrder(false); }
   };
 
   return (
@@ -2854,6 +2869,7 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
         </div>
 
         <form onSubmit={e => void submit(e)} className="form-stack" style={{ gap: "14px" }}>
+          <fieldset disabled={isSubmittingOrder || mutation.isPending} style={{ border: 0, padding: 0, margin: 0, display: "grid", gap: "14px", opacity: (isSubmittingOrder || mutation.isPending) ? 0.68 : 1, pointerEvents: (isSubmittingOrder || mutation.isPending) ? "none" : "auto" }}>
           <div style={{ display: "grid", gap: "6px" }}>
             <strong style={{ fontSize: "12px", color: "#2b120f" }}>طريقة الاستلام:</strong>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "6px" }}>
@@ -3035,17 +3051,18 @@ function Checkout({ onClose, onSuccess, cart }: { onClose: () => void; onSuccess
           </section>
 
           <div className="modal-footer" style={{ marginTop: "2px" }}>
-            <button type="button" className="button button-quiet" onClick={onClose}>رجوع</button>
+            <button type="button" className="button button-quiet" disabled={isSubmittingOrder || mutation.isPending} onClick={onClose}>رجوع</button>
             {!isOnline && (
               <div style={{ width: "100%", background: "#fff4e5", border: "1px solid #f59e0b", color: "#92400e", borderRadius: "12px", padding: "10px 12px", fontSize: "12.5px", fontWeight: 700, marginBottom: "8px", textAlign: "center" }}>
                 ⚠️ لا يوجد اتصال بالإنترنت حالياً — يمكنك الاحتفاظ بسلتك، وسيتم تفعيل «تأكيد الطلب» فور عودة النت.
               </div>
             )}
-            <button type="submit" className="button button-primary" disabled={mutation.isPending || !isOnline} style={{ flex: 1, fontSize: "14px", fontWeight: 800, opacity: !isOnline ? 0.55 : 1 }}>
-              {mutation.isPending ? <LoaderCircle className="spin" size={17} /> : null}
-              {!isOnline ? "غير متصل — بانتظار الإنترنت" : mutation.isPending ? "جارٍ إرسال الطلب..." : "تأكيد الطلب"}
+            <button type="submit" className="button button-primary" disabled={isSubmittingOrder || mutation.isPending || !isOnline} style={{ flex: 1, fontSize: "14px", fontWeight: 800, opacity: !isOnline ? 0.55 : 1 }}>
+              {(isSubmittingOrder || mutation.isPending) ? <LoaderCircle className="spin" size={17} /> : null}
+              {!isOnline ? "غير متصل — بانتظار الإنترنت" : (isSubmittingOrder || mutation.isPending) ? "جارٍ تثبيت الطلب..." : "تأكيد الطلب"}
             </button>
           </div>
+          </fieldset>
         </form>
       </section>
     </div>
@@ -3304,7 +3321,171 @@ function OrderRatingCard({ orderNumber, isPickup, existingRating, onRated }: { o
   );
 }
 
-function OrdersPage() {
+function CustomerOrderEditModal({
+  order,
+  idempotencyKey,
+  allProducts,
+  settings,
+  onClose,
+  onSaved,
+}: {
+  order: any;
+  idempotencyKey: string;
+  allProducts: PublicProduct[];
+  settings: Record<string, string>;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const customer = useCustomer();
+  const deliveryTree = useMemo(() => readPublicDeliveryTree((settings as any)?.deliveryTreeConfig), [settings]);
+  const isInitiallyPickup = order.city === "استلام من البوفية";
+  const initialType: "delivery" | "takeaway" | "dine_in" = isInitiallyPickup
+    ? (String(order.district || "").includes("محلي") ? "dine_in" : "takeaway")
+    : "delivery";
+  const [editType, setEditType] = useState<"delivery" | "takeaway" | "dine_in">(initialType);
+  const [city, setCity] = useState<string>(isInitiallyPickup ? (customer.addresses[0]?.city || "") : (order.city || ""));
+  const [district, setDistrict] = useState<string>(isInitiallyPickup ? (customer.addresses[0]?.district || "") : (order.district || ""));
+  const [addressDetails, setAddressDetails] = useState<string>(isInitiallyPickup ? (customer.addresses[0]?.details || "") : (order.addressDetails || ""));
+  const [addProdId, setAddProdId] = useState<number>(allProducts[0]?.id || 0);
+  const [addQty, setAddQty] = useState<number>(1);
+  const canRemoveItems = order.status === "new" || order.status === "preparing";
+
+  const editMut = trpc.commerce.orders.customerEdit.useMutation({
+    onSuccess: () => {
+      toast.success("تم تعديل الطلب وتحديث الفاتورة بنجاح ✓");
+      onSaved();
+    },
+    onError: err => toast.error(err.message || "تعذر تعديل الطلب"),
+  });
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !editMut.isPending) onClose(); }} style={{ zIndex: 95 }}>
+      <div role="dialog" aria-modal="true" style={{ width: "min(440px, calc(100vw - 24px))", maxHeight: "88vh", overflowY: "auto", background: "#ffffff", borderRadius: "20px", padding: "16px", border: "1px solid #eadcd0", boxShadow: "0 20px 44px rgba(43,18,15,0.22)", display: "grid", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "8px", borderBottom: "1px solid #f2e6dc" }}>
+          <strong style={{ fontSize: "15px", color: "#870210", fontWeight: 900 }}>تعديل الطلب #{order.orderNumber}</strong>
+          <button type="button" className="icon-button" disabled={editMut.isPending} onClick={onClose}><X size={17} /></button>
+        </div>
+
+        <div style={{ display: "grid", gap: "6px" }}>
+          <strong style={{ fontSize: "12px", color: "#2b120f" }}>تغيير طريقة الاستلام / التوصيل:</strong>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
+            {[
+              { id: "delivery" as const, label: "🛵 توصيل" },
+              { id: "takeaway" as const, label: "🛍️ سفري" },
+              { id: "dine_in" as const, label: "🍽️ محلي" },
+            ].map(opt => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setEditType(opt.id)}
+                style={{
+                  padding: "8px 4px",
+                  borderRadius: "10px",
+                  border: editType === opt.id ? "1.5px solid #870210" : "1px solid #e6d7cb",
+                  background: editType === opt.id ? "#fff4ee" : "#ffffff",
+                  color: editType === opt.id ? "#870210" : "#2b120f",
+                  fontSize: "12px",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {editType === "delivery" && (
+            <div style={{ display: "grid", gap: "6px", marginTop: "4px" }}>
+              <HierarchicalAreaPicker
+                tree={deliveryTree}
+                city={city}
+                district={district}
+                onSelect={(c, d) => { setCity(c); setDistrict(d); }}
+              />
+              <input
+                type="text"
+                value={addressDetails}
+                onChange={e => setAddressDetails(e.target.value)}
+                placeholder="أقرب معلم للعنوان..."
+                style={{ width: "100%", padding: "8px 10px", borderRadius: "10px", border: "1px solid #e2d2c3", fontSize: "12px" }}
+              />
+            </div>
+          )}
+          <button
+            type="button"
+            disabled={editMut.isPending}
+            onClick={() => editMut.mutate({ orderNumber: order.orderNumber, idempotencyKey, orderType: editType, city: editType === "delivery" ? city : undefined, district: editType === "delivery" ? district : undefined, addressDetails: editType === "delivery" ? addressDetails : undefined })}
+            className="button button-primary"
+            style={{ minHeight: "36px", fontSize: "12px", fontWeight: 800, borderRadius: "10px", marginTop: "2px" }}
+          >
+            حفظ طريقة الاستلام
+          </button>
+        </div>
+
+        <div style={{ borderTop: "1px solid #f2e6dc", paddingTop: "10px", display: "grid", gap: "7px" }}>
+          <strong style={{ fontSize: "12px", color: "#2b120f" }}>أصناف الطلب الحالية:</strong>
+          {!canRemoveItems && (
+            <small style={{ fontSize: "11px", color: "#92400e", background: "#fffbeb", padding: "6px 9px", borderRadius: "9px", border: "1px solid #fde68a" }}>
+              تم تجهيز الأصناف الحالية — لا يمكن حذفها الآن، لكن يمكنك إضافة صنف جديد أو تغيير طريقة الاستلام.
+            </small>
+          )}
+          <div style={{ display: "grid", gap: "5px" }}>
+            {order.items.map((it: any) => (
+              <div key={it.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "10px", background: "#fdf9f4", border: "1px solid #efe2d7", fontSize: "12px" }}>
+                <span>{it.productName} × <b>{it.quantity}</b></span>
+                {canRemoveItems && order.items.length > 1 && (
+                  <button
+                    type="button"
+                    disabled={editMut.isPending}
+                    onClick={() => editMut.mutate({ orderNumber: order.orderNumber, idempotencyKey, removeItemId: it.id })}
+                    style={{ border: "1px solid #f2cfc6", background: "#fff5f4", color: "#b42318", borderRadius: "8px", padding: "3px 8px", fontSize: "11px", fontWeight: 800, cursor: "pointer" }}
+                  >
+                    حذف
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {allProducts.length > 0 && (
+          <div style={{ borderTop: "1px solid #f2e6dc", paddingTop: "10px", display: "grid", gap: "7px" }}>
+            <strong style={{ fontSize: "12px", color: "#2b120f" }}>➕ إضافة صنف جديد للطلب:</strong>
+            <div style={{ display: "flex", gap: "6px" }}>
+              <select
+                value={addProdId}
+                onChange={e => setAddProdId(Number(e.target.value))}
+                style={{ flex: 1, padding: "7px 8px", borderRadius: "10px", border: "1px solid #e2d2c3", fontSize: "12px", background: "#ffffff" }}
+              >
+                {allProducts.map(p => (
+                  <option key={p.id} value={p.id}>{p.name} ({formatPrice(p.price)})</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={addQty}
+                onChange={e => setAddQty(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+                style={{ width: "54px", padding: "7px", borderRadius: "10px", border: "1px solid #e2d2c3", textAlign: "center", fontSize: "12px" }}
+              />
+            </div>
+            <button
+              type="button"
+              disabled={editMut.isPending || !addProdId}
+              onClick={() => editMut.mutate({ orderNumber: order.orderNumber, idempotencyKey, addProductId: addProdId, addQuantity: addQty })}
+              className="button button-secondary"
+              style={{ minHeight: "36px", fontSize: "12px", fontWeight: 800, borderRadius: "10px" }}
+            >
+              + إضافة الصنف للطلب
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function OrdersPage({ allProducts = [], settings = {} }: { allProducts?: PublicProduct[]; settings?: Record<string, string> }) {
   const customer = useCustomer();
   const { add } = useStore();
   const searchStr = useSearch();
@@ -3317,6 +3498,7 @@ function OrdersPage() {
   const [reorder, setReorder] = useState<Array<{ productId: number; quantity: number }> | null>(null);
   const reorderQuery = trpc.commerce.catalog.productsForReorder.useQuery({ ids: reorder?.map(item => item.productId) ?? [1] }, { enabled: Boolean(reorder), retry: 1 });
   const [expandedOrderNo, setExpandedOrderNo] = useState<string | null>(focusedOrderNumber);
+  const [editingOrder, setEditingOrder] = useState<any>(null);
 
   useEffect(() => {
     if (!refs.length) return;
@@ -3640,6 +3822,17 @@ function OrdersPage() {
                         </small>
                         <strong style={{ fontSize: "16px", color: "#870210" }}>الإجمالي: {formatPrice(order.total)}</strong>
                       </div>
+                      <div style={{ display: "flex", gap: "7px", flexWrap: "wrap" }}>
+                      {(order.status === "new" || order.status === "preparing" || order.status === "ready") && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingOrder(order)}
+                          className="small-button"
+                          style={{ background: "#fff4ee", borderColor: "#870210", color: "#870210", fontWeight: 800 }}
+                        >
+                          ✏️ تعديل الطلب
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="small-button selected"
@@ -3653,6 +3846,7 @@ function OrdersPage() {
                       >
                         🔄 إعادة الطلب للسلة
                       </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -5446,7 +5640,7 @@ export default function Home() {
     if (location === "/categories") return <CategoriesPage data={data} />;
     if (location === "/cart") return <CartPage minOrder={Number(data.settings?.minOrderAmount || 0)} />;
     if (location === "/favorites") return <FavoritesPage allProducts={data.products} />;
-    if (location === "/orders") return <OrdersPage />;
+    if (location === "/orders") return <OrdersPage allProducts={data.products} settings={data.settings} />;
     if (location === "/account") return <AccountPage settings={data.settings} />;
     if (location === "/assistant") return <AssistantPage />;
     return <HomePage data={data} onOpen={openProduct} onAiRecipe={setActiveAiProduct} />;
