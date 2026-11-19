@@ -5784,6 +5784,875 @@ function ChatsPanel() {
     </div>
   );
 }
+// --- CHATS_PANEL_END ---
+// --- STAFF_PANEL_START ---
+function StaffManagementPanel({ actorIsOwner, actorPermissions, actorStaffId }: { actorIsOwner: boolean; actorPermissions: PermissionKey[]; actorStaffId: number | null }) {
+  const utils = trpc.useUtils();
+  const staffQuery = trpc.commerce.admin.staff.list.useQuery(undefined, { retry: 1 });
+  const logsQuery = trpc.commerce.admin.staff.auditLogs.useQuery(undefined, { retry: 1, refetchInterval: 60000, refetchIntervalInBackground: false });
+  const catsQuery = trpc.commerce.admin.categories.list.useQuery(undefined, { retry: 1 });
+  const [logActorFilter, setLogActorFilter] = useState<string>("all");
+
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [roleKey, setRoleKey] = useState<"general_manager" | "product_manager" | "order_manager" | "content_manager" | "staff">("product_manager");
+  const [permissions, setPermissions] = useState<PermissionKey[]>(ROLE_DEFINITIONS.product_manager.defaultPermissions);
+  const [allowedCategoryIds, setAllowedCategoryIds] = useState<number[]>([]);
+  const [mustChangePassword, setMustChangePassword] = useState(true);
+
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "disabled">("all");
+
+  const [resetTarget, setResetTarget] = useState<{ id: number; name: string } | null>(null);
+  const [resetNewPass, setResetNewPass] = useState("");
+  const [resetMustChange, setResetMustChange] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+
+  const refreshAll = async () => {
+    await Promise.all([
+      utils.commerce.admin.staff.list.invalidate(),
+      utils.commerce.admin.staff.auditLogs.invalidate(),
+    ]);
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setDisplayName("");
+    setUsername("");
+    setPassword("");
+    setRoleKey("product_manager");
+    setPermissions([...ROLE_DEFINITIONS.product_manager.defaultPermissions]);
+    setAllowedCategoryIds([]);
+    setMustChangePassword(true);
+  };
+
+  const createMut = trpc.commerce.admin.staff.create.useMutation({
+    onSuccess: async () => {
+      toast.success("تم إنشاء الحساب الإداري وحفظ صلاحياته بنجاح");
+      resetForm();
+      await refreshAll();
+    },
+    onError: err => toast.error(err.message),
+  });
+
+  const updateMut = trpc.commerce.admin.staff.update.useMutation({
+    onSuccess: async () => {
+      toast.success("تم تحديث بيانات وصلاحيات المدير بنجاح");
+      resetForm();
+      await refreshAll();
+    },
+    onError: err => toast.error(err.message),
+  });
+
+  const statusMut = trpc.commerce.admin.staff.setStatus.useMutation({
+    onSuccess: async (_res, vars) => {
+      toast.success(vars.isActive ? "تم تفعيل الحساب الإداري" : "تم تعطيل الحساب وإبطال جلسته");
+      await refreshAll();
+    },
+    onError: err => toast.error(err.message),
+  });
+
+  const resetPassMut = trpc.commerce.admin.staff.resetPassword.useMutation({
+    onSuccess: async () => {
+      toast.success("تم إعادة تعيين كلمة المرور بنجاح");
+      setResetTarget(null);
+      setResetNewPass("");
+      await refreshAll();
+    },
+    onError: err => toast.error(err.message),
+  });
+
+  const deleteMut = trpc.commerce.admin.staff.delete.useMutation({
+    onSuccess: async () => {
+      toast.success("تم حذف الحساب الإداري بأمان");
+      setDeleteTarget(null);
+      await refreshAll();
+    },
+    onError: err => toast.error(err.message),
+  });
+
+  const handleRoleChange = (nextRole: "general_manager" | "product_manager" | "order_manager" | "content_manager" | "staff") => {
+    setRoleKey(nextRole);
+    const defaults = ROLE_DEFINITIONS[nextRole]?.defaultPermissions ?? [];
+    const allowedDefaults = actorIsOwner ? defaults : defaults.filter(p => actorPermissions.includes(p));
+    setPermissions([...allowedDefaults]);
+  };
+
+  const togglePermission = (perm: PermissionKey) => {
+    if (!actorIsOwner && !actorPermissions.includes(perm)) {
+      toast.error("لا يمكنك منح صلاحية لا تملكها في حسابك.");
+      return;
+    }
+    setPermissions(curr => curr.includes(perm) ? curr.filter(p => p !== perm) : [...curr, perm]);
+  };
+
+  const generateStrongPass = (setter: (val: string) => void) => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$";
+    let out = "";
+    for (let i = 0; i < 10; i++) out += chars[Math.floor(Math.random() * chars.length)];
+    setter(out);
+    navigator.clipboard?.writeText(out).catch(() => {});
+    toast.success("تم توليد ونسخ كلمة مرور قوية: " + out);
+  };
+
+  const submitForm = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!permissions.length) {
+      toast.error("اختر صلاحية واحدة على الأقل لهذا الحساب.");
+      return;
+    }
+    if (editingId) {
+      updateMut.mutate({ id: editingId, displayName, username, roleKey, permissions, allowedCategoryIds });
+    } else {
+      if (password.length < 6) {
+        toast.error("كلمة المرور يجب ألا تقل عن 6 أحرف.");
+        return;
+      }
+      createMut.mutate({ displayName, username, password, roleKey, permissions, allowedCategoryIds, mustChangePassword });
+    }
+  };
+
+  const startEdit = (item: NonNullable<typeof staffQuery.data>["items"][number]) => {
+    setEditingId(item.id);
+    setDisplayName(item.displayName);
+    setUsername(item.username);
+    setPassword("");
+    const r = (["general_manager", "product_manager", "order_manager", "content_manager", "staff"].includes(item.roleKey) ? item.roleKey : "staff") as "general_manager" | "product_manager" | "order_manager" | "content_manager" | "staff";
+    setRoleKey(r);
+    setPermissions([...item.permissions]);
+    setAllowedCategoryIds(Array.isArray((item as any).allowedCategoryIds) ? [...(item as any).allowedCategoryIds] : []);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const items = staffQuery.data?.items ?? [];
+  const summary = staffQuery.data?.summary ?? { total: 0, active: 0, disabled: 0 };
+  const filteredItems = items.filter(item => {
+    if (roleFilter !== "all" && item.roleKey !== roleFilter) return false;
+    if (statusFilter === "active" && !item.isActive) return false;
+    if (statusFilter === "disabled" && item.isActive) return false;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      if (!item.displayName.toLowerCase().includes(q) && !item.username.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  return (
+    <div className="admin-content">
+      <AdminHeading
+        eyebrow="الأمن والحوكمة متعددة المستويات"
+        title="إدارة المديرين والمشرفين والصلاحيات"
+        text="تحكم كامل في حسابات الطاقم الإداري، وحدد لكل مدير أو موظف الصلاحيات الدقيقة المسموح له بها في الخادم."
+        icon={ShieldCheck}
+      />
+
+      <div className="admin-stat-grid">
+        <div className="admin-stat"><span><Users size={18} /></span><small>إجمالي الطاقم الإداري</small><strong>{summary.total}</strong><em>بخلاف حساب المالك الرئيسي</em></div>
+        <div className="admin-stat"><span><Check size={18} /></span><small>الحسابات النشطة</small><strong style={{ color: "#870210" }}>{summary.active}</strong><em>يمكنهم الدخول حسب صلاحياتهم</em></div>
+        <div className="admin-stat"><span><AlertTriangle size={18} /></span><small>الحسابات المعطلة</small><strong style={{ color: "#9b5346" }}>{summary.disabled}</strong><em>ممنوعون من الدخول فوراً</em></div>
+        <div className="admin-stat"><span><ClipboardList size={18} /></span><small>عمليات مسجلة في التدقيق</small><strong>{logsQuery.data?.length ?? 0}</strong><em>أحدث السجلات الأمنية</em></div>
+      </div>
+
+      <section className="admin-form-card">
+        <div className="form-card-heading">
+          <span className="form-card-number">{editingId ? "✳" : "01"}</span>
+          <div>
+            <h2>{editingId ? "تعديل بيانات وصلاحيات المدير" : "إضافة مدير أو مشرف جديد"}</h2>
+            <p>تُحفظ كلمات المرور مشفرة بخوارزمية scrypt في قاعدة البيانات ولا تُخزن كنص صريح أبداً.</p>
+          </div>
+          {editingId && <button type="button" className="small-button" onClick={resetForm}>إلغاء التعديل <X size={14} /></button>}
+        </div>
+
+        <form onSubmit={submitForm} className="admin-form">
+          <div className="form-fields-grid">
+            <label>
+              الاسم الكامل للمدير / الموظف
+              <input required minLength={2} maxLength={160} value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="مثال: أحمد محمد - مدير الطلبات" />
+            </label>
+            <label>
+              اسم المستخدم أو البريد الإلكتروني للدخول
+              <input required minLength={3} maxLength={120} value={username} onChange={e => setUsername(e.target.value)} placeholder="مثال: ahmed_orders أو ahmed@store.com" dir="ltr" />
+            </label>
+            {!editingId && (
+              <label>
+                <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>كلمة المرور المؤقتة (6 أحرف فأكثر)</span>
+                  <button type="button" className="text-link" style={{ fontSize: "10px", padding: 0 }} onClick={() => generateStrongPass(setPassword)}>توليد ونسخ كلمة قوية</button>
+                </span>
+                <input required minLength={6} maxLength={128} type="text" value={password} onChange={e => setPassword(e.target.value)} placeholder="أدخل كلمة مرور أو اضغط توليد" dir="ltr" />
+              </label>
+            )}
+            <label>
+              الدور الوظيفي الأساسي
+              <AdminSelect value={roleKey} onChange={e => handleRoleChange(e.target.value as any)}>
+                <option value="general_manager">مدير عام — {ROLE_DEFINITIONS.general_manager.description}</option>
+                <option value="product_manager">مدير منتجات — {ROLE_DEFINITIONS.product_manager.description}</option>
+                <option value="order_manager">مدير طلبات — {ROLE_DEFINITIONS.order_manager.description}</option>
+                <option value="content_manager">مدير محتوى وعروض — {ROLE_DEFINITIONS.content_manager.description}</option>
+                <option value="staff">موظف / مشرف — {ROLE_DEFINITIONS.staff.description}</option>
+              </AdminSelect>
+            </label>
+            {!editingId && (
+              <label className="toggle-field field-wide">
+                <input type="checkbox" checked={mustChangePassword} onChange={e => setMustChangePassword(e.target.checked)} />
+                إلزام هذا المدير بتغيير كلمة المرور المؤقتة فور أول تسجيل دخول له
+              </label>
+            )}
+          </div>
+
+          <div style={{ padding: "12px", borderRadius: "12px", border: "1px solid #e8ddd4", background: "#fcfaf8", display: "grid", gap: "8px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "4px" }}>
+              <strong style={{ fontSize: "11.5px", color: "#870210" }}>1️⃣ اختر قالب الصلاحيات السريع (بضغطة واحدة):</strong>
+              <small style={{ fontSize: "10px", color: "#78645d" }}>يضبط الدور والصلاحيات تلقائياً</small>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "7px" }}>
+              {[
+                { key: "staff_add", title: "➕ إضافة وجبات فقط", sub: "بدون تعديل أو حذف", active: roleKey === "staff" && permissions.length === 2 && permissions.includes("products.add"), run: () => { setRoleKey("staff"); setPermissions(["products.view", "products.add"]); toast.info("تم اختيار: إضافة وجبات فقط"); } },
+                { key: "prod_mgr", title: "✏️ مسؤول وجبات وأسعار", sub: "إضافة وتعديل بدون حذف", active: roleKey === "product_manager" && permissions.length === 4, run: () => { setRoleKey("product_manager"); setPermissions(["products.view", "products.add", "products.edit", "inventory.manage"]); toast.info("تم اختيار: مسؤول وجبات وأسعار"); } },
+                { key: "ord_mgr", title: "📦 مسؤول طلبات وتواصل", sub: "إدارة الفواتير والزبائن", active: roleKey === "order_manager", run: () => { setRoleKey("order_manager"); setPermissions(["overview.view", "orders.view", "orders.manage", "customers.view", "chats.manage"]); toast.info("تم اختيار: مسؤول طلبات وتواصل"); } },
+                { key: "gen_mgr", title: "👑 مدير شامل للنظام", sub: "جميع الصلاحيات المتاحة", active: roleKey === "general_manager" && permissions.length >= 8, run: () => { setRoleKey("general_manager"); setPermissions(actorIsOwner ? [...PERMISSION_KEYS] : [...actorPermissions]); toast.info("تم اختيار: مدير شامل"); } },
+              ].map(preset => (
+                <button
+                  key={preset.key}
+                  type="button"
+                  onClick={preset.run}
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: "10px",
+                    border: preset.active ? "1.5px solid #870210" : "1px solid #dfd3c9",
+                    background: preset.active ? "#fceee9" : "#ffffff",
+                    textAlign: "right",
+                    cursor: "pointer",
+                    display: "grid",
+                    gap: "2px",
+                  }}
+                >
+                  <strong style={{ fontSize: "11px", color: preset.active ? "#870210" : "#2b120f", fontWeight: 800 }}>{preset.title}</strong>
+                  <small style={{ fontSize: "9.5px", color: "#78645d" }}>{preset.sub}</small>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ padding: "12px", borderRadius: "12px", border: "1px solid #e8ddd4", background: "#fcfaf8", display: "grid", gap: "8px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
+              <div>
+                <strong style={{ fontSize: "11.5px", color: "#870210", display: "block" }}>2️⃣ الأقسام المسموح له بإدارتها:</strong>
+                <small style={{ color: "#6e5a53", fontSize: "10px" }}>
+                  {allowedCategoryIds.length === 0 ? "✅ جميع أقسام المتجر متاحة له (أو اضغط لتحديد أقسام معينة فقط)" : ("🔒 مقيّد بـ (" + allowedCategoryIds.length + ") قسم محدد فقط")}
+                </small>
+              </div>
+              {allowedCategoryIds.length > 0 && (
+                <button type="button" className="small-button selected" onClick={() => setAllowedCategoryIds([])}>إتاحة الكل</button>
+              )}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(115px, 1fr))", gap: "6px" }}>
+              {(catsQuery.data ?? []).map(cat => {
+                const isSelected = allowedCategoryIds.includes(cat.id);
+                return (
+                  <label
+                    key={cat.id}
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "6px 9px",
+                      borderRadius: "9px",
+                      border: isSelected ? "1.5px solid #870210" : "1px solid #dfd3c9",
+                      background: isSelected ? "#fceee9" : "#ffffff",
+                      fontWeight: 700,
+                      fontSize: "11px",
+                      color: "#2b120f",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => setAllowedCategoryIds(curr => curr.includes(cat.id) ? curr.filter(id => id !== cat.id) : [...curr, cat.id])}
+                    />
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cat.name}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ padding: "12px", borderRadius: "12px", border: "1px solid #e8ddd4", background: "#fcfaf8", display: "grid", gap: "8px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
+              <strong style={{ fontSize: "11.5px", color: "#870210" }}>3️⃣ الصلاحيات التفصيلية ({permissions.length} مفعّلة):</strong>
+              <div style={{ display: "flex", gap: "5px" }}>
+                <button type="button" className="small-button" onClick={() => setPermissions(actorIsOwner ? [...PERMISSION_KEYS] : [...actorPermissions])}>تحديد الكل</button>
+                <button type="button" className="small-button" onClick={() => handleRoleChange(roleKey)}>الافتراضي</button>
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "6px" }}>
+              {PERMISSION_KEYS.map(perm => {
+                const meta = PERMISSION_LABELS[perm];
+                const checked = permissions.includes(perm);
+                const disabled = !actorIsOwner && !actorPermissions.includes(perm);
+                return (
+                  <label
+                    key={perm}
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: "7px",
+                      padding: "7px 9px",
+                      borderRadius: "9px",
+                      border: checked ? "1.5px solid #870210" : "1px solid #e2d7ce",
+                      background: checked ? "#fff7f4" : "#ffffff",
+                      opacity: disabled ? 0.5 : 1,
+                      cursor: disabled ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    <input type="checkbox" checked={checked} disabled={disabled} onChange={() => togglePermission(perm)} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: "1px", minWidth: 0 }}>
+                      <span style={{ fontSize: "10.5px", fontWeight: 800, color: "#2b120f", lineHeight: 1.3 }}>{meta.label}</span>
+                      <small style={{ fontSize: "9px", color: meta.sensitive ? "#9b5346" : "#78645d" }}>{meta.group}</small>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="form-submit-row">
+            <button type="submit" className="button button-primary" disabled={createMut.isPending || updateMut.isPending}>
+              {createMut.isPending || updateMut.isPending ? <LoaderCircle size={16} className="spin" /> : editingId ? <Save size={16} /> : <Plus size={16} />}
+              {editingId ? "حفظ تعديلات المدير والصلاحيات" : "إضافة المدير وتفعيل صلاحياته"}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <div className="admin-section-heading">
+        <div><h2>قائمة المديرين والمشرفين</h2><p>ابحث أو صفِّ حسب الدور والحالة، أو تحكم في الحسابات النشطة.</p></div>
+        <span className="count-chip">{filteredItems.length}</span>
+      </div>
+
+      <div className="filter-bar" style={{ marginBottom: "14px" }}>
+        <label className="filter-search"><input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث بالاسم أو اسم المستخدم..." /></label>
+        <label className="filter-select">
+          <AdminSelect value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
+            <option value="all">كل الأدوار</option>
+            <option value="general_manager">مدير عام</option>
+            <option value="product_manager">مدير منتجات</option>
+            <option value="order_manager">مدير طلبات</option>
+            <option value="content_manager">مدير محتوى وعروض</option>
+            <option value="staff">موظف / مشرف</option>
+          </AdminSelect>
+        </label>
+        <label className="filter-select">
+          <AdminSelect value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)}>
+            <option value="all">كل الحالات</option>
+            <option value="active">نشط فقط</option>
+            <option value="disabled">معطل فقط</option>
+          </AdminSelect>
+        </label>
+      </div>
+
+      {staffQuery.isLoading ? <AdminLoading /> : staffQuery.error ? <AdminError message={staffQuery.error.message} retry={() => void staffQuery.refetch()} /> : !filteredItems.length ? (
+        <AdminEmpty title="لا توجد حسابات إدارية مطابقة" text="أضف أول مدير أو موظف من النموذج أعلاه ليظهر هنا." />
+      ) : (
+        <div className="entity-list">
+          {filteredItems.map(item => {
+            const isSelf = Boolean(actorStaffId && actorStaffId === item.id);
+            return (
+              <article className="admin-order-card" key={item.id} style={{ borderLeft: item.isActive ? "4px solid #870210" : "4px solid #b95653" }}>
+                <div className="admin-order-top">
+                  <div>
+                    <strong style={{ fontSize: "14px", color: "#173c2a" }}>{item.displayName} {isSelf && <span className="default-tag">حسابك</span>}</strong>
+                    <small dir="ltr" style={{ fontWeight: 700, color: "#870210" }}>@{item.username}</small>
+                  </div>
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
+                    <span className="status-pill status-ready">{item.roleLabel}</span>
+                    <span className={"visibility-tag " + (item.isActive ? "visible" : "hidden")}>{item.isActive ? "نشط" : "معطل"}</span>
+                    {item.mustChangePassword && <span className="status-pill status-new">تغيير كلمة المرور مطلوب</span>}
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", margin: "10px 0" }}>
+                  {item.permissions.map(p => (
+                    <span key={p} style={{ padding: "3px 8px", borderRadius: "6px", background: "#f1f6f2", color: "#29523c", fontSize: "10px", fontWeight: 600 }}>
+                      {PERMISSION_LABELS[p]?.label || p}
+                    </span>
+                  ))}
+                  {Array.isArray((item as any).allowedCategoryIds) && (item as any).allowedCategoryIds.length > 0 ? (
+                    <span style={{ padding: "3px 9px", borderRadius: "6px", background: "#fff4d9", color: "#8a5a00", fontSize: "10.5px", fontWeight: 800, border: "1px solid #efd595" }}>
+                      🔒 مخصص للأقسام: {(item as any).allowedCategoryIds.map((cid: number) => (catsQuery.data ?? []).find(c => c.id === cid)?.name || ("#" + cid)).join("، ")}
+                    </span>
+                  ) : (
+                    <span style={{ padding: "3px 9px", borderRadius: "6px", background: "#e8f4ec", color: "#870210", fontSize: "10px", fontWeight: 700 }}>
+                      📂 كل الأقسام المسموحة
+                    </span>
+                  )}
+                </div>
+                <div className="admin-order-customer" style={{ marginTop: "6px", paddingBottom: "8px" }}>
+                  <span>تاريخ الإنشاء: {new Date(item.createdAt).toLocaleDateString("ar-YE")}</span>
+                  <span>آخر دخول: {item.lastLoginAt ? new Date(item.lastLoginAt).toLocaleString("ar-YE") : "لم يسجل الدخول بعد"}</span>
+                  {item.createdBy && <span>أُنشئ بواسطة: {item.createdBy}</span>}
+                </div>
+                {!isSelf && (
+                  <div className="entity-actions" style={{ justifyContent: "flex-start", paddingTop: "8px", borderTop: "1px solid #eef1ec" }}>
+                    <button type="button" className="small-button" onClick={() => startEdit(item)}>تعديل الصلاحيات</button>
+                    <button type="button" className="small-button" onClick={() => { setResetTarget({ id: item.id, name: item.displayName }); setResetNewPass(""); setResetMustChange(true); }}>إعادة تعيين كلمة المرور</button>
+                    <button
+                      type="button"
+                      className={"small-button " + (item.isActive ? "danger-soft" : "selected")}
+                      onClick={() => {
+                        if (item.isActive && !window.confirm("هل أنت متأكد من تعطيل حساب «" + item.displayName + "» وإخراجه فوراً من النظام؟")) return;
+                        statusMut.mutate({ id: item.id, isActive: !item.isActive });
+                      }}
+                    >
+                      {item.isActive ? "تعطيل الحساب" : "تفعيل الحساب"}
+                    </button>
+                    {actorIsOwner && (
+                      <button type="button" className="small-button danger-soft" onClick={() => setDeleteTarget({ id: item.id, name: item.displayName })}>
+                        حذف نهائي
+                      </button>
+                    )}
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      )}
+
+      {resetTarget && (
+        <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) setResetTarget(null); }}>
+          <section className="checkout-modal" style={{ maxWidth: "440px" }}>
+            <div className="modal-heading">
+              <div><span className="eyebrow">أمان الحساب</span><h2>إعادة تعيين كلمة مرور: {resetTarget.name}</h2></div>
+              <button type="button" className="icon-button" onClick={() => setResetTarget(null)}><X size={18} /></button>
+            </div>
+            <form
+              className="form-stack"
+              onSubmit={e => {
+                e.preventDefault();
+                if (resetNewPass.length < 6) { toast.error("كلمة المرور يجب ألا تقل عن 6 أحرف."); return; }
+                resetPassMut.mutate({ id: resetTarget.id, newPassword: resetNewPass, mustChangePassword: resetMustChange });
+              }}
+            >
+              <label>
+                <span style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>كلمة المرور الجديدة</span>
+                  <button type="button" className="text-link" style={{ fontSize: "10px", padding: 0 }} onClick={() => generateStrongPass(setResetNewPass)}>توليد ونسخ كلمة قوية</button>
+                </span>
+                <input required minLength={6} type="text" value={resetNewPass} onChange={e => setResetNewPass(e.target.value)} placeholder="أدخل كلمة المرور الجديدة" dir="ltr" />
+              </label>
+              <label className="toggle-field">
+                <input type="checkbox" checked={resetMustChange} onChange={e => setResetMustChange(e.target.checked)} />
+                إلزام المدير بتغييرها عند أول دخول قادم
+              </label>
+              <div className="modal-footer">
+                <button type="button" className="button button-quiet" onClick={() => setResetTarget(null)}>إلغاء</button>
+                <button type="submit" className="button button-primary" disabled={resetPassMut.isPending}>حفظ كلمة المرور</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) setDeleteTarget(null); }}>
+          <section className="checkout-modal" style={{ maxWidth: "420px" }}>
+            <div className="modal-heading">
+              <div><span className="eyebrow">تأكيد عملية حساسة</span><h2>حذف الحساب الإداري</h2></div>
+              <button type="button" className="icon-button" onClick={() => setDeleteTarget(null)}><X size={18} /></button>
+            </div>
+            <p style={{ fontSize: "12px", lineHeight: 1.8, color: "#4e5e53" }}>
+              هل أنت متأكد من حذف حساب <strong>«{deleteTarget.name}»</strong> نهائياً؟ سيتم إبطال جلسته فوراً مع الحفاظ الكامل على سجلات الطلبات والعمليات السابقة المرتبطة به.
+            </p>
+            <div className="modal-footer">
+              <button type="button" className="button button-quiet" onClick={() => setDeleteTarget(null)}>تراجع</button>
+              <button type="button" className="button button-primary" style={{ background: "#9b5346" }} disabled={deleteMut.isPending} onClick={() => deleteMut.mutate({ id: deleteTarget.id })}>
+                تأكيد الحذف النهائي
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+            <div className="admin-section-heading" style={{ marginTop: "32px", flexWrap: "wrap", gap: "10px" }}>
+        <div>
+          <h2>📋 سجل الرقابة الشامل لنشاط المشرفين (باللغة العربية)</h2>
+          <p>يعرض بالتفصيل ماذا فعل كل أدمن، وأي قسم دخله وشاهده، وماذا أضاف أو عدّل أو حذف مع الوقت والتاريخ.</p>
+        </div>
+        <AdminSelect
+          value={logActorFilter}
+          onChange={e => setLogActorFilter(e.target.value)}
+          style={{ minHeight: "36px", padding: "0 12px", borderRadius: "10px", border: "1px solid #cfe0d4", background: "#ffffff", color: "#870210", fontSize: "12px", fontWeight: 700 }}
+        >
+          <option value="all">👤 عرض نشاط جميع الإداريين ({logsQuery.data?.length ?? 0})</option>
+          {Array.from(new Set((logsQuery.data ?? []).map(l => l.actorName))).map(name => (
+            <option key={name} value={name}>👤 نشاط: {name}</option>
+          ))}
+        </AdminSelect>
+      </div>
+      {!logsQuery.data?.length ? (
+        <AdminEmpty title="لا توجد سجلات نشاط بعد" text="ستظهر هنا جميع تحركات وعمليات المشرفين باللغة العربية فور حدوثها." />
+      ) : (
+        <div style={{ display: "grid", gap: "8px", maxHeight: "480px", overflowY: "auto", padding: "4px" }}>
+          {logsQuery.data
+            .filter(log => logActorFilter === "all" || log.actorName === logActorFilter)
+            .map(log => {
+              const roleMapAr: Record<string, string> = {
+                owner: "مالك المتجر",
+                general_manager: "مدير عام",
+                product_manager: "مدير منتجات",
+                order_manager: "مدير طلبات",
+                content_manager: "مدير محتوى وعروض",
+                staff: "موظف / مشرف",
+                unauthenticated: "محاولة دخول غير مصرحة",
+              };
+              const actionMapAr: Record<string, string> = {
+                LOGIN_SUCCESS: "🔑 تسجيل دخول للوحة التحكم",
+                LOGIN_FAILED_OWNER: "⚠️ محاولة دخول فاشلة لحساب المالك",
+                LOGIN_FAILED_STAFF: "⚠️ محاولة دخول فاشلة لحساب مشرف",
+                LOGIN_BLOCKED_DISABLED: "🚫 محاولة دخول لحساب معطّل",
+                CREATE_STAFF: "👤 إضافة مدير / مشرف جديد",
+                UPDATE_STAFF: "✏️ تعديل بيانات وصلاحيات مدير",
+                ACTIVATE_STAFF: "✅ تفعيل حساب مدير",
+                DISABLE_STAFF: "⏸️ تعطيل حساب مدير وإخراجه",
+                RESET_STAFF_PASSWORD: "🔐 تغيير كلمة مرور مدير",
+                DELETE_STAFF: "🗑️ حذف حساب مدير نهائياً",
+                CHANGE_OWN_PASSWORD: "🔐 تحديث كلمة المرور الشخصية",
+              };
+              const roleAr = roleMapAr[log.actorRole] || log.actorRole || "مشرف";
+              const actionAr = actionMapAr[log.action] || log.action;
+              let detailsAr = String(log.details || "");
+              for (const k of PERMISSION_KEYS) {
+                if (detailsAr.includes(k)) {
+                  detailsAr = detailsAr.split(k).join(PERMISSION_LABELS[k]?.label || k);
+                }
+              }
+              const isView = actionAr.includes("تصفح") || actionAr.includes("👁️");
+              const isDanger = actionAr.includes("حذف") || actionAr.includes("فاشلة") || actionAr.includes("تعطيل");
+              return (
+                <div
+                  key={log.id}
+                  style={{
+                    padding: "11px 14px",
+                    borderRadius: "13px",
+                    background: isDanger ? "#fff9f8" : isView ? "#f8fbf9" : "#ffffff",
+                    border: isDanger ? "1px solid #f2d0c9" : isView ? "1px solid #dcebe2" : "1px solid #cfe2d5",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "5px",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <strong style={{ fontSize: "13px", color: "#123b29" }}>👤 {log.actorName}</strong>
+                      <span style={{ fontSize: "10.5px", fontWeight: 700, padding: "2px 8px", borderRadius: "99px", background: "#e8f3ec", color: "#870210" }}>
+                        {roleAr}
+                      </span>
+                      <span style={{ fontSize: "11.5px", fontWeight: 800, padding: "3px 10px", borderRadius: "8px", background: isDanger ? "#fde8e4" : isView ? "#eef6f1" : "#fff7e0", color: isDanger ? "#9b3b2e" : isView ? "#1d5c3f" : "#8a5a00" }}>
+                        {actionAr}
+                      </span>
+                    </div>
+                    <small style={{ color: "#64746b", fontSize: "11px", fontWeight: 600 }}>
+                      🕒 {new Date(log.createdAt).toLocaleString("ar-YE")}
+                    </small>
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#2c4637", lineHeight: 1.6, paddingTop: "2px" }}>
+                    {log.targetName ? <strong style={{ color: "#870210" }}>[{log.targetName}] </strong> : null}
+                    <span>{detailsAr || "تم تنفيذ العملية بنجاح"}</span>
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      )}
+    </div>
+  );
+}
+// --- STAFF_PANEL_END ---
+
+// === BROADCAST_PANEL_START ===
+function BroadcastPanel() {
+  const utils = trpc.useUtils();
+  const homeQuery = trpc.commerce.catalog.home.useQuery(undefined, { staleTime: 10_000 });
+  const customersQuery = trpc.commerce.admin.customers.list.useQuery();
+  const sendMutation = trpc.commerce.notifications.sendBroadcast.useMutation({
+    onSuccess: res => {
+      toast.success(`🚀 تم إرسال الإشعار الفوري بنجاح (${res.pushSent} جهاز متصل + صندوق إشعارات المتجر)!`);
+      setTitle("");
+      setBody("");
+      void utils.commerce.catalog.home.invalidate();
+    },
+    onError: err => toast.error(err.message || "تعذر إرسال الإشعار"),
+  });
+  const deleteMutation = trpc.commerce.notifications.deleteBroadcast.useMutation({
+    onSuccess: () => {
+      toast.success("تم حذف الإشعار من السجل");
+      void utils.commerce.catalog.home.invalidate();
+    },
+  });
+
+  const [segment, setSegment] = useState<"all" | "new_visitors" | "returning" | "vip" | "inactive">("all");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [targetUrl, setTargetUrl] = useState("/products?offers=1");
+
+  const broadcastList = (() => {
+    try {
+      const raw = (homeQuery.data?.settings as any)?.store_broadcasts_v1;
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  })() as Array<{ id: string; title: string; body: string; segment: string; targetUrl: string; createdAt: string }>;
+
+  const customers = customersQuery.data ?? [];
+  const nowMs = Date.now();
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+  const returningCount = customers.filter(c => Number(c.orderCount) >= 1).length;
+  const vipCount = customers.filter(c => Number(c.orderCount) >= 3).length;
+  const inactiveCount = customers.filter(c => c.lastOrderAt && (nowMs - new Date(c.lastOrderAt).getTime()) >= sevenDaysMs).length;
+
+  const segmentLabels: Record<string, { title: string; desc: string; badge: string }> = {
+    all: { title: "👥 جميع زبائن وزوار المتجر", desc: "يصل لكل من يدخل المتجر أو فعّل الإشعارات (الجدد والقدامى)", badge: "الكل" },
+    new_visitors: { title: "✨ الزوار الجدد فقط (بدون طلبات سابقة)", desc: "الأشخاص الذين دخلوا المتجر حديثاً ولم يرسلوا أول طلب بعد", badge: "زوار جدد" },
+    returning: { title: "🛍️ العملاء الحاليون (طلب واحد فأكثر)", desc: "كل زبون سبق له الطلب من بوفية شهيزو", badge: `${returningCount} عميل` },
+    vip: { title: "👑 العملاء الدائمون والقدامى VIP (3 طلبات فأكثر)", desc: "الزبائن الأكثر ولاءً وتكراراً للطلب من شهيزو", badge: `${vipCount} عميل VIP` },
+    inactive: { title: "⏰ العملاء المنقطعون (منذ 7 أيام فأكثر)", desc: "الزبائن الذين طلبوا سابقاً ولم يطلبوا خلال الأسبوع الماضي", badge: `${inactiveCount} عميل` },
+  };
+
+  const quickTemplates = [
+    {
+      label: "🎁 ترحيب بالزوار الجدد",
+      seg: "new_visitors" as const,
+      title: "🥙 أهلاً بك في بوفية شهيزو – SHAHEZO!",
+      body: "اطلب الآن أشهى شاورما وفلافل مقرمشة وعصائر طازجة توصلك ساخنة لباب منزلك بأسرع وقت!",
+      url: "/products",
+    },
+    {
+      label: "🔥 إشعار قسم العروضات",
+      seg: "all" as const,
+      title: "🔥 عروض وبوكسات توفير جديدة في شهيزو!",
+      body: "تفقد قسم العروضات الآن واستمتع بأقوى خصومات الوجبات العائلية والفردية قبل نفاد الكمية.",
+      url: "/products?offers=1",
+    },
+    {
+      label: "👑 مكافأة العملاء الدائمين",
+      seg: "vip" as const,
+      title: "👑 شكراً لثقتك الدائمة ببوفية شهيزو!",
+      body: "لأنك من عملائنا المميزين، جهزنا لك اليوم تشكيلة خاصة من الوجبات والعصائر الطازجة.",
+      url: "/products?offers=1",
+    },
+    {
+      label: "⏰ تذكير العملاء المنقطعين",
+      seg: "inactive" as const,
+      title: "🥙 اشتقنا لطلباتك في بوفية شهيزو!",
+      body: "شاورما ساخنة وفلافل مقرمشة وعصائر طبيعية بانتظارك اليوم — اطلبها الآن بضغطة زر!",
+      url: "/products",
+    },
+  ];
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (title.trim().length < 2 || body.trim().length < 2) {
+      toast.error("يرجى كتابة عنوان الإشعار ونص الرسالة");
+      return;
+    }
+    sendMutation.mutate({
+      title: title.trim(),
+      body: body.trim(),
+      segment,
+      targetUrl,
+    });
+  };
+
+  return (
+    <div className="admin-panel-stack">
+      <AdminHeading
+        eyebrow="مركز الإشعارات الذكي الموجه للفئات"
+        title="إرسال الإشعارات الفورية للزبائن 🔔"
+        text="حدد الفئة المستهدفة (الزوار الجدد، العملاء القدامى VIP، المنقطعين، أو الجميع) وأرسل إشعاراً يصلهم في نفس اللحظة على هواتفهم وداخل صندوق إشعارات المتجر."
+        icon={BellRing}
+      />
+
+      <section className="admin-form-card" style={{ border: "1.5px solid #ead8cc", background: "#ffffff" }}>
+        <div className="form-card-heading">
+          <span className="form-card-number" style={{ background: "#fceee9", color: "#870210" }}>01</span>
+          <div>
+            <h2>🎯 قوالب جاهزة سريعة (بضغطة واحدة)</h2>
+            <p>اختر قالباً جاهزاً لتعبئة الإشعار والفئة تلقائياً أو اكتب إشعارك المخصص بالأسفل.</p>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "7px" }}>
+          {quickTemplates.map((tpl, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => {
+                setSegment(tpl.seg);
+                setTitle(tpl.title);
+                setBody(tpl.body);
+                setTargetUrl(tpl.url);
+                toast.info(`تم اختيار قالب: ${tpl.label}`);
+              }}
+              style={{
+                padding: "11px 13px",
+                borderRadius: "14px",
+                border: "1.5px solid #ead8cc",
+                background: "#fdf9f4",
+                color: "#2b120f",
+                textAlign: "right",
+                cursor: "pointer",
+                display: "grid",
+                gap: "4px",
+              }}
+            >
+              <strong style={{ fontSize: "12.5px", color: "#870210" }}>{tpl.label}</strong>
+              <small style={{ fontSize: "11px", color: "#6e564d", lineHeight: 1.4 }}>{tpl.title}</small>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <form className="admin-form-card" onSubmit={handleSubmit} style={{ border: "1.5px solid #ead8cc", background: "#ffffff" }}>
+        <div className="form-card-heading">
+          <span className="form-card-number" style={{ background: "#fceee9", color: "#870210" }}>02</span>
+          <div>
+            <h2>📣 تحديد الفئة المستهدفة ومحتوى الإشعار</h2>
+            <p>يصل الإشعار في نفس اللحظة كإشعار منبثق (Web Push) وفي تبويب «الإشعارات 🔔» بصفحة حساب العميل.</p>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gap: "8px", marginBottom: "14px" }}>
+          <strong style={{ fontSize: "13px", color: "#2b120f" }}>اختر الفئة التي سيصلها الإشعار:</strong>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "8px" }}>
+            {(Object.keys(segmentLabels) as Array<keyof typeof segmentLabels>).map(key => {
+              const info = segmentLabels[key];
+              const active = segment === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSegment(key as any)}
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: "14px",
+                    border: active ? "2px solid #870210" : "1px solid #e2d5ca",
+                    background: active ? "#fff8f5" : "#ffffff",
+                    textAlign: "right",
+                    cursor: "pointer",
+                    display: "grid",
+                    gap: "4px",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "6px" }}>
+                    <strong style={{ fontSize: "12.5px", color: active ? "#870210" : "#2b120f" }}>{info.title}</strong>
+                    <span style={{ fontSize: "10px", fontWeight: 800, padding: "2px 8px", borderRadius: "99px", background: active ? "#870210" : "#f3ece6", color: active ? "#f1d897" : "#6e564d" }}>
+                      {info.badge}
+                    </span>
+                  </div>
+                  <small style={{ fontSize: "11px", color: "#7a5e54", lineHeight: 1.45 }}>{info.desc}</small>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="form-fields-grid">
+          <label className="field-wide">
+            عنوان الإشعار *
+            <input required maxLength={120} value={title} onChange={e => setTitle(e.target.value)} placeholder="مثال: 🔥 عرض خاص اليوم في بوفية شهيزو!" />
+          </label>
+          <label className="field-wide">
+            نص الإشعار بالتفصيل *
+            <textarea required rows={3} maxLength={400} value={body} onChange={e => setBody(e.target.value)} placeholder="اكتب تفاصيل العرض أو الرسالة التي ستظهر للزبائن..." />
+          </label>
+          <label className="field-wide">
+            الوجهة عند ضغط الزبون على الإشعار
+            <AdminSelect value={targetUrl} onChange={e => setTargetUrl(e.target.value)} style={{ height: "42px", borderRadius: "11px", border: "1px solid #d8e2dc", padding: "0 12px", fontWeight: 700 }}>
+              <option value="/products?offers=1">🔥 فتح قسم العروضات والخصومات (/products?offers=1)</option>
+              <option value="/products">🛍️ فتح قائمة جميع الوجبات (/products)</option>
+              <option value="/">🏠 فتح الصفحة الرئيسية للمتجر (/)</option>
+            </AdminSelect>
+          </label>
+        </div>
+
+        <div style={{ marginTop: "14px", display: "flex", justifyContent: "flex-end" }}>
+          <button type="submit" className="button button-primary" disabled={sendMutation.isPending} style={{ minHeight: "46px", padding: "0 24px", fontSize: "14px", fontWeight: 900, borderRadius: "14px" }}>
+            {sendMutation.isPending ? <LoaderCircle className="spin" size={18} /> : <BellRing size={18} />}
+            {sendMutation.isPending ? "جارٍ الإرسال الفوري..." : `🚀 إرسال الإشعار الفوري الآن (${segmentLabels[segment]?.badge})`}
+          </button>
+        </div>
+      </form>
+
+      <section className="admin-form-card" style={{ border: "1.5px solid #ead8cc", background: "#ffffff" }}>
+        <div className="form-card-heading">
+          <span className="form-card-number" style={{ background: "#fceee9", color: "#870210" }}>03</span>
+          <div>
+            <h2>📋 سجل الإشعارات المرسلة ({broadcastList.length})</h2>
+            <p>الإشعارات النشطة التي تظهر للزبائن حالياً حسب فئاتهم داخل تبويب «الإشعارات 🔔» في صفحة حسابي.</p>
+          </div>
+        </div>
+        {!broadcastList.length ? (
+          <div className="admin-empty">
+            <BellRing size={22} />
+            <strong>لم يتم إرسال أي إشعارات عامة بعد</strong>
+            <small>اختر قالباً من الأعلى وأرسل أول إشعار لزبائنك الآن.</small>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: "10px" }}>
+            {broadcastList.map(item => (
+              <div key={item.id} style={{ padding: "12px 14px", borderRadius: "14px", background: "#fdf9f4", border: "1px solid #ead8cc", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                <div style={{ display: "grid", gap: "4px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                    <strong style={{ fontSize: "13.5px", color: "#2b120f" }}>{item.title}</strong>
+                    <span style={{ fontSize: "10px", fontWeight: 800, padding: "2px 8px", borderRadius: "99px", background: "#fceee9", color: "#870210" }}>
+                      {segmentLabels[item.segment]?.badge || item.segment}
+                    </span>
+                    <small style={{ fontSize: "10.5px", color: "#7a5e54" }}>🕒 {new Date(item.createdAt).toLocaleString("ar-YE")}</small>
+                  </div>
+                  <p style={{ margin: 0, fontSize: "12px", color: "#5c433b", lineHeight: 1.55 }}>{item.body}</p>
+                </div>
+                <button
+                  type="button"
+                  className="small-button danger-soft"
+                  onClick={() => deleteMutation.mutate({ id: item.id })}
+                >
+                  <Trash2 size={14} /> حذف
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+// === BROADCAST_PANEL_END ===
+
+function canAccessSection(section: Section, isOwner: boolean, perms: PermissionKey[]): boolean {
+  if (isOwner) return true;
+  const has = (p: PermissionKey) => perms.includes(p);
+  if (section === "overview") return has("overview.view");
+  if (section === "products") return has("products.view") || has("products.add") || has("products.edit") || has("products.delete") || has("products.manage") || has("inventory.manage");
+  if (section === "categories") return has("categories.manage");
+  if (section === "delivery") return has("settings.manage") || has("orders.manage");
+  if (section === "banners") return has("banners.manage");
+  if (section === "offers") return has("offers.manage");
+  if (section === "orders") return has("orders.view") || has("orders.manage");
+  if (section === "broadcast") return has("settings.manage") || has("offers.manage") || has("orders.manage");
+  if (section === "chats") return has("chats.manage");
+  if (section === "users") return has("customers.view");
+  if (section === "staff") return has("staff.manage");
+  if (section === "settings") return has("settings.manage");
+  return false;
+}
 
 function AdminPanel({ section, isOwner, permissions, allowedCategoryIds, staffId }: { section: Section; isOwner: boolean; permissions: PermissionKey[]; allowedCategoryIds: number[]; staffId: number | null }) {
   if (section === "chats") return <ChatsPanel />;

@@ -1758,16 +1758,6 @@ function CategoriesPage({ data }: { data: HomeData }) {
           })}
         </div>
       )}
-      {editingOrder && (
-        <CustomerOrderEditModal
-          order={editingOrder}
-          idempotencyKey={refs.find(r => r.orderNumber === editingOrder.orderNumber)?.idempotencyKey || refs[0]?.idempotencyKey || ""}
-          allProducts={allProducts}
-          settings={settings}
-          onClose={() => setEditingOrder(null)}
-          onSaved={() => { setEditingOrder(null); void query.refetch(); }}
-        />
-      )}
     </main>
   );
 }
@@ -3395,11 +3385,13 @@ function CustomerOrderEditModal({
           </div>
           {editType === "delivery" && (
             <div style={{ display: "grid", gap: "6px", marginTop: "4px" }}>
-              <HierarchicalAreaPicker
+              <ThreeStepLocationPicker
                 tree={deliveryTree}
                 city={city}
                 district={district}
-                onSelect={(c, d) => { setCity(c); setDistrict(d); }}
+                phone={order.phone || ""}
+                subtotal={Number(order.subtotal || 0)}
+                onChangeLocation={(c, d) => { setCity(c); setDistrict(d); }}
               />
               <input
                 type="text"
@@ -3854,6 +3846,16 @@ function OrdersPage({ allProducts = [], settings = {} }: { allProducts?: PublicP
             );
           })}
         </div>
+      )}
+      {editingOrder && (
+        <CustomerOrderEditModal
+          order={editingOrder}
+          idempotencyKey={refs.find(r => r.orderNumber === editingOrder.orderNumber)?.idempotencyKey || refs[0]?.idempotencyKey || ""}
+          allProducts={allProducts}
+          settings={settings}
+          onClose={() => setEditingOrder(null)}
+          onSaved={() => { setEditingOrder(null); void query.refetch(); }}
+        />
       )}
     </main>
   );
