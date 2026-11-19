@@ -4153,12 +4153,12 @@ function OrdersPanel({ isOwner = false }: { isOwner?: boolean }) {
   const allOrders = (query.data ?? []).filter(o => o.city !== "طلب توفير خاص" && !String(o.orderNumber || "").startsWith("REQ-"));
   const newOrdersCount = allOrders.filter(o => o.status === "new").length;
   useEffect(() => {
+    (window as any).__shahezoRingMuted = ringMuted;
     if (ringMuted || newOrdersCount === 0) {
       stopBackgroundMediaRing();
-      return;
+    } else {
+      startBackgroundMediaRing(newOrdersCount);
     }
-    startBackgroundMediaRing(newOrdersCount);
-    return () => stopBackgroundMediaRing();
   }, [ringMuted, newOrdersCount]);
 
   const customerSummaryByPhone = new Map<string, {
@@ -4686,6 +4686,23 @@ function useAdminGlobalPushSync(isAdmin: boolean) {
   const utils = trpc.useUtils();
   const publicKey = trpc.commerce.notifications.publicKey.useQuery(undefined, { enabled: false, retry: 1 });
   const subscribe = trpc.commerce.admin.notifications.subscribe.useMutation();
+  const globalOrdersQuery = trpc.commerce.admin.orders.list.useQuery(undefined, {
+    enabled: isAdmin,
+    retry: 1,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: true,
+  });
+  const globalNewCount = (globalOrdersQuery.data ?? []).filter(
+    o => o.status === "new" && o.city !== "طلب توفير خاص" && !String(o.orderNumber || "").startsWith("REQ-")
+  ).length;
+  useEffect(() => {
+    if (!isAdmin) return;
+    if ((window as any).__shahezoRingMuted || globalNewCount === 0) {
+      stopBackgroundMediaRing();
+    } else {
+      startBackgroundMediaRing(globalNewCount);
+    }
+  }, [isAdmin, globalNewCount]);
   useEffect(() => {
     if (!isAdmin || typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
     const onSwMessage = (event: MessageEvent) => {
