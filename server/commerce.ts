@@ -1856,6 +1856,22 @@ export const commerceRouter = router({
         text: input.request,
         createdAt: nowIso,
       });
+      void (async () => {
+        try {
+          const targets = await getAllAdminPushTargets(db);
+          if (!targets.length) return;
+          const isImportant = /(?:طلب|توصيل|وين|تأخر|تاخر|مشكلة|غلط|خطأ|الغاء|إلغاء|شكوى|مدير|اتصال|رقم|ناقص|بارد|تعديل|تأخير|حساب|سعر)/.test(input.request);
+          await deliverPushRows(targets, {
+            title: (isImportant ? "🚨 رسالة مهمة من زبون: " : "💬 رسالة جديدة للمساعد: ") + (chatSession.customerName || "زبون المتجر"),
+            body: input.request.slice(0, 220),
+            url: "/admin/chats",
+            tag: "shahezo-admin-chat-" + sid,
+          }, async (id, endpointHash) => {
+            if (id > 0) await db.delete(ownerPushSubscriptions).where(eq(ownerPushSubscriptions.id, id)).catch(() => {});
+            if (endpointHash) await removeBackupAdminSubscription(db, endpointHash);
+          });
+        } catch {}
+      })();
       await saveLiveChats(db);
 
       if (chatSession.aiPaused) {
@@ -2275,13 +2291,36 @@ export const commerceRouter = router({
         const msgObj: LiveChatMsg = {
           id: nanoid(10),
           role: "owner",
-          sender: "إدارة المتجر",
+          sender: "إدارة شهيزو",
           text: input.text.trim(),
           createdAt: new Date().toISOString(),
         };
         session.messages.push(msgObj);
         session.updatedAt = msgObj.createdAt;
         await saveLiveChats(db);
+        void (async () => {
+          try {
+            const cleanPhone = normalizeYemeniPhone(session.customerPhone || "");
+            if (!cleanPhone || cleanPhone.length < 7) return;
+            const matchedOrders = await db.select({ id: orders.id }).from(orders).where(eq(orders.phone, cleanPhone)).orderBy(desc(orders.id)).limit(10);
+            if (!matchedOrders.length) return;
+            const subs = await db.select({
+              id: customerPushSubscriptions.id,
+              endpointHash: customerPushSubscriptions.endpointHash,
+              encryptedPayload: customerPushSubscriptions.encryptedPayload,
+            }).from(customerPushSubscriptions).where(inArray(customerPushSubscriptions.orderId, matchedOrders.map(o => o.id)));
+            const uniqueSubs = [...new Map(subs.map(s => [s.endpointHash, s])).values()];
+            if (!uniqueSubs.length) return;
+            await deliverPushRows(uniqueSubs, {
+              title: "🛡️ تم الرد عليك بواسطة إدارة شهيزو",
+              body: input.text.trim().slice(0, 220),
+              url: "/assistant",
+              tag: "shahezo-owner-reply-" + session.sessionId,
+            }, async (id) => {
+              if (id > 0) await db.delete(customerPushSubscriptions).where(eq(customerPushSubscriptions.id, id)).catch(() => {});
+            });
+          } catch {}
+        })();
         return { success: true };
       }),
       toggleAi: requirePermission("chats.manage").input(z.object({

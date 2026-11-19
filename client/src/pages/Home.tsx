@@ -4996,7 +4996,8 @@ function AssistantPage() {
       if (!unseen.length) return current;
       for (const m of unseen) seenOwnerIdsRef.current.add(m.id);
       saveSeenOwnerIds(seenOwnerIdsRef.current);
-      toast.success("💬 وصلتك رسالة جديدة من إدارة المتجر!");
+      playShahezoCustomerChime();
+      toast.success("🛡️ تم الرد عليك بواسطة إدارة شهيزو!");
       return [
         ...current,
         ...unseen.map(m => ({
@@ -5241,7 +5242,7 @@ function AssistantPage() {
               <div key={index + "-" + message.role + "-" + (message.ownerMsgId || "")} className={"chat-message " + (message.role === "user" ? "from-user" : "from-assistant")} style={message.ownerMsgId ? { border: "1.5px solid #e0a800", background: "#fffdf5" } : undefined}>
                 {message.ownerMsgId && (
                   <div style={{ fontSize: "11px", fontWeight: 800, color: "#9a6700", marginBottom: "4px", paddingBottom: "4px", borderBottom: "1px solid #f2e2a8" }}>
-                    👨‍💼 رد مباشر من إدارة المتجر
+                    🛡️ تم الرد عليك بواسطة إدارة شهيزو
                   </div>
                 )}
                 <p style={{ whiteSpace: "pre-line", margin: 0, lineHeight: 1.65 }}>{message.text}</p>
