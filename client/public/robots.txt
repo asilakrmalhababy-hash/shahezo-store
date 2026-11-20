@@ -2,7 +2,9 @@ User-agent: *
 Allow: /
 Allow: /products
 Allow: /categories
+Allow: /api/trpc/commerce.catalog
+Allow: /api/fast-img
 Disallow: /admin
-Disallow: /api/trpc
+Disallow: /api/trpc/commerce.admin
 
 Sitemap: https://shahezo-store.onrender.com/sitemap.xml
