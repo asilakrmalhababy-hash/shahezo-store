@@ -2384,3 +2384,189 @@ button, a, input, select, textarea {
     display: none !important;
   }
 }
+
+
+/* === SHAHEZO PRODUCT DETAIL CLEAN REDESIGN (v63) === */
+.detail-page-clean {
+  padding-top: 8px !important;
+  padding-bottom: 120px !important;
+}
+.detail-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.detail-pager-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  border: 1px solid #eadfd4;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #870210;
+}
+.detail-pager-pill button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 2px 5px;
+  font-weight: 800;
+  color: #870210;
+}
+.detail-pager-pill span {
+  color: #7c6760;
+  font-size: 11px;
+}
+.detail-layout-clean {
+  gap: 14px !important;
+}
+.detail-visual-square {
+  aspect-ratio: 1 / 1 !important;
+  height: auto !important;
+  max-height: min(410px, 92vw) !important;
+  width: 100% !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  background: #f6efe8 !important;
+  border: 1px solid #efe5db !important;
+}
+.detail-fav-btn {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 4;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.92);
+  color: #6c554d;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 12px rgba(43, 18, 15, 0.12);
+  cursor: pointer;
+}
+.detail-fav-btn.is-fav {
+  color: #870210;
+}
+.detail-nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 4;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.86);
+  color: #870210;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(43, 18, 15, 0.14);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+}
+.detail-nav-arrow.is-right { right: 10px; }
+.detail-nav-arrow.is-left { left: 10px; }
+.detail-copy-clean {
+  display: grid !important;
+  gap: 10px !important;
+  padding: 0 2px !important;
+}
+.detail-title-price-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.detail-title-price-row h1 {
+  margin: 0 !important;
+  font-size: 19px !important;
+  font-weight: 900 !important;
+  color: #2b120f !important;
+  line-height: 1.3 !important;
+}
+.detail-price-box {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.detail-main-price {
+  font-size: 19px;
+  font-weight: 900;
+  color: #870210;
+  white-space: nowrap;
+}
+.detail-old-price {
+  font-size: 13px;
+  color: #9e8a82;
+}
+.detail-action-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+.detail-qty-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #e5d8cb;
+  border-radius: 13px;
+  padding: 4px 6px;
+  height: 46px;
+  flex-shrink: 0;
+}
+.detail-qty-stepper button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: #f6efe8;
+  color: #870210;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.detail-qty-stepper strong {
+  min-width: 22px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 900;
+  color: #2b120f;
+}
+.detail-add-main-btn {
+  flex: 1;
+  min-height: 46px !important;
+  border-radius: 13px !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+.detail-ai-subtle-btn {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 12px;
+  border: 1px dashed #d9c2b5;
+  background: #fdf9f4;
+  color: #7c3a32;
+  font-size: 12.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  cursor: pointer;
+}

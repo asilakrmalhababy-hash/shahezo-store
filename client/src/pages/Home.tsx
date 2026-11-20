@@ -1799,23 +1799,36 @@ function CategoriesPage({ data }: { data: HomeData }) {
   );
 }
 
+const __detailDecodedImgCache = new Map<string, HTMLImageElement>();
+function preloadAndDecodeDetailImage(url?: string | null) {
+  if (!url || typeof window === "undefined") return;
+  if (__detailDecodedImgCache.has(url)) return;
+  const img = new Image();
+  img.decoding = "sync";
+  img.src = url;
+  __detailDecodedImgCache.set(url, img);
+  if (typeof img.decode === "function") {
+    img.decode().catch(() => {});
+  }
+}
+
 function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiRecipe }: { id: number; allProducts?: PublicProduct[]; onSelectProduct?: (nextId: number) => void; onBack: () => void; onAiRecipe?: (p: PublicProduct) => void }) {
   const cachedProduct = useMemo(() => allProducts.find(p => p.id === id) ?? null, [allProducts, id]);
   const { data: fetchedProduct, isLoading, error } = trpc.commerce.catalog.product.useQuery({ id }, {
     retry: 1,
-    staleTime: 30000,
+    staleTime: 60000,
     placeholderData: cachedProduct ? { ...cachedProduct, recommendations: [] } : undefined,
   });
-  const product = fetchedProduct ?? (cachedProduct ? { ...cachedProduct, recommendations: [] } : null);
-  const { add } = useStore();
+  const product = (fetchedProduct && fetchedProduct.id === id ? fetchedProduct : null) ?? (cachedProduct ? { ...cachedProduct, recommendations: [] } : null);
+  const { add, isFavorite, toggleFavorite } = useStore();
   const [quantity, setQuantity] = useState(1);
   const [detailPickerOpen, setDetailPickerOpen] = useState(false);
   const [selectedDetailVariant, setSelectedDetailVariant] = useState<string>("");
+  const [loadedSrc, setLoadedSrc] = useState<string>(() => (cachedProduct?.imageUrl && __detailDecodedImgCache.has(cachedProduct.imageUrl) ? cachedProduct.imageUrl : ""));
   const unpackedDetail = useMemo(() => unpackProductVariants(product?.description), [product?.description]);
   const touchStartX = useRef<number | null>(null);
 
   useEffect(() => {
-    try { window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior }); } catch { window.scrollTo(0, 0); }
     setQuantity(product?.minQuantity || 1);
     setSelectedDetailVariant("");
   }, [id, product?.minQuantity]);
@@ -1826,9 +1839,39 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
   const prevProduct = hasGallery ? allProducts[(currentIndex - 1 + allProducts.length) % allProducts.length] : null;
 
   useEffect(() => {
-    if (nextProduct?.imageUrl) { const img = new Image(); img.src = nextProduct.imageUrl; }
-    if (prevProduct?.imageUrl) { const img = new Image(); img.src = prevProduct.imageUrl; }
-  }, [nextProduct?.imageUrl, prevProduct?.imageUrl]);
+    if (product?.imageUrl) preloadAndDecodeDetailImage(product.imageUrl);
+    if (!hasGallery) return;
+    const len = allProducts.length;
+    for (const offset of [-2, -1, 1, 2]) {
+      const p = allProducts[(currentIndex + offset + len) % len];
+      if (p?.imageUrl) preloadAndDecodeDetailImage(p.imageUrl);
+    }
+  }, [currentIndex, hasGallery, allProducts, product?.imageUrl]);
+
+  useEffect(() => {
+    const src = product?.imageUrl || "";
+    if (!src) return;
+    const cached = __detailDecodedImgCache.get(src);
+    if (cached && cached.complete && cached.naturalWidth > 0) {
+      setLoadedSrc(src);
+      return;
+    }
+    let active = true;
+    const img = cached || new Image();
+    img.decoding = "sync";
+    if (!cached) {
+      img.src = src;
+      __detailDecodedImgCache.set(src, img);
+    }
+    const done = () => { if (active) setLoadedSrc(src); };
+    if (typeof img.decode === "function") {
+      img.decode().then(done).catch(done);
+    } else {
+      img.onload = done;
+      img.onerror = done;
+    }
+    return () => { active = false; };
+  }, [product?.imageUrl]);
 
   const goNext = () => { if (nextProduct && onSelectProduct) onSelectProduct(nextProduct.id); };
   const goPrev = () => { if (prevProduct && onSelectProduct) onSelectProduct(prevProduct.id); };
@@ -1849,7 +1892,7 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
     const endX = e.changedTouches[0]?.clientX ?? touchStartX.current;
     const diff = endX - touchStartX.current;
     touchStartX.current = null;
-    if (Math.abs(diff) > 38) {
+    if (Math.abs(diff) > 36) {
       if (diff > 0) goNext();
       else goPrev();
     }
@@ -1858,6 +1901,8 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
   if (!product && isLoading) return <main className="page-shell inner-page"><Loading /></main>;
   if (error || !product) return <main className="page-shell inner-page"><LoadError onRetry={() => window.location.reload()} /></main>;
   const stockLimit = product.stock === null ? 9999 : product.stock;
+  const fav = isFavorite(product.id);
+  const displayImgSrc = product.imageUrl ? (loadedSrc === product.imageUrl || __detailDecodedImgCache.get(product.imageUrl)?.complete ? product.imageUrl : (loadedSrc || product.imageUrl)) : "";
 
   const handleDetailAdd = () => {
     if (unpackedDetail.weightEnabled || unpackedDetail.variants.length > 0) {
@@ -1874,45 +1919,79 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
   };
 
   return (
-    <main className="page-shell inner-page">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", gap: "10px" }}>
+    <main className="page-shell inner-page detail-page-clean">
+      <div className="detail-top-bar">
         <button type="button" className="back-link" style={{ marginBottom: 0 }} onClick={onBack}><ArrowLeft size={16} /> العودة للمتجر</button>
         {hasGallery && (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#ffffff", border: "1px solid #dfe7e0", borderRadius: "999px", padding: "4px 10px", fontSize: "11px", fontWeight: 700, color: "#870210" }}>
-            <button type="button" onClick={goNext} style={{ border: 0, background: "transparent", cursor: "pointer", padding: "2px 6px", fontWeight: 800, color: "#870210" }} title="المنتج التالي">‹ التالي</button>
-            <span style={{ color: "#78847b", fontSize: "10px" }}>{currentIndex + 1} / {allProducts.length}</span>
-            <button type="button" onClick={goPrev} style={{ border: 0, background: "transparent", cursor: "pointer", padding: "2px 6px", fontWeight: 800, color: "#870210" }} title="المنتج السابق">السابق ›</button>
+          <div className="detail-pager-pill">
+            <button type="button" onClick={goPrev} title="المنتج السابق">‹ السابق</button>
+            <span>{currentIndex + 1} / {allProducts.length}</span>
+            <button type="button" onClick={goNext} title="المنتج التالي">التالي ›</button>
           </div>
         )}
       </div>
-      <div className="detail-layout">
+
+      <div className="detail-layout detail-layout-clean">
         <div
-          className="detail-visual"
+          className="detail-visual detail-visual-square"
           onClick={handleImageClick}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           style={{ position: "relative", cursor: hasGallery ? "pointer" : "default", userSelect: "none" }}
         >
-          {product.imageUrl ? (
-            <SmartImage key={product.id} src={product.imageUrl} alt={product.name} decoding="async" fetchPriority="high" draggable={false} />
+          {displayImgSrc ? (
+            <img
+              src={displayImgSrc}
+              alt={product.name}
+              decoding="sync"
+              loading="eager"
+              draggable={false}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
           ) : (
             <div className="product-no-image detail-placeholder"><Leaf size={45} /><span>لا توجد صورة لهذا المنتج</span></div>
           )}
+          <button
+            type="button"
+            aria-label={fav ? "إزالة من المفضلة" : "إضافة إلى المفضلة"}
+            onClick={e => { e.stopPropagation(); toggleFavorite(product.id); }}
+            className={`detail-fav-btn ${fav ? "is-fav" : ""}`}
+          >
+            <Heart size={18} fill={fav ? "#870210" : "none"} />
+          </button>
           {hasGallery && (
             <>
-              <button type="button" aria-label="المنتج التالي" onClick={e => { e.stopPropagation(); goNext(); }} style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", width: "38px", height: "38px", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.85)", background: "rgba(135, 2, 16, 0.82)", color: "#ffffff", display: "grid", placeItems: "center", cursor: "pointer", boxShadow: "0 4px 12px rgba(0,0,0,0.18)", fontSize: "18px", fontWeight: 800 }}>‹</button>
-              <button type="button" aria-label="المنتج السابق" onClick={e => { e.stopPropagation(); goPrev(); }} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", width: "38px", height: "38px", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.85)", background: "rgba(135, 2, 16, 0.82)", color: "#ffffff", display: "grid", placeItems: "center", cursor: "pointer", boxShadow: "0 4px 12px rgba(0,0,0,0.18)", fontSize: "18px", fontWeight: 800 }}>›</button>
+              <button type="button" aria-label="المنتج التالي" className="detail-nav-arrow is-right" onClick={e => { e.stopPropagation(); goNext(); }}>›</button>
+              <button type="button" aria-label="المنتج السابق" className="detail-nav-arrow is-left" onClick={e => { e.stopPropagation(); goPrev(); }}>‹</button>
             </>
           )}
         </div>
-        <div className="detail-copy">
-          <span className="eyebrow">من بوفية شهيزو – SHAHEZO</span>
-          <h1>{product.name}</h1>
-          {unpackedDetail.cleanDescription ? <p className="detail-description">{unpackedDetail.cleanDescription}</p> : null}
+
+        <div className="detail-copy detail-copy-clean">
+          <div className="detail-title-price-row">
+            <h1>{product.name}</h1>
+            <div className="detail-price-box">
+              {unpackedDetail.oldPrice > product.price && (
+                <s className="detail-old-price">{formatPrice(unpackedDetail.oldPrice)}</s>
+              )}
+              <strong className="detail-main-price">{formatPrice(product.price)}</strong>
+            </div>
+          </div>
+
+          {unpackedDetail.oldPrice > product.price && (
+            <div style={{ marginTop: "-2px" }}>
+              <span style={{ display: "inline-block", background: "#fceee9", color: "#870210", border: "1px solid #f2cfc6", borderRadius: "99px", padding: "2px 9px", fontSize: "11px", fontWeight: 800 }}>
+                وفّرت {formatPrice(unpackedDetail.oldPrice - product.price)}
+              </span>
+            </div>
+          )}
+
+          {unpackedDetail.cleanDescription ? <p className="detail-description" style={{ margin: "2px 0 0" }}>{unpackedDetail.cleanDescription}</p> : null}
+
           {unpackedDetail.variants.length > 0 && (
-            <div style={{ margin: "10px 0 14px", padding: "12px", borderRadius: "14px", background: "#f2f7f3", border: "1px solid #d5e5da", display: "grid", gap: "8px" }}>
-              <strong style={{ fontSize: "13px", color: "#870210" }}>اختر النوع المطلوب:</strong>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(95px, 1fr))", gap: "8px" }}>
+            <div style={{ margin: "4px 0", padding: "10px 12px", borderRadius: "14px", background: "#fdf9f4", border: "1px solid #eadfd4", display: "grid", gap: "7px" }}>
+              <strong style={{ fontSize: "12.5px", color: "#870210" }}>اختر النوع المطلوب:</strong>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "7px" }}>
                 {unpackedDetail.variants.map(v => {
                   const isSel = selectedDetailVariant === v;
                   return (
@@ -1921,22 +2000,21 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
                       type="button"
                       onClick={() => setSelectedDetailVariant(v)}
                       style={{
-                        padding: "10px 12px",
-                        borderRadius: "12px",
-                        border: isSel ? "2px solid #870210" : "1px solid #c5d9cc",
+                        padding: "8px 10px",
+                        borderRadius: "11px",
+                        border: isSel ? "1.5px solid #870210" : "1px solid #dfd3c6",
                         background: isSel ? "#870210" : "#ffffff",
-                        color: isSel ? "#ffffff" : "#870210",
+                        color: isSel ? "#ffffff" : "#2b120f",
                         fontWeight: 700,
-                        fontSize: "13px",
+                        fontSize: "12.5px",
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         gap: "5px",
-                        boxShadow: isSel ? "0 5px 14px rgba(135, 2, 16, 0.22)" : "none",
                       }}
                     >
-                      {isSel && <Check size={15} />}
+                      {isSel && <Check size={14} />}
                       <span>{v}</span>
                     </button>
                   );
@@ -1944,34 +2022,43 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
               </div>
             </div>
           )}
+
           {unpackedDetail.isBundle && unpackedDetail.bundleItems.length > 0 && (
-            <div style={{ margin: "10px 0", padding: "12px 14px", borderRadius: "14px", background: "#fff8eb", border: "1.5px solid #f0cfa0", display: "grid", gap: "6px" }}>
-              <strong style={{ fontSize: "13px", color: "#870210" }}>🎁 مكونات التجميعة المشمولة في العرض:</strong>
+            <div style={{ margin: "4px 0", padding: "10px 12px", borderRadius: "14px", background: "#fff8eb", border: "1px solid #f0cfa0", display: "grid", gap: "6px" }}>
+              <strong style={{ fontSize: "12.5px", color: "#870210" }}>مكونات العرض:</strong>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                 {unpackedDetail.bundleItems.map((bi, idx) => (
-                  <span key={idx} style={{ background: "#ffffff", border: "1px solid #ead4b0", borderRadius: "9px", padding: "4px 10px", fontSize: "12px", fontWeight: 700, color: "#2b120f" }}>✓ {bi}</span>
+                  <span key={idx} style={{ background: "#ffffff", border: "1px solid #ead4b0", borderRadius: "8px", padding: "3px 9px", fontSize: "11.5px", fontWeight: 700, color: "#2b120f" }}>✓ {bi}</span>
                 ))}
               </div>
             </div>
           )}
-          <div className="detail-price" style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-            {unpackedDetail.oldPrice > product.price && (
-              <span className="old-price-x" style={{ fontSize: "16px" }} title="السعر السابق قبل الخصم">
-                <s>{formatPrice(unpackedDetail.oldPrice)}</s>
-                <i aria-hidden="true" style={{ fontSize: "13px" }}>✕</i>
+
+          <div className="detail-action-row">
+            <div className="detail-qty-stepper">
+              <button type="button" aria-label="تقليل" onClick={() => setQuantity(value => Math.max(product.minQuantity || 1, value - (product.quantityStep || 1)))}><Minus size={16} /></button>
+              <strong>{quantity}</strong>
+              <button type="button" aria-label="زيادة" disabled={quantity + (product.quantityStep || 1) > stockLimit} onClick={() => setQuantity(value => Math.min(stockLimit, value + (product.quantityStep || 1)))}><Plus size={16} /></button>
+            </div>
+            <button type="button" className="button button-primary detail-add-main-btn" disabled={stockLimit < (product.minQuantity || 1)} onClick={handleDetailAdd}>
+              <ShoppingCart size={17} />
+              <span>
+                {unpackedDetail.weightEnabled
+                  ? "حدد الوزن وأضف"
+                  : unpackedDetail.variants.length > 0 && !selectedDetailVariant
+                    ? "اختر النوع وأضف"
+                    : `أضف للسلة · ${formatPrice(product.price * quantity)}`}
               </span>
-            )}
-            <span>{formatPrice(product.price)} <small>/ {product.unit}</small></span>
-            {unpackedDetail.oldPrice > product.price && (
-              <span style={{ background: "#fceee9", color: "#d90429", border: "1px solid #f5c2c7", borderRadius: "99px", padding: "3px 10px", fontSize: "12px", fontWeight: 900 }}>
-                🔥 وفّرت {formatPrice(unpackedDetail.oldPrice - product.price)}
-              </span>
-            )}
+            </button>
           </div>
-          <div className="detail-meta"><span><Package size={15} /> الوحدة: {product.unit}</span><span>{product.stock === null ? "التوفر يحدده المتجر" : "المتاح: " + product.stock}</span></div>
-          <div className="quantity-control"><button type="button" aria-label="تقليل" onClick={() => setQuantity(value => Math.max(product.minQuantity || 1, value - (product.quantityStep || 1)))}><Minus size={16} /></button><strong>{quantity}</strong><button type="button" aria-label="زيادة" disabled={quantity + (product.quantityStep || 1) > stockLimit} onClick={() => setQuantity(value => Math.min(stockLimit, value + (product.quantityStep || 1)))}><Plus size={16} /></button><small>{product.unit}</small></div>
-          {onAiRecipe && <button type="button" className="button button-outline full-button" style={{ marginBottom: "8px", borderColor: "#870210", color: "#870210" }} onClick={() => onAiRecipe(product as PublicProduct)}><Sparkles size={16} /> أفكار وطرق تحضير بالذكاء الاصطناعي</button>}
-          <button type="button" className="button button-primary full-button" disabled={stockLimit < (product.minQuantity || 1)} onClick={handleDetailAdd}><ShoppingCart size={17} /> {unpackedDetail.weightEnabled ? "⚖️ حدد المبلغ والوزن وأضف للسلة" : unpackedDetail.variants.length > 0 ? (selectedDetailVariant ? "أضف «" + selectedDetailVariant + "» إلى السلة" : "اختر النوع وأضف إلى السلة") : "أضف إلى السلة"}</button>
+
+          {onAiRecipe && (
+            <button type="button" className="detail-ai-subtle-btn" onClick={() => onAiRecipe(product as PublicProduct)}>
+              <Sparkles size={15} />
+              <span>أفكار وطرق تحضير بالذكاء الاصطناعي</span>
+            </button>
+          )}
+
           {detailPickerOpen && (unpackedDetail.variants.length > 0 || unpackedDetail.weightEnabled) && <VariantPickerModal product={product as PublicProduct} variants={unpackedDetail.variants} weightEnabled={unpackedDetail.weightEnabled} minWeightAmount={unpackedDetail.minWeightAmount} initialVariant={selectedDetailVariant} initialQty={quantity} onClose={() => setDetailPickerOpen(false)} />}
         </div>
       </div>
@@ -1979,7 +2066,6 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
     </main>
   );
 }
-
 function CartPage({ minOrder = 0 }: { minOrder?: number }) {
   const { cart, setQuantity, remove, clear } = useStore();
   const [checkout, setCheckout] = useState(false);
@@ -5673,7 +5759,7 @@ export default function Home() {
   const productPath = location.startsWith("/product/");
   const productId = productPath ? Number(location.split("/")[2]) : 0;
   const content = useMemo(() => {
-    if (productPath && Number.isInteger(productId)) return <ProductDetail key={productId} id={productId} allProducts={data.products} onSelectProduct={openProduct} onBack={() => navigate("/")} onAiRecipe={setActiveAiProduct} />;
+    if (productPath && Number.isInteger(productId)) return <ProductDetail id={productId} allProducts={data.products} onSelectProduct={nextId => navigate(`/product/${nextId}`)} onBack={() => navigate("/")} onAiRecipe={setActiveAiProduct} />;
     if (location === "/products" || location.startsWith("/products?")) return <ProductListPage data={data} onOpen={openProduct} />;
     if (location === "/categories") return <CategoriesPage data={data} />;
     if (location === "/cart") return <CartPage minOrder={Number(data.settings?.minOrderAmount || 0)} />;
