@@ -1,5 +1,5 @@
 {
-  "id": "/?pwa=v9",
+  "id": "/?pwa=v10",
   "name": "شهيزو",
   "short_name": "شهيزو",
   "description": "شهيزو – أشهر بوفية ومطعم فلافل وشاورما وعصائر طازجة. اطلب الآن أونلاين مع توصيل سريع!",
@@ -9,7 +9,7 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#fdf9f4",
+  "background_color": "#ffffff",
   "theme_color": "#870210",
   "categories": [
     "food",
@@ -26,6 +26,12 @@
     {
       "src": "/app-icon-512-v8.png",
       "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/app-icon-source.png",
+      "sizes": "1000x1000",
       "type": "image/png",
       "purpose": "any"
     }
