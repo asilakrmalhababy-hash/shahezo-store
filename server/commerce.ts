@@ -1049,6 +1049,19 @@ async function saveOrderRatingsMap(db: Awaited<ReturnType<typeof database>>, map
   const payload = JSON.stringify(map);
   await db.insert(storeSettings).values({ key: ORDER_RATINGS_SETTING_KEY, value: payload }).onDuplicateKeyUpdate({ set: { value: payload } });
 }
+function getRatingForOrder(ratingsMap: Record<string, any>, order: { id: number; orderNumber: string; status: string; phone?: string | null; createdAt?: Date | string | null }) {
+  if (order.status !== "delivered") return null;
+  const byId = ratingsMap["id:" + order.id];
+  if (byId && typeof byId === "object") return byId;
+  const legacy = ratingsMap[order.orderNumber];
+  if (!legacy || typeof legacy !== "object") return null;
+  if (legacy.orderId && Number(legacy.orderId) !== Number(order.id)) return null;
+  const orderTs = order.createdAt ? new Date(order.createdAt).getTime() : 0;
+  const ratingTs = legacy.createdAt ? new Date(legacy.createdAt).getTime() : 0;
+  if (orderTs > 0 && ratingTs > 0 && ratingTs < orderTs) return null;
+  if (legacy.phone && order.phone && String(legacy.phone).trim() !== String(order.phone).trim()) return null;
+  return legacy;
+}
 
 export const commerceRouter = router({
     access: publicProcedure.query(({ ctx }) => {
@@ -1401,7 +1414,7 @@ export const commerceRouter = router({
         readOrderRatingsMap(db),
       ]);
       return authorized.map(order => ({
-        rating: ratingsMap[order.orderNumber] ?? null,
+        rating: getRatingForOrder(ratingsMap, order),
         orderNumber: order.orderNumber,
         status: order.status,
         subtotal: order.subtotal,
@@ -1626,6 +1639,7 @@ export const commerceRouter = router({
       if (ord.status !== "delivered") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "يمكنك تقييم الطلب بعد استلامه فقط." });
       const map = await readOrderRatingsMap(db);
       const entry = {
+        orderId: ord.id,
         orderNumber: ord.orderNumber,
         customerName: ord.recipientName,
         phone: ord.phone,
@@ -1636,7 +1650,8 @@ export const commerceRouter = router({
         note: (input.note || "").trim(),
         createdAt: new Date().toISOString(),
       };
-      map[ord.orderNumber] = entry;
+      map["id:" + ord.id] = entry;
+      if (map[ord.orderNumber]) delete map[ord.orderNumber];
       await saveOrderRatingsMap(db, map);
       void (async () => {
         try {
@@ -2908,16 +2923,25 @@ export const commerceRouter = router({
           await tx.delete(orderItems);
           await tx.delete(orders);
         });
+        await saveOrderRatingsMap(db, {});
         return { success: true };
       }),
       delete: requirePermission("orders.manage").use(async ({ next }) => { clearCatalogCache(); return next(); }).input(z.object({ id: safeId })).mutation(async ({ input }) => {
         const db = await database();
+        const targetOrd = (await db.select({ orderNumber: orders.orderNumber }).from(orders).where(eq(orders.id, input.id)).limit(1))[0];
         await db.transaction(async tx => {
           await tx.delete(customerPushSubscriptions).where(eq(customerPushSubscriptions.orderId, input.id));
           await tx.delete(orderEvents).where(eq(orderEvents.orderId, input.id));
           await tx.delete(orderItems).where(eq(orderItems.orderId, input.id));
           await tx.delete(orders).where(eq(orders.id, input.id));
         });
+        try {
+          const rMap = await readOrderRatingsMap(db);
+          let changed = false;
+          if (rMap["id:" + input.id]) { delete rMap["id:" + input.id]; changed = true; }
+          if (targetOrd?.orderNumber && rMap[targetOrd.orderNumber]) { delete rMap[targetOrd.orderNumber]; changed = true; }
+          if (changed) await saveOrderRatingsMap(db, rMap);
+        } catch {}
         return { success: true };
       }),
       createdAfter: adminProcedure.input(z.object({ afterId: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER) })).query(async ({ input }) => getCached("createdAfter:" + input.afterId, 10_000, async () => {
@@ -2940,7 +2964,7 @@ export const commerceRouter = router({
           db.select().from(orderEvents).where(sql`${orderEvents.orderId} in (${sql.join(ids, sql`, `)})`).orderBy(asc(orderEvents.createdAt)),
           readOrderRatingsMap(db),
         ]);
-        return rows.map(order => ({ ...order, rating: ratingsMap[order.orderNumber] ?? null, items: items.filter(item => item.orderId === order.id), events: events.filter(event => event.orderId === order.id) }));
+        return rows.map(order => ({ ...order, rating: getRatingForOrder(ratingsMap, order), items: items.filter(item => item.orderId === order.id), events: events.filter(event => event.orderId === order.id) }));
       }),
       removeItem: requirePermission("orders.manage").use(async ({ next }) => { const res = await next(); clearCatalogCache(); return res; }).input(z.object({
         orderId: safeId,
