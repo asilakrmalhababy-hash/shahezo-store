@@ -37,7 +37,7 @@ export default function App() {
       <TooltipProvider>
         <StoreProvider>
           <CustomerProvider>
-            <Toaster position="top-center" richColors />
+            <Toaster position="top-center" richColors offset="68px" duration={1800} />
             <Router />
           </CustomerProvider>
         </StoreProvider>

@@ -222,7 +222,18 @@ function Header({ data, onSearch }: { data?: HomeData; onSearch: (text: string) 
       <div className="header-actions">
         <Link href="/favorites" className="header-action mobile-header-shortcut" aria-label="المفضلة" title="المفضلة"><Heart size={19} /><span>المفضلة</span></Link>
         <Link href="/orders" className="header-action mobile-header-shortcut" aria-label="طلباتي" title="طلباتي"><Package size={19} /><span>طلباتي</span></Link>
-        <Link href="/cart" className="header-cart"><ShoppingCart size={19} /><span>السلة</span>{cartCount > 0 && <b>{cartCount}</b>}</Link>
+        <button
+          type="button"
+          className="header-action mobile-header-shortcut header-wa-shortcut"
+          onClick={() => window.dispatchEvent(new CustomEvent("toggle-shahezo-wa"))}
+          aria-label="تواصل واتساب"
+          title="تواصل واتساب"
+        >
+          <svg width="19" height="19" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
+            <path d="M16.01 3.2c-7.07 0-12.8 5.73-12.8 12.8 0 2.26.59 4.46 1.71 6.4L3.1 28.9l6.67-1.75a12.75 12.75 0 0 0 6.24 1.63h.01c7.06 0 12.8-5.73 12.8-12.8 0-3.42-1.33-6.64-3.75-9.05A12.72 12.72 0 0 0 16.01 3.2zm0 23.42h-.01a10.6 10.6 0 0 1-5.41-1.48l-.39-.23-3.96 1.04 1.06-3.86-.25-.4a10.58 10.58 0 0 1-1.63-5.67c0-5.85 4.76-10.62 10.61-10.62 2.83 0 5.49 1.1 7.5 3.11a10.54 10.54 0 0 1 3.1 7.52c0 5.85-4.76 10.61-10.62 10.61zm5.82-7.95c-.32-.16-1.89-.93-2.18-1.04-.29-.11-.5-.16-.72.16-.21.32-.82 1.04-1.01 1.25-.19.21-.37.24-.69.08-.32-.16-1.35-.5-2.57-1.59-.95-.85-1.59-1.9-1.78-2.22-.19-.32-.02-.49.14-.65.14-.14.32-.37.48-.56.16-.19.21-.32.32-.53.11-.21.05-.4-.03-.56-.08-.16-.72-1.73-.98-2.37-.26-.62-.52-.54-.72-.55h-.61c-.21 0-.56.08-.85.4-.29.32-1.12 1.09-1.12 2.66 0 1.57 1.15 3.09 1.31 3.3.16.21 2.26 3.45 5.48 4.84.77.33 1.36.53 1.83.68.77.24 1.47.21 2.02.13.62-.09 1.89-.77 2.16-1.52.27-.75.27-1.39.19-1.52-.08-.13-.29-.21-.61-.37z" />
+          </svg>
+          <span>واتساب</span>
+        </button>
         <Link href="/account" className="account-chip"><CircleUserRound size={19} /><span>{name.trim().split(/\s+/)[0] || "حسابي"}</span></Link>
       </div>
     </div>
@@ -236,7 +247,6 @@ function Header({ data, onSearch }: { data?: HomeData; onSearch: (text: string) 
 
 // === SHAHEZO_WA_BAR_START ===
 function ShahezoWhatsAppBar() {
-  const [location] = useLocation();
   const [open, setOpen] = useState(false);
   useEffect(() => {
     const onScroll = () => setOpen(false);
@@ -248,25 +258,21 @@ function ShahezoWhatsAppBar() {
       window.removeEventListener("toggle-shahezo-wa", onToggle);
     };
   }, []);
-  if (location.startsWith("/account") || location.startsWith("/cart") || location.startsWith("/assistant") || location.startsWith("/orders")) {
-    return null;
-  }
+  if (!open) return null;
   return (
-    <div className="shahezo-wa-widget" aria-label="تواصل مباشر مع بوفية شهيزو">
-      <button
-        type="button"
-        className={`shahezo-wa-fab ${open ? "is-open" : ""}`}
-        onClick={() => setOpen(prev => !prev)}
-        aria-label="تواصل واتساب مع بوفية شهيزو"
-        title="تواصل معنا عبر واتساب"
+    <>
+      <div
+        onClick={() => setOpen(false)}
+        style={{ position: "fixed", inset: 0, zIndex: 58, background: "transparent" }}
+      />
+      <div
+        className="shahezo-wa-strip is-open"
+        role="dialog"
+        aria-label="تواصل مباشر مع بوفية شهيزو"
+        style={{ position: "fixed", top: "64px", left: "12px", zIndex: 60, direction: "rtl" }}
       >
-        <svg width="22" height="22" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
-          <path d="M16.01 3.2c-7.07 0-12.8 5.73-12.8 12.8 0 2.26.59 4.46 1.71 6.4L3.1 28.9l6.67-1.75a12.75 12.75 0 0 0 6.24 1.63h.01c7.06 0 12.8-5.73 12.8-12.8 0-3.42-1.33-6.64-3.75-9.05A12.72 12.72 0 0 0 16.01 3.2zm0 23.42h-.01a10.6 10.6 0 0 1-5.41-1.48l-.39-.23-3.96 1.04 1.06-3.86-.25-.4a10.58 10.58 0 0 1-1.63-5.67c0-5.85 4.76-10.62 10.61-10.62 2.83 0 5.49 1.1 7.5 3.11a10.54 10.54 0 0 1 3.1 7.52c0 5.85-4.76 10.61-10.62 10.61zm5.82-7.95c-.32-.16-1.89-.93-2.18-1.04-.29-.11-.5-.16-.72.16-.21.32-.82 1.04-1.01 1.25-.19.21-.37.24-.69.08-.32-.16-1.35-.5-2.57-1.59-.95-.85-1.59-1.9-1.78-2.22-.19-.32-.02-.49.14-.65.14-.14.32-.37.48-.56.16-.19.21-.32.32-.53.11-.21.05-.4-.03-.56-.08-.16-.72-1.73-.98-2.37-.26-.62-.52-.54-.72-.55h-.61c-.21 0-.56.08-.85.4-.29.32-1.12 1.09-1.12 2.66 0 1.57 1.15 3.09 1.31 3.3.16.21 2.26 3.45 5.48 4.84.77.33 1.36.53 1.83.68.77.24 1.47.21 2.02.13.62-.09 1.89-.77 2.16-1.52.27-.75.27-1.39.19-1.52-.08-.13-.29-.21-.61-.37z" />
-        </svg>
-      </button>
-      <div className={`shahezo-wa-strip ${open ? "is-open" : "is-closed"}`}>
         <div className="shahezo-wa-strip-head">
-          <strong>🥙 تواصل مباشر · بوفية شهيزو</strong>
+          <strong>تواصل مباشر · بوفية شهيزو</strong>
           <button type="button" className="shahezo-wa-close" onClick={() => setOpen(false)} aria-label="إغلاق">×</button>
         </div>
         <div className="shahezo-wa-row">
@@ -275,7 +281,7 @@ function ShahezoWhatsAppBar() {
             <b dir="ltr">779 542 219</b>
           </div>
           <div className="shahezo-wa-actions">
-            <a className="shahezo-wa-btn" href="https://wa.me/967779542219?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A8%D9%88%D9%81%D9%8A%D8%A9%20%D8%B4%D9%87%D9%8A%D8%B2%D9%88%20%F0%9F%A5%99%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D8%B7%D9%84%D8%A8%20%D8%A3%D9%88%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1" target="_blank" rel="noreferrer">واتساب</a>
+            <a className="shahezo-wa-btn" href="https://wa.me/967779542219?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A8%D9%88%D9%81%D9%8A%D8%A9%20%D8%B4%D9%87%D9%8A%D8%B2%D9%88%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D8%B7%D9%84%D8%A8%20%D8%A3%D9%88%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1" target="_blank" rel="noreferrer">واتساب</a>
             <a className="shahezo-call-btn" href="tel:779542219">اتصال</a>
           </div>
         </div>
@@ -285,11 +291,40 @@ function ShahezoWhatsAppBar() {
             <b dir="ltr">772 206 455</b>
           </div>
           <div className="shahezo-wa-actions">
-            <a className="shahezo-wa-btn" href="https://wa.me/967772206455?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%AE%D8%AF%D9%85%D8%A9%20%D8%B9%D9%85%D9%84%D8%A7%D8%A1%20%D8%A8%D9%88%D9%81%D9%8A%D8%A9%20%D8%B4%D9%87%D9%8A%D8%B2%D9%88%20%F0%9F%A5%99" target="_blank" rel="noreferrer">واتساب</a>
+            <a className="shahezo-wa-btn" href="https://wa.me/967772206455?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%AE%D8%AF%D9%85%D8%A9%20%D8%B9%D9%85%D9%84%D8%A7%D8%A1%20%D8%A8%D9%88%D9%81%D9%8A%D8%A9%20%D8%B4%D9%87%D9%8A%D8%B2%D9%88" target="_blank" rel="noreferrer">واتساب</a>
             <a className="shahezo-call-btn" href="tel:772206455">اتصال</a>
           </div>
         </div>
       </div>
+    </>
+  );
+}
+
+function FloatingCartBar() {
+  const { cart } = useStore();
+  const [location, navigate] = useLocation();
+  const count = cart.reduce((sum, line) => sum + line.quantity, 0);
+  const subtotal = cart.reduce((sum, line) => sum + line.price * line.quantity, 0);
+  if (count <= 0 || location.startsWith("/cart") || location.startsWith("/assistant") || location.startsWith("/orders")) {
+    return null;
+  }
+  return (
+    <div className="shahezo-floating-cart-wrap" dir="rtl">
+      <button
+        type="button"
+        className="shahezo-floating-cart-bar"
+        onClick={() => navigate("/cart")}
+        aria-label="عرض السلة وإتمام الطلب"
+      >
+        <span className="shahezo-fc-right">
+          <span className="shahezo-fc-count">{count}</span>
+          <span className="shahezo-fc-label">عرض السلة</span>
+        </span>
+        <span className="shahezo-fc-left">
+          <strong className="shahezo-fc-total">{formatPrice(subtotal)}</strong>
+          <ChevronLeft size={17} />
+        </span>
+      </button>
     </div>
   );
 }
@@ -5573,7 +5608,7 @@ function GamifiedRewardBar({ settings, location }: { settings: Record<string, st
             position: "fixed",
             left: "12px",
             right: "12px",
-            bottom: "74px",
+            bottom: "126px",
             zIndex: 45,
             maxWidth: "560px",
             margin: "0 auto",
@@ -5655,5 +5690,5 @@ export default function Home() {
   </div>
 )}
 {home.isError && !home.data && data.products.length === 0 ? <main className="page-shell inner-page"><LoadError onRetry={() => void home.refetch()} /></main> : content}<footer className="store-footer"><div className="footer-brand"><span className={`brand-mark ${data.settings.storeIconUrl ? "has-brand-image" : ""}`}>{data.settings.storeIconUrl ? <img src={data.settings.storeIconUrl} alt="" /> : <img src="/chef-hat.svg" alt="شهيزو" style={{ padding: 0, objectFit: "cover" }} />}</span><span><b>شهيزو – SHAHEZO</b><small>{data.settings.storeName === "شهيزو – SHAHEZO" || !data.settings.storeName ? "شهي ولذيذ · شاورما • فلافل • عصائر" : data.settings.storeName}</small></span></div>{shouldShowFooterDescription(data.settings.storeDescription) && <span>{data.settings.storeDescription}</span>}<small>© {new Date().getFullYear()} {data.settings.storeName || "شهيزو – SHAHEZO"}</small></footer>{activeAiProduct && <AiRecipeModal product={activeAiProduct} onClose={() => setActiveAiProduct(null)} />}
-    <ShahezoWhatsAppBar /><BottomNav active={currentNav} /></div>;
+    <ShahezoWhatsAppBar /><FloatingCartBar /><BottomNav active={currentNav} /></div>;
 }
