@@ -11,6 +11,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin, submitAdminCredentials } from "@/const";
 import { PERMISSION_KEYS, PERMISSION_LABELS, ROLE_DEFINITIONS, type AdminRoleKey, type PermissionKey } from "@shared/rbac";
 import ImageEditor from "@/components/ImageEditor";
+import PWAInstall from "@/components/PWAInstall";
 import { ensureBrowserPushSubscription, getExistingBrowserPushSubscription, getPushPermissionState, requestPushPermission } from "@/lib/pushNotifications";
 
 
@@ -6761,20 +6762,18 @@ export default function Admin() {
 
   const triggerAdminInstall = async () => {
     const promptEvent = adminInstallPrompt || (window as any).__deferredPwaPrompt;
-    if (promptEvent) {
-      try {
-        await promptEvent.prompt();
-        const choice = await promptEvent.userChoice;
-        if (choice?.outcome === "accepted") {
-          setIsStandaloneAdmin(true);
-          setAdminInstallPrompt(null);
-          (window as any).__deferredPwaPrompt = null;
-          toast.success("📲 جاري تثبيت تطبيق إدارة شهيزو المستقل على هاتفك!");
-        }
-        return;
-      } catch {}
+    if (!promptEvent) return;
+    try {
+      await promptEvent.prompt();
+      const choice = await promptEvent.userChoice;
+      if (choice?.outcome === "accepted") {
+        setIsStandaloneAdmin(true);
+        toast.success("جاري تثبيت تطبيق إدارة شهيزو على هاتفك");
+      }
+    } catch {} finally {
+      setAdminInstallPrompt(null);
+      (window as any).__deferredPwaPrompt = null;
     }
-    toast.info("لتثبيت تطبيق الإدارة المستقل: اضغط قائمة جوجل كروم (⋮) بأعلى المتصفح واختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية» 📲");
   };
 
   const logout = async () => { try { await auth.logout(); } finally { await utils.commerce.access.invalidate(); navigate("/admin"); } };
@@ -6783,8 +6782,8 @@ export default function Admin() {
   };
 
   if (auth.loading || access.isLoading) return <main className="admin-gate" dir="rtl"><AdminLoading /></main>;
-  if (auth.error && !auth.user) return <AdminLoginGate reason="login" onSuccess={() => void onLoginSuccess()} />;
-  if (!auth.user) return <AdminLoginGate reason="login" onSuccess={() => void onLoginSuccess()} />;
+  if (auth.error && !auth.user) return <><AdminLoginGate reason="login" onSuccess={() => void onLoginSuccess()} /><PWAInstall variant="admin" /></>;
+  if (!auth.user) return <><AdminLoginGate reason="login" onSuccess={() => void onLoginSuccess()} /><PWAInstall variant="admin" /></>;
   if (auth.user.suspended || access.data?.isSuspended) return <AdminLoginGate reason="suspended" onLogout={logout} />;
   if (!access.data?.isAdmin) return <AdminLoginGate reason="forbidden" onLogout={logout} />;
 
@@ -6827,9 +6826,9 @@ export default function Admin() {
           })}
         </nav>
         <div className="admin-sidebar-bottom">
-          {!isStandaloneAdmin && (
+          {!isStandaloneAdmin && Boolean(adminInstallPrompt) && (
             <button type="button" className="small-button selected" onClick={() => void triggerAdminInstall()} style={{ width: "100%", justifyContent: "center", fontWeight: 800 }}>
-              📲 تثبيت تطبيق الإدارة
+              تثبيت تطبيق الإدارة
             </button>
           )}
           <button className="logout-admin" onClick={() => void logout()}><LogOut size={16} />تسجيل الخروج</button>
@@ -6843,9 +6842,9 @@ export default function Admin() {
             <span>الأقسام</span>
           </button>
           <strong className="admin-breadcrumb">{allowedSections.find(item => item.id === activeSection)?.label}</strong>
-          {!isStandaloneAdmin ? (
+          {!isStandaloneAdmin && Boolean(adminInstallPrompt) ? (
             <button type="button" className="small-button selected" onClick={() => void triggerAdminInstall()} style={{ fontWeight: 800 }}>
-              📲 تثبيت التطبيق
+              تثبيت التطبيق
             </button>
           ) : (
             <span style={{ width: "32px" }} aria-hidden="true" />
@@ -6854,6 +6853,7 @@ export default function Admin() {
         <AdminPanel section={activeSection} isOwner={isOwner} permissions={permissions} allowedCategoryIds={allowedCategoryIds} staffId={staffId} />
       </main>
       <div className="admin-mobile-backdrop" onClick={() => document.body.classList.remove("admin-menu-open")} />
+      <PWAInstall variant="admin" />
     </div>
   );
 }

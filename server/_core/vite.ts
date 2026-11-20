@@ -10,7 +10,7 @@ function applyRouteManifestHtml(html: string, url: string): string {
   const cleanPath = (url || "").split("?")[0];
   if (cleanPath === "/admin" || cleanPath.startsWith("/admin/")) {
     return html
-      .replace('href="/manifest-v9.webmanifest"', 'href="/manifest-admin.webmanifest"')
+      .replace(/href="\/manifest-v9\.webmanifest(?:\?[^"]*)?"/, 'href="/manifest-admin.webmanifest"')
       .replace('content="شهيزو"', 'content="إدارة شهيزو"')
       .replace('<title>شهيزو | بوفية ومطعم شهيزو – أشهى فلافل ساخنة وشاورما وعصائر طبيعية</title>', '<title>إدارة شهيزو – لوحة التحكم المستقلة</title>');
   }

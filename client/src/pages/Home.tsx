@@ -4653,26 +4653,24 @@ function AccountPage({ settings = {} }: { settings?: Record<string, string | und
             </span>
           </button>
 
-          {!isStandaloneApp && (
+          {!isStandaloneApp && Boolean(pwaInstallPrompt) && (
             <button
               type="button"
               className="shahezo-acc-row-btn"
               onClick={async () => {
                 const activePrompt = pwaInstallPrompt || (window as any).__deferredPwaPrompt;
-                if (activePrompt) {
-                  try {
-                    await activePrompt.prompt();
-                    const choice = await activePrompt.userChoice;
-                    if (choice.outcome === "accepted") {
-                      setIsStandaloneApp(true);
-                      setPwaInstallPrompt(null);
-                      (window as any).__deferredPwaPrompt = null;
-                      toast.success("📲 جاري تثبيت تطبيق شهيزو على هاتفك!");
-                    }
-                    return;
-                  } catch {}
+                if (!activePrompt) return;
+                try {
+                  await activePrompt.prompt();
+                  const choice = await activePrompt.userChoice;
+                  if (choice.outcome === "accepted") {
+                    setIsStandaloneApp(true);
+                    toast.success("جاري تثبيت تطبيق شهيزو على هاتفك");
+                  }
+                } catch {} finally {
+                  setPwaInstallPrompt(null);
+                  (window as any).__deferredPwaPrompt = null;
                 }
-                toast.info("اضغط على قائمة المتصفح (⋮) بالأعلى ثم اختر «إضافة إلى الشاشة الرئيسية» لتثبيت تطبيق شهيزو");
               }}
             >
               <span style={{ display: "flex", alignItems: "center", gap: "12px" }}>
