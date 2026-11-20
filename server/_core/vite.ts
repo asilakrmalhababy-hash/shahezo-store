@@ -67,11 +67,22 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath));
 
-  app.use("*", (req, res) => {
+  app.use("*", async (req, res) => {
     const indexPath = path.resolve(distPath, "index.html");
     try {
-      const html = fs.readFileSync(indexPath, "utf-8");
-      res.status(200).set({ "Content-Type": "text/html; charset=utf-8" }).send(applyRouteManifestHtml(html, req.originalUrl));
+      let html = applyRouteManifestHtml(fs.readFileSync(indexPath, "utf-8"), req.originalUrl);
+      if (!req.originalUrl.startsWith("/admin")) {
+        const g = globalThis as any;
+        let initialData = g.__fastHomeData;
+        if (!initialData && typeof g.__loadCatalogHome === "function") {
+          try { initialData = await g.__loadCatalogHome(); } catch {}
+        }
+        if (initialData && Array.isArray(initialData.products)) {
+          const safeJson = JSON.stringify(initialData).replace(/</g, "\\u003c");
+          html = html.replace("</head>", `<script>window.__SHAHEZO_INITIAL_HOME__=${safeJson};</script></head>`);
+        }
+      }
+      res.status(200).set({ "Content-Type": "text/html; charset=utf-8" }).send(html);
     } catch {
       res.sendFile(indexPath);
     }

@@ -45,6 +45,10 @@ function loadOfflineCatalogIdb(): Promise<HomeData | null> {
 
 function getInstantLocalCatalog(): HomeData {
   try {
+    const ssr = typeof window !== "undefined" ? (window as any).__SHAHEZO_INITIAL_HOME__ : null;
+    if (ssr && Array.isArray(ssr.products) && ssr.products.length > 0) return ssr;
+  } catch {}
+  try {
     const raw = localStorage.getItem(INSTANT_CATALOG_KEY);
     if (raw) {
       const p = JSON.parse(raw);
@@ -5646,7 +5650,7 @@ export default function Home() {
     if (location === "/assistant") return <AssistantPage />;
     return <HomePage data={data} onOpen={openProduct} onAiRecipe={setActiveAiProduct} />;
   }, [location, productId, productPath, data]);
-  return <div className="store-app" dir="rtl"><Header data={data} onSearch={text => navigate(`/products${text ? `?search=${encodeURIComponent(text)}` : ""}`)} /><GamifiedRewardBar settings={data.settings} location={location} />{(!isOnline || (home.isError && !home.data)) && (
+  return <div className="store-app" dir="rtl"><Header data={data} onSearch={text => navigate(`/products${text ? `?search=${encodeURIComponent(text)}` : ""}`)} /><GamifiedRewardBar settings={data.settings} location={location} />{(!isOnline || (home.isError && !home.data && data.products.length === 0)) && (
   <div className="connection-strip">
     <span>{data.products.length > 0 ? "📡 بدون إنترنت — تصفّح بحرية (تأكيد الطلب عند عودة النت)" : "الاتصال بالخدمة غير متاح مؤقتًا"}</span>
     <button onClick={() => void home.refetch()}>تحديث</button>
