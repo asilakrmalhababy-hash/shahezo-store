@@ -2350,3 +2350,37 @@ button, a, input, select, textarea {
     bottom: 18px;
   }
 }
+
+
+/* === SHAHEZO HEADER ICONS POLISH (v62) === */
+.header-wa-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+  border: none !important;
+  color: #1ea851 !important;
+  cursor: pointer;
+}
+.header-wa-btn:hover {
+  background: #edfbf2 !important;
+  color: #15803d !important;
+}
+@media (max-width: 768px) {
+  .header-actions {
+    gap: 3px !important;
+  }
+  .header-action,
+  .account-chip,
+  .header-wa-btn {
+    display: inline-flex !important;
+    width: 39px !important;
+    height: 39px !important;
+    min-height: 39px !important;
+    padding: 0 !important;
+    border-radius: 12px !important;
+  }
+  .header-wa-btn span {
+    display: none !important;
+  }
+}
