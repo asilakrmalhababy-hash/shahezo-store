@@ -1354,19 +1354,17 @@ function HomePage({ data, onOpen, onAiRecipe }: { data: HomeData; onOpen: (id: n
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: "6px",
-              padding: "6px 11px",
-              borderRadius: "11px",
-              border: sort !== "featured" ? "1.5px solid #870210" : "1px solid #e4d5c9",
-              background: sort !== "featured" ? "#fff4ee" : "#ffffff",
-              color: "#870210",
-              fontSize: "11.5px",
-              fontWeight: 800,
+              gap: "4px",
+              padding: "4px 6px",
+              border: "none",
+              background: "transparent",
+              color: sort !== "featured" ? "#870210" : "#6e5a53",
+              fontSize: "12px",
+              fontWeight: sort !== "featured" ? 800 : 700,
               cursor: "pointer",
-              boxShadow: "0 2px 8px rgba(43, 18, 15, 0.04)",
             }}
           >
-            <ArrowUpDown size={14} />
+            <ArrowUpDown size={13} />
             <span>{sortLabel}</span>
             <ChevronDown size={13} />
           </button>
