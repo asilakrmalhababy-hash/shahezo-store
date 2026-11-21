@@ -2570,3 +2570,39 @@ button, a, input, select, textarea {
   gap: 7px;
   cursor: pointer;
 }
+
+
+/* === SHAHEZO SLOW-NETWORK IMAGE LOADER (v65) === */
+@keyframes shahezoSpin {
+  to { transform: rotate(360deg); }
+}
+.shahezo-img-loading-state {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #f6efe8;
+  color: #7c6760;
+  text-align: center;
+  padding: 20px;
+}
+.shahezo-img-loading-state strong {
+  font-size: 13px;
+  font-weight: 800;
+  color: #5e010b;
+}
+.shahezo-img-loading-state small {
+  font-size: 11px;
+  color: #8c766e;
+}
+.shahezo-img-spinner {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid #e6d8cc;
+  border-top-color: #870210;
+  animation: shahezoSpin 0.75s linear infinite;
+}

@@ -1825,6 +1825,8 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
   const [detailPickerOpen, setDetailPickerOpen] = useState(false);
   const [selectedDetailVariant, setSelectedDetailVariant] = useState<string>("");
   const [loadedSrc, setLoadedSrc] = useState<string>(() => (cachedProduct?.imageUrl && __detailDecodedImgCache.has(cachedProduct.imageUrl) ? cachedProduct.imageUrl : ""));
+  const [slowImgHint, setSlowImgHint] = useState(false);
+  const [imgLoadFailed, setImgLoadFailed] = useState(false);
   const unpackedDetail = useMemo(() => unpackProductVariants(product?.description), [product?.description]);
   const touchStartX = useRef<number | null>(null);
 
@@ -1850,6 +1852,8 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
 
   useEffect(() => {
     const src = product?.imageUrl || "";
+    setSlowImgHint(false);
+    setImgLoadFailed(false);
     if (!src) return;
     const cached = __detailDecodedImgCache.get(src);
     if (cached && cached.complete && cached.naturalWidth > 0) {
@@ -1857,20 +1861,43 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
       return;
     }
     let active = true;
+    const slowTimer = window.setTimeout(() => {
+      if (active) setSlowImgHint(true);
+    }, 2800);
     const img = cached || new Image();
     img.decoding = "sync";
     if (!cached) {
       img.src = src;
       __detailDecodedImgCache.set(src, img);
     }
-    const done = () => { if (active) setLoadedSrc(src); };
+    const onOk = () => {
+      window.clearTimeout(slowTimer);
+      if (active) {
+        setSlowImgHint(false);
+        setImgLoadFailed(false);
+        setLoadedSrc(src);
+      }
+    };
+    const onErr = () => {
+      window.clearTimeout(slowTimer);
+      if (active) {
+        setSlowImgHint(false);
+        setImgLoadFailed(true);
+      }
+    };
     if (typeof img.decode === "function") {
-      img.decode().then(done).catch(done);
+      img.decode().then(onOk).catch(() => {
+        if (img.complete && img.naturalWidth > 0) onOk();
+        else onErr();
+      });
     } else {
-      img.onload = done;
-      img.onerror = done;
+      img.onload = onOk;
+      img.onerror = onErr;
     }
-    return () => { active = false; };
+    return () => {
+      active = false;
+      window.clearTimeout(slowTimer);
+    };
   }, [product?.imageUrl]);
 
   const goNext = () => { if (nextProduct && onSelectProduct) onSelectProduct(nextProduct.id); };
@@ -1902,7 +1929,7 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
   if (error || !product) return <main className="page-shell inner-page"><LoadError onRetry={() => window.location.reload()} /></main>;
   const stockLimit = product.stock === null ? 9999 : product.stock;
   const fav = isFavorite(product.id);
-  const displayImgSrc = product.imageUrl ? (loadedSrc === product.imageUrl || __detailDecodedImgCache.get(product.imageUrl)?.complete ? product.imageUrl : (loadedSrc || product.imageUrl)) : "";
+  const isCurrentImgReady = Boolean(product.imageUrl && (loadedSrc === product.imageUrl || (__detailDecodedImgCache.get(product.imageUrl)?.complete && (__detailDecodedImgCache.get(product.imageUrl)?.naturalWidth ?? 0) > 0)));
 
   const handleDetailAdd = () => {
     if (unpackedDetail.weightEnabled || unpackedDetail.variants.length > 0) {
@@ -1939,9 +1966,11 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
           onTouchEnd={handleTouchEnd}
           style={{ position: "relative", cursor: hasGallery ? "pointer" : "default", userSelect: "none" }}
         >
-          {displayImgSrc ? (
+          {!product.imageUrl ? (
+            <div className="product-no-image detail-placeholder"><Leaf size={45} /><span>لا توجد صورة لهذا المنتج</span></div>
+          ) : isCurrentImgReady ? (
             <img
-              src={displayImgSrc}
+              src={product.imageUrl}
               alt={product.name}
               decoding="sync"
               loading="eager"
@@ -1949,7 +1978,21 @@ function ProductDetail({ id, allProducts = [], onSelectProduct, onBack, onAiReci
               style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
             />
           ) : (
-            <div className="product-no-image detail-placeholder"><Leaf size={45} /><span>لا توجد صورة لهذا المنتج</span></div>
+            <div className="shahezo-img-loading-state">
+              {!imgLoadFailed ? (
+                <>
+                  <span className="shahezo-img-spinner" aria-hidden="true" />
+                  <strong>جارٍ تحميل الصورة...</strong>
+                  {slowImgHint && <small>الإنترنت لديك ضعيف، يرجى الانتظار قليلاً</small>}
+                </>
+              ) : (
+                <>
+                  <Leaf size={34} />
+                  <strong>تعذر تحميل الصورة</strong>
+                  <small>تحقق من اتصال الإنترنت</small>
+                </>
+              )}
+            </div>
           )}
           <button
             type="button"
