@@ -2606,3 +2606,24 @@ button, a, input, select, textarea {
   border-top-color: #870210;
   animation: shahezoSpin 0.75s linear infinite;
 }
+
+
+/* === SHAHEZO LOW-END MOBILE 60FPS SMOOTHNESS (v66) === */
+.product-card,
+.category-card,
+.offer-card {
+  contain: layout style;
+}
+@media (hover: none) and (pointer: coarse) {
+  .product-card,
+  .category-card,
+  .offer-card,
+  .store-header {
+    transition: none !important;
+  }
+  .product-card:hover,
+  .category-card:hover,
+  .offer-card:hover {
+    transform: none !important;
+  }
+}

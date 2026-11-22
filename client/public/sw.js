@@ -1,4 +1,5 @@
-const CACHE = "shahezo-shell-v20";
+const CACHE = "shahezo-shell-v21";
+const IMG_CACHE = "shahezo-images-v1";
 const PRECACHE = ["/", "/offline.html", "/manifest-v9.webmanifest", "/manifest-admin.webmanifest", "/app-icon-192-v8.png", "/app-icon-source.png", "/chef-hat.png", "/notif-icon-v8.png", "/notif-badge-v8.png"];
 
 self.addEventListener("install", event => {
@@ -9,7 +10,7 @@ self.addEventListener("install", event => {
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))
+      .then(keys => Promise.all(keys.filter(key => key !== CACHE && key !== IMG_CACHE).map(key => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
@@ -28,6 +29,20 @@ self.addEventListener("fetch", event => {
         }
         return resp;
       }).catch(() => caches.match(request))
+    );
+    return;
+  }
+  if (url.pathname.startsWith("/api/fast-img")) {
+    event.respondWith(
+      caches.open(IMG_CACHE).then(async cache => {
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        const resp = await fetch(request);
+        if (resp && resp.status === 200) {
+          cache.put(request, resp.clone()).catch(() => {});
+        }
+        return resp;
+      })
     );
     return;
   }
